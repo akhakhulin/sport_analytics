@@ -223,6 +223,121 @@ def load_hr_zones(athlete_id: str) -> pd.DataFrame:
     return df
 
 
+def load_pending_zone_change(athlete_id: str, sport: str) -> dict | None:
+    """Самая свежая необработанная заявка по этому виду спорта (если есть)."""
+    try:
+        df = _read_sql(
+            "SELECT id, payload, requested_by, requested_at, processed_at, error "
+            "FROM pending_writes "
+            "WHERE athlete_id = ? AND action = 'update_hr_zones' "
+            "ORDER BY id DESC LIMIT 5",
+            (athlete_id,),
+        )
+    except Exception:
+        return None
+    if df.empty:
+        return None
+    for _, row in df.iterrows():
+        try:
+            p = json.loads(row["payload"])
+        except Exception:
+            continue
+        if (p.get("sport") or "").upper() == sport.upper():
+            return {
+                "id": int(row["id"]),
+                "payload": p,
+                "requested_by": row["requested_by"],
+                "requested_at": row["requested_at"],
+                "processed_at": row["processed_at"],
+                "error": row["error"],
+            }
+    return None
+
+
+def queue_zone_update(athlete_id: str, sport: str, floors: list[int],
+                      max_hr: int | None, requested_by: str) -> int:
+    """Кладёт заявку на изменение зон в pending_writes."""
+    payload = {
+        "sport": sport,
+        "z1_floor": int(floors[0]),
+        "z2_floor": int(floors[1]),
+        "z3_floor": int(floors[2]),
+        "z4_floor": int(floors[3]),
+        "z5_floor": int(floors[4]),
+    }
+    if max_hr:
+        payload["max_hr"] = int(max_hr)
+
+    conn = dbm.connect()
+    try:
+        cur = conn.execute(
+            "INSERT INTO pending_writes "
+            "(athlete_id, action, payload, requested_by, requested_at) "
+            "VALUES (?, 'update_hr_zones', ?, ?, ?)",
+            (athlete_id, json.dumps(payload, ensure_ascii=False),
+             requested_by, datetime.now().isoformat()),
+        )
+        conn.commit()
+        dbm.sync(conn)
+        return cur.lastrowid
+    finally:
+        conn.close()
+
+
+@st.dialog("Изменить HR-зоны", width="large")
+def _edit_zones_dialog(athlete_id: str, sport: str, current: dict,
+                        requested_by: str) -> None:
+    sport_label = {"DEFAULT": "по умолчанию", "RUNNING": "Бег",
+                   "CYCLING": "Вело"}.get(sport, sport)
+    st.markdown(f"**Спорт:** {sport_label}")
+    st.caption(
+        "Введите нижние границы зон (пульс, уд/мин). Изменения уйдут в Garmin "
+        "при следующем синке (локальный `sync.exe` или cloud-воркер)."
+    )
+
+    c1, c2, c3, c4, c5 = st.columns(5)
+    z1 = c1.number_input("Z1", value=int(current["zone1_floor"]),
+                         min_value=30, max_value=220, key="zone_edit_z1")
+    z2 = c2.number_input("Z2", value=int(current["zone2_floor"]),
+                         min_value=30, max_value=220, key="zone_edit_z2")
+    z3 = c3.number_input("Z3", value=int(current["zone3_floor"]),
+                         min_value=30, max_value=220, key="zone_edit_z3")
+    z4 = c4.number_input("Z4", value=int(current["zone4_floor"]),
+                         min_value=30, max_value=220, key="zone_edit_z4")
+    z5 = c5.number_input("Z5", value=int(current["zone5_floor"]),
+                         min_value=30, max_value=220, key="zone_edit_z5")
+    max_hr = st.number_input(
+        "Max HR (необязательно — если меняли)",
+        value=int(current["max_hr"]) if pd.notna(current.get("max_hr")) else 188,
+        min_value=80, max_value=240, key="zone_edit_max",
+    )
+
+    floors = [z1, z2, z3, z4, z5]
+    issues = []
+    for i in range(4):
+        if floors[i + 1] <= floors[i]:
+            issues.append(f"Z{i + 2} должен быть больше Z{i + 1}")
+    if max_hr and floors[4] >= max_hr:
+        issues.append("Z5 floor должен быть меньше Max HR")
+
+    if issues:
+        for it in issues:
+            st.warning(it)
+
+    bcol1, bcol2 = st.columns([1, 1])
+    if bcol1.button("✅ Обновить Garmin", type="primary",
+                    disabled=bool(issues), use_container_width=True):
+        new_id = queue_zone_update(athlete_id, sport, floors, max_hr, requested_by)
+        st.success(
+            f"Заявка #{new_id} принята. Будет применена к Garmin при следующем "
+            "синке (локальный `sync.exe` или cloud-воркер)."
+        )
+        st.session_state["_zone_just_queued"] = True
+        # Закрытие модалки — нет API, дадим кнопку «закрыть»
+    if bcol2.button("Отмена", use_container_width=True):
+        st.rerun()
+
+
 @st.cache_data(ttl=300)
 def load_activities(athlete_id: str) -> pd.DataFrame:
     df = _read_sql(
@@ -549,6 +664,35 @@ with st.expander("📋 Профиль и HR-зоны", expanded=False):
                     st.write(r)
                 if z["training_method"]:
                     st.caption(f"метод: {z['training_method']}")
+
+                # Статус последней заявки на изменение этого спорта
+                pending = load_pending_zone_change(selected_athlete, sport)
+                if pending:
+                    if pending["processed_at"] is None:
+                        st.info(
+                            f"⏳ Заявка #{pending['id']} в очереди — будет "
+                            "применена при следующем синке"
+                        )
+                    elif pending["error"]:
+                        st.error(
+                            f"❌ Заявка #{pending['id']}: {pending['error']}"
+                        )
+                    else:
+                        st.success(
+                            f"✓ Применено {pending['processed_at'][:19]}"
+                        )
+
+                # Кнопка «Изменить» — только для admin/coach или для своих данных
+                can_edit = IS_ADMIN or selected_athlete == USER.athlete_id
+                if can_edit:
+                    if st.button("✏️ Изменить зоны",
+                                 key=f"edit_zones_{sport}",
+                                 disabled=pending is not None
+                                          and pending["processed_at"] is None):
+                        _edit_zones_dialog(
+                            selected_athlete, sport, z.to_dict(),
+                            requested_by=USER.username,
+                        )
             else:
                 st.markdown("**Зоны**")
                 st.caption("—")
