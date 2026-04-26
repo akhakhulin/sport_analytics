@@ -488,10 +488,8 @@ def _trigger_cloud_sync() -> tuple[bool, str]:
 
 
 if st.sidebar.button(
-    "🔄 Обновить из БД",
+    "🔄 Обновить данные",
     use_container_width=True,
-    help="Сбросить кэш + запустить cloud sync для cloud-атлетов "
-         "(данные подтянутся через ~30-60 сек, нажми ещё раз)",
 ):
     if IS_ADMIN:
         ok, msg = _trigger_cloud_sync()
