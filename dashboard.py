@@ -168,13 +168,13 @@ def _zone_period_dialog(title: str, vals: list[float],
 
 
 def show_chart(fig, key: str, height: int | None = None, expandable: bool = True) -> None:
-    """Рендер графика + кнопка «🔍 Развернуть» под ним (открывает модалку)."""
+    """Рендер графика + значок 🔍 под ним (открывает модалку)."""
     if height is not None:
         fig.update_layout(height=height)
     st.plotly_chart(fig, use_container_width=True, key=f"chart_{key}",
                     config=PLOTLY_CONFIG)
     if expandable:
-        if st.button("🔍 Развернуть", key=f"zoom_btn_{key}", help="Открыть на ~80% экрана"):
+        if st.button("🔍", key=f"zoom_btn_{key}", help="Открыть в большом окне"):
             _zoom_dialog(fig.to_dict(), title=fig.layout.title.text or "")
 
 
@@ -853,11 +853,8 @@ with st.expander("⏱ Время в HR-зонах", expanded=True):
                         st.plotly_chart(bar, use_container_width=True,
                                         config=PLOTLY_CONFIG)
                         cell_key = f"zone_expand_{AGG_COL}_{label.isoformat()}"
-                        if st.button("🔍 Развернуть",
-                                     key=cell_key,
-                                     use_container_width=True,
-                                     help="Открыть в большом окне с выбором "
-                                          "часы/проценты"):
+                        if st.button("🔍", key=cell_key,
+                                     help="Развернуть с выбором часы/проценты"):
                             _zone_period_dialog(
                                 title_str, vals, zone_names,
                                 default_mode=view_mode,
