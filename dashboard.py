@@ -395,8 +395,56 @@ AGG_NOM = agg_label.lower()
 
 st.sidebar.divider()
 
-if st.sidebar.button("🔄 Обновить из БД", use_container_width=True,
-                     help="Сбросить кэш и перечитать данные (если только что прошёл sync)"):
+def _trigger_cloud_sync() -> tuple[bool, str]:
+    """Дёргает GitHub Actions workflow_dispatch для cloud_sync.yml."""
+    try:
+        gh = st.secrets["github"]
+        token = str(gh["token"])
+        repo = str(gh.get("repo", "akhakhulin/sport_analytics"))
+        workflow = str(gh.get("workflow", "cloud_sync.yml"))
+        ref = str(gh.get("ref", "main"))
+    except Exception:
+        return False, "не настроен [github] token в Secrets"
+
+    import urllib.request
+    import urllib.error
+
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{repo}/actions/workflows/{workflow}/dispatches",
+        method="POST",
+        data=json.dumps({"ref": ref}).encode("utf-8"),
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {token}",
+            "Content-Type": "application/json",
+            "X-GitHub-Api-Version": "2022-11-28",
+        },
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            if resp.status == 204:
+                return True, "cloud sync запущен"
+            return False, f"HTTP {resp.status}"
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", errors="replace")[:120]
+        return False, f"HTTP {e.code}: {body}"
+    except Exception as exc:  # noqa: BLE001
+        return False, f"ошибка: {exc}"
+
+
+if st.sidebar.button(
+    "🔄 Обновить из БД",
+    use_container_width=True,
+    help="Сбросить кэш + запустить cloud sync для cloud-атлетов "
+         "(данные подтянутся через ~30-60 сек, нажми ещё раз)",
+):
+    if IS_ADMIN:
+        ok, msg = _trigger_cloud_sync()
+        if ok:
+            st.toast(f"☁️ {msg} — данные обновятся через ~30-60 сек, "
+                     "нажми ещё раз через минуту", icon="🚀")
+        else:
+            st.toast(f"⚠️ Cloud sync не запущен: {msg}", icon="⚠️")
     st.cache_data.clear()
     st.toast("Кэш очищен, читаю свежие данные...", icon="🔄")
     st.rerun()
