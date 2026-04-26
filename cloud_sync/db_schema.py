@@ -7,10 +7,10 @@ CREATE TABLE IF NOT EXISTS cloud_athletes (
     athlete_id      TEXT PRIMARY KEY,
     name            TEXT,
     garmin_email    TEXT NOT NULL,
-    password_enc    TEXT NOT NULL,    -- AES-GCM(пароль) base64
-    tokens_enc      TEXT,              -- AES-GCM(garth токены) base64; NULL до первого логина
-    last_sync       TEXT,              -- ISO timestamp последнего успешного запуска
-    last_error      TEXT,              -- сообщение последней ошибки (NULL если ОК)
+    password_enc    TEXT NOT NULL,
+    tokens_enc      TEXT,
+    last_sync       TEXT,
+    last_error      TEXT,
     active          INTEGER NOT NULL DEFAULT 1,
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
 );

@@ -254,8 +254,12 @@ def sync_activities(client: Garmin, conn, athlete_id: str, initial_days: int) ->
                 break
 
             conn.execute(
-                "INSERT OR REPLACE INTO activities VALUES "
-                "(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                """INSERT OR REPLACE INTO activities (
+                    activity_id, athlete_id, start_time_local, activity_type,
+                    activity_name, duration_sec, distance_m, elevation_gain_m,
+                    avg_hr, max_hr, avg_speed_mps, calories,
+                    training_effect_aer, training_effect_ana, vo2_max, raw_json
+                ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
                 (
                     act.get("activityId"),
                     athlete_id,

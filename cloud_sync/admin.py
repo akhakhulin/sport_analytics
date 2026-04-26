@@ -82,8 +82,17 @@ def cmd_add(args) -> int:
     print(f"\nДобавляю облачного атлета: {athlete_id} ({name})")
     print("Garmin-креды НЕ сохраняются на диск, шифруются и кладутся в Turso.\n")
 
-    email = input("Garmin email: ").strip()
-    password = getpass.getpass("Garmin password: ")
+    if args.email and args.password:
+        email = args.email.strip()
+        password = args.password
+        print(f"Garmin email: {email}")
+        print("Garmin password: <получен из --password>")
+    elif args.show_password:
+        email = input("Garmin email: ").strip()
+        password = input("Garmin password (видимый): ")
+    else:
+        email = input("Garmin email: ").strip()
+        password = getpass.getpass("Garmin password: ")
 
     print("\nЛогинюсь в Garmin (если включён 2FA — потребуется код)...")
     try:
@@ -219,6 +228,12 @@ def main() -> int:
     p_add = sub.add_parser("add", help="Добавить облачного атлета")
     p_add.add_argument("athlete_id")
     p_add.add_argument("--name", default=None)
+    p_add.add_argument("--email", default=None,
+                       help="Garmin email (если не задан — спросит интерактивно)")
+    p_add.add_argument("--password", default=None,
+                       help="Garmin пароль (виден в команде и истории shell!)")
+    p_add.add_argument("--show-password", action="store_true",
+                       help="Видимый ввод пароля, без скрытия (для Git Bash)")
     p_add.set_defaults(func=cmd_add)
 
     p_renew = sub.add_parser("renew", help="Перелогин (после года)")
