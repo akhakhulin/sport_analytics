@@ -112,6 +112,61 @@ def _zoom_dialog(fig_dict: dict, title: str = "") -> None:
     st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
 
+@st.dialog(" ", width="large")
+def _zone_period_dialog(title: str, vals: list[float],
+                        zone_names_short: list[str],
+                        default_mode: str = "Часы") -> None:
+    """Большая модалка для одной строки сетки HR-зон с переключателем
+    Часы/Проценты. Подстраивается под ширину окна (60–80% на ПК,
+    почти полная на мобильном)."""
+    st.markdown(f"### {title}")
+    mode = st.radio(
+        "Единицы",
+        ["Часы", "Проценты"],
+        index=0 if default_mode == "Часы" else 1,
+        horizontal=True,
+        label_visibility="collapsed",
+        key=f"zone_dialog_mode_{title}",
+    )
+
+    tot = sum(vals) or 1
+    pcts = [v / tot * 100 for v in vals]
+    dur_text = [fmt_dur(v) for v in vals]
+
+    if mode == "Проценты":
+        y_vals = pcts
+        text = [f"{p:.0f}%" if p > 0 else "" for p in pcts]
+        y_title = "%"
+        hover = "%{x}: %{y:.0f}%<br>%{customdata}<extra></extra>"
+    else:
+        y_vals = vals
+        text = dur_text
+        y_title = "часов"
+        hover = "%{x}: %{customdata}<extra></extra>"
+
+    fig = go.Figure(
+        go.Bar(
+            x=zone_names_short,
+            y=y_vals,
+            marker=dict(color=[ZONE_COLORS[z] for z in zone_names_short]),
+            text=text,
+            textposition="outside",
+            cliponaxis=False,
+            customdata=dur_text,
+            hovertemplate=hover,
+        )
+    )
+    fig.update_layout(
+        height=460,
+        showlegend=False,
+        xaxis=dict(title="", tickangle=0, fixedrange=True),
+        yaxis=dict(title=y_title, rangemode="tozero", fixedrange=True),
+        margin=dict(t=20, b=30, l=40, r=10),
+    )
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
+    st.caption(f"Всего: **{fmt_dur(sum(vals))}**")
+
+
 def show_chart(fig, key: str, height: int | None = None, expandable: bool = True) -> None:
     """Рендер графика + кнопка «🔍 Развернуть» под ним (открывает модалку)."""
     if height is not None:
@@ -797,6 +852,16 @@ with st.expander("⏱ Время в HR-зонах", expanded=True):
                     with cols[i]:
                         st.plotly_chart(bar, use_container_width=True,
                                         config=PLOTLY_CONFIG)
+                        cell_key = f"zone_expand_{AGG_COL}_{label.isoformat()}"
+                        if st.button("🔍 Развернуть",
+                                     key=cell_key,
+                                     use_container_width=True,
+                                     help="Открыть в большом окне с выбором "
+                                          "часы/проценты"):
+                            _zone_period_dialog(
+                                title_str, vals, zone_names,
+                                default_mode=view_mode,
+                            )
                 # Пустые колонки в последнем ряду — без контента, сохраняют ширину
                 for j in range(len(chunk), cols_per_row):
                     with cols[j]:
