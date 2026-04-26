@@ -101,19 +101,23 @@ ACTIVITY_TYPE_RU = {
 }
 
 
+PLOTLY_CONFIG = {"displayModeBar": False}
+
+
 @st.dialog(" ", width="large")
 def _zoom_dialog(fig_dict: dict, title: str = "") -> None:
     """Открывает график в большом модальном окне (~80% экрана)."""
     fig = go.Figure(fig_dict)
     fig.update_layout(height=720, title=title or fig.layout.title.text or "")
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
 
 
 def show_chart(fig, key: str, height: int | None = None, expandable: bool = True) -> None:
     """Рендер графика + кнопка «🔍 Развернуть» под ним (открывает модалку)."""
     if height is not None:
         fig.update_layout(height=height)
-    st.plotly_chart(fig, use_container_width=True, key=f"chart_{key}")
+    st.plotly_chart(fig, use_container_width=True, key=f"chart_{key}",
+                    config=PLOTLY_CONFIG)
     if expandable:
         if st.button("🔍 Развернуть", key=f"zoom_btn_{key}", help="Открыть на ~80% экрана"):
             _zoom_dialog(fig.to_dict(), title=fig.layout.title.text or "")
@@ -598,7 +602,8 @@ with st.expander("⏱ Время в HR-зонах", expanded=True):
                         uniformtext_mode="hide",
                     )
                     with cols[i]:
-                        st.plotly_chart(bar, use_container_width=True)
+                        st.plotly_chart(bar, use_container_width=True,
+                                        config=PLOTLY_CONFIG)
                 # Пустые колонки в последнем ряду — без контента, сохраняют ширину
                 for j in range(len(chunk), cols_per_row):
                     with cols[j]:
