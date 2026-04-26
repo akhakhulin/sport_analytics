@@ -1,0 +1,36 @@
+name: Cloud Garmin Sync
+
+on:
+  schedule:
+    # Каждый день в 02:00 UTC (≈05:00 МСК) — к этому времени данные за
+    # вчерашний день уже точно синканы Garmin Connect с часов.
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}    # ручной запуск из UI
+
+permissions:
+  contents: read
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: 'pip'
+
+      - name: Install runtime deps (без UI)
+        run: |
+          pip install --upgrade pip
+          pip install garminconnect python-dotenv tqdm SQLAlchemy libsql cryptography
+
+      - name: Run cloud sync
+        env:
+          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
+          TURSO_AUTH_TOKEN:   ${{ secrets.TURSO_AUTH_TOKEN }}
+          CLOUD_MASTER_KEY:   ${{ secrets.CLOUD_MASTER_KEY }}
+          DB_PATH:            './data/garmin.db'
+        run: python -m cloud_sync.sync_all
