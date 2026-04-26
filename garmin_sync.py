@@ -150,18 +150,6 @@ CREATE TABLE IF NOT EXISTS hr_zones (
     PRIMARY KEY (athlete_id, sport)
 );
 
-CREATE TABLE IF NOT EXISTS pending_writes (
-    id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    athlete_id      TEXT NOT NULL,
-    action          TEXT NOT NULL,        -- 'update_hr_zones'
-    payload         TEXT NOT NULL,        -- JSON
-    requested_by    TEXT,
-    requested_at    TEXT NOT NULL,
-    processed_at    TEXT,                 -- NULL = в очереди
-    error           TEXT
-);
-
-CREATE INDEX IF NOT EXISTS idx_pending_athlete ON pending_writes(athlete_id, processed_at);
 CREATE INDEX IF NOT EXISTS idx_activities_start    ON activities(start_time_local);
 CREATE INDEX IF NOT EXISTS idx_activities_type     ON activities(activity_type);
 CREATE INDEX IF NOT EXISTS idx_activities_athlete  ON activities(athlete_id);
@@ -381,77 +369,6 @@ def sync_sleep(client: Garmin, conn, athlete_id: str, days: int) -> int:
     return count
 
 
-def _do_update_hr_zones(client: Garmin, payload: dict) -> None:
-    """
-    Применяет изменение HR-зон к Garmin: GET текущие → меняет нужный sport → PUT.
-
-    payload = {"sport": "RUNNING", "z1_floor": 112, ..., "max_hr": 188}
-    """
-    sport = (payload.get("sport") or "DEFAULT").upper()
-    current = client.connectapi("/biometric-service/heartRateZones")
-    if not isinstance(current, list):
-        raise ValueError(f"unexpected zones response: {type(current).__name__}")
-
-    found = False
-    for z in current:
-        if (z.get("sport") or "").upper() == sport:
-            z["zone1Floor"] = int(payload["z1_floor"])
-            z["zone2Floor"] = int(payload["z2_floor"])
-            z["zone3Floor"] = int(payload["z3_floor"])
-            z["zone4Floor"] = int(payload["z4_floor"])
-            z["zone5Floor"] = int(payload["z5_floor"])
-            if payload.get("max_hr"):
-                z["maxHeartRateUsed"] = int(payload["max_hr"])
-            z["changeState"] = "MODIFIED"
-            found = True
-        else:
-            z["changeState"] = "UNCHANGED"
-    if not found:
-        raise ValueError(f"sport {sport!r} not found in current zones")
-
-    client.client.put(
-        "/biometric-service/heartRateZones",
-        json=current,
-    )
-
-
-def process_pending_writes(client: Garmin, conn, athlete_id: str) -> int:
-    """Применяет все pending заявки атлета в Garmin и помечает их."""
-    rows = conn.execute(
-        "SELECT id, action, payload FROM pending_writes "
-        "WHERE athlete_id = ? AND processed_at IS NULL ORDER BY id",
-        (athlete_id,),
-    ).fetchall()
-    if not rows:
-        return 0
-
-    now = datetime.utcnow().isoformat()
-    done = 0
-    for row_id, action, payload_json in rows:
-        try:
-            payload = json.loads(payload_json)
-            if action == "update_hr_zones":
-                _do_update_hr_zones(client, payload)
-            else:
-                raise ValueError(f"неизвестное action: {action}")
-            conn.execute(
-                "UPDATE pending_writes SET processed_at = ?, error = NULL WHERE id = ?",
-                (now, row_id),
-            )
-            done += 1
-            log.info("[%s] pending #%d (%s) применён", athlete_id, row_id, action)
-        except Exception as exc:  # noqa: BLE001
-            err = f"{type(exc).__name__}: {exc}"
-            conn.execute(
-                "UPDATE pending_writes SET processed_at = ?, error = ? WHERE id = ?",
-                (now, err, row_id),
-            )
-            log.error("[%s] pending #%d (%s) FAIL: %s",
-                      athlete_id, row_id, action, err)
-    conn.commit()
-    return done
-
-
 def sync_user_profile(client: Garmin, conn, athlete_id: str) -> int:
     """Один раз при каждом проходе: тянет get_user_profile() и пишет в user_profile."""
     try:
@@ -623,10 +540,6 @@ def run_for(
     }
 
     try:
-        # Сначала применяем pending-заявки (изменения зон и т.п.) — раньше синка,
-        # чтобы потом сразу же синкнуть новое состояние обратно в нашу БД.
-        process_pending_writes(client, conn, athlete_id)
-
         result["activities"] = sync_activities(client, conn, athlete_id, initial_days)
         result["daily"]      = sync_daily_stats(client, conn, athlete_id, days_window)
         result["sleep"]      = sync_sleep(client, conn, athlete_id, days_window)
