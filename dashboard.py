@@ -603,12 +603,21 @@ with st.expander("📋 Профиль и HR-зоны", expanded=False):
 
 st.divider()
 
-c1, c2, c3, c4, c5 = st.columns(5)
-c1.metric("Тренировок", f"{len(view)}")
-c2.metric("Часов", f"{view['duration_h'].sum():.1f}")
-c3.metric("Километров", f"{view['distance_km'].sum():.1f}")
-c4.metric("TE (аэр. ср.)", f"{view['training_effect_aer'].mean():.2f}" if len(view) else "—")
-c5.metric("Калорий", f"{view['calories'].sum():.0f}")
+_kpi_days = (end - start).days + 1
+_te_mean = (
+    f"{view['training_effect_aer'].mean():.2f}" if len(view) else "—"
+)
+
+# 2 ряда × 3 колонки — на мобильном переносится опрятнее, чем 1 ряд × 5
+r1c1, r1c2, r1c3 = st.columns(3)
+r1c1.metric("Тренировок", f"{len(view)}")
+r1c2.metric("Часов", f"{view['duration_h'].sum():.1f}")
+r1c3.metric("Километров", f"{view['distance_km'].sum():.1f}")
+
+r2c1, r2c2, r2c3 = st.columns(3)
+r2c1.metric("Калорий", f"{view['calories'].sum():.0f}")
+r2c2.metric("TE (аэр. ср.)", _te_mean)
+r2c3.metric("Дней в окне", f"{_kpi_days}")
 
 st.divider()
 
@@ -633,23 +642,25 @@ with st.expander("⏱ Время в HR-зонах", expanded=True):
         if zone_total["hours"].sum() > 0:
             fig = px.bar(
                 zone_total,
-                x="zone_label",
+                x="zone",
                 y="hours",
                 color="zone",
                 color_discrete_map=ZONE_COLORS,
                 text=zone_total["hours"].apply(fmt_dur),
-                custom_data=["hours"],
+                custom_data=["zone_label"],
             )
             fig.update_traces(
                 textposition="outside",
-                hovertemplate="%{x}: %{text}<extra></extra>",
+                cliponaxis=False,
+                hovertemplate="%{customdata[0]}: %{text}<extra></extra>",
             )
             fig.update_layout(
                 showlegend=False,
-                xaxis_title="",
-                yaxis_title="часов",
-                height=360,
+                xaxis=dict(title="", tickangle=0, fixedrange=True),
+                yaxis=dict(title="часов", rangemode="tozero", fixedrange=True),
+                height=320,
                 title="Время в HR-зонах",
+                margin=dict(t=50, b=30, l=30, r=10),
             )
             show_chart(fig, "hr_zones_bar")
         else:
