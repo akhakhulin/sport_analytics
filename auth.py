@@ -138,16 +138,18 @@ def apply_secrets_to_env() -> None:
     """
     Переносит [turso] из st.secrets в переменные окружения ДО импорта db.
 
-    Это нужно, чтобы db.py (читает env при импорте) подхватил облачные креды
-    при деплое на Streamlit Cloud. Локальный .env через load_dotenv()
-    продолжает работать как раньше.
+    Должно вызваться до `import db`, чтобы db.py (читает env при импорте)
+    подхватил облачные креды при деплое на Streamlit Cloud. Локальный
+    `.env` через load_dotenv() продолжает работать как раньше.
     """
     try:
-        if "turso" in st.secrets:
-            turso = st.secrets["turso"]
-            if "url" in turso:
-                os.environ.setdefault("TURSO_DATABASE_URL", str(turso["url"]))
-            if "token" in turso:
-                os.environ.setdefault("TURSO_AUTH_TOKEN", str(turso["token"]))
+        has_turso = "turso" in st.secrets
     except Exception:
-        pass
+        return
+    if not has_turso:
+        return
+    turso = st.secrets["turso"]
+    if "url" in turso:
+        os.environ["TURSO_DATABASE_URL"] = str(turso["url"]).strip()
+    if "token" in turso:
+        os.environ["TURSO_AUTH_TOKEN"] = str(turso["token"]).strip()

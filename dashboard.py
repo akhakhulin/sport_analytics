@@ -172,7 +172,21 @@ def _read_sql(query: str, params: tuple = ()) -> pd.DataFrame:
 
 @st.cache_data(ttl=300)
 def list_athletes() -> list[str]:
-    df = _read_sql("SELECT DISTINCT athlete_id FROM activities ORDER BY athlete_id")
+    try:
+        df = _read_sql("SELECT DISTINCT athlete_id FROM activities ORDER BY athlete_id")
+    except Exception as exc:
+        # Таблицы ещё нет (Turso пустой) или соединение не настроено
+        st.error(
+            f"Не получилось прочитать список атлетов из БД.\n\n"
+            f"Backend: **{dbm.info()}**\n\n"
+            f"Деталь: `{exc}`\n\n"
+            "Проверь:\n"
+            "- В Streamlit Secrets есть блок `[turso]` с `url` и `token`\n"
+            "- Локальный `sync.exe` уже хоть раз клал данные в Turso "
+            "(на Cloud-деплое таблицы создаются только при синке, "
+            "не при чтении)"
+        )
+        st.stop()
     return df["athlete_id"].tolist() if not df.empty else []
 
 
