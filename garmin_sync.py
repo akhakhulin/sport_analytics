@@ -116,6 +116,40 @@ CREATE TABLE IF NOT EXISTS hrv (
     PRIMARY KEY (athlete_id, day)
 );
 
+CREATE TABLE IF NOT EXISTS user_profile (
+    athlete_id              TEXT PRIMARY KEY,
+    gender                  TEXT,
+    birth_date              TEXT,
+    height_cm               REAL,
+    weight_kg               REAL,
+    activity_level          INTEGER,
+    vo2_max_running         REAL,
+    vo2_max_cycling         REAL,
+    lactate_threshold_hr    INTEGER,
+    lactate_threshold_speed REAL,
+    timezone                TEXT,
+    measurement_system      TEXT,
+    raw_json                TEXT,
+    updated_at              TEXT
+);
+
+CREATE TABLE IF NOT EXISTS hr_zones (
+    athlete_id          TEXT NOT NULL,
+    sport               TEXT NOT NULL,    -- DEFAULT / RUNNING / CYCLING
+    training_method     TEXT,
+    zone1_floor         INTEGER,
+    zone2_floor         INTEGER,
+    zone3_floor         INTEGER,
+    zone4_floor         INTEGER,
+    zone5_floor         INTEGER,
+    max_hr              INTEGER,
+    resting_hr          INTEGER,
+    lthr                INTEGER,
+    raw_json            TEXT,
+    updated_at          TEXT,
+    PRIMARY KEY (athlete_id, sport)
+);
+
 CREATE INDEX IF NOT EXISTS idx_activities_start    ON activities(start_time_local);
 CREATE INDEX IF NOT EXISTS idx_activities_type     ON activities(activity_type);
 CREATE INDEX IF NOT EXISTS idx_activities_athlete  ON activities(athlete_id);
@@ -335,6 +369,93 @@ def sync_sleep(client: Garmin, conn, athlete_id: str, days: int) -> int:
     return count
 
 
+def sync_user_profile(client: Garmin, conn, athlete_id: str) -> int:
+    """Один раз при каждом проходе: тянет get_user_profile() и пишет в user_profile."""
+    try:
+        p = client.get_user_profile()
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[%s] get_user_profile: %s", athlete_id, exc)
+        return 0
+
+    ud = (p or {}).get("userData") or {}
+    weight_g = ud.get("weight")
+    weight_kg = round(weight_g / 1000.0, 1) if weight_g else None
+
+    conn.execute(
+        """INSERT OR REPLACE INTO user_profile VALUES
+           (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        (
+            athlete_id,
+            ud.get("gender"),
+            ud.get("birthDate"),
+            ud.get("height"),
+            weight_kg,
+            ud.get("activityLevel"),
+            ud.get("vo2MaxRunning"),
+            ud.get("vo2MaxCycling"),
+            ud.get("lactateThresholdHeartRate"),
+            ud.get("lactateThresholdSpeed"),
+            None,  # timezone — приходит из userprofile_settings, добираем ниже
+            ud.get("measurementSystem"),
+            json.dumps(p, ensure_ascii=False),
+            datetime.utcnow().isoformat(),
+        ),
+    )
+
+    # Часовой пояс — отдельным запросом
+    try:
+        s = client.get_userprofile_settings()
+        tz = (s or {}).get("timeZone")
+        if tz:
+            conn.execute(
+                "UPDATE user_profile SET timezone = ? WHERE athlete_id = ?",
+                (tz, athlete_id),
+            )
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[%s] get_userprofile_settings: %s", athlete_id, exc)
+
+    conn.commit()
+    log.info("[%s] Профиль обновлён", athlete_id)
+    return 1
+
+
+def sync_hr_zones(client: Garmin, conn, athlete_id: str) -> int:
+    """Пишет HR-зоны атлета по всем спортам в hr_zones (DEFAULT, RUNNING, CYCLING…)."""
+    try:
+        zones = client.connectapi("/biometric-service/heartRateZones")
+    except Exception as exc:  # noqa: BLE001
+        log.warning("[%s] heartRateZones: %s", athlete_id, exc)
+        return 0
+    if not zones or not isinstance(zones, list):
+        return 0
+
+    now = datetime.utcnow().isoformat()
+    saved = 0
+    for z in zones:
+        conn.execute(
+            "INSERT OR REPLACE INTO hr_zones VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (
+                athlete_id,
+                z.get("sport") or "DEFAULT",
+                z.get("trainingMethod"),
+                z.get("zone1Floor"),
+                z.get("zone2Floor"),
+                z.get("zone3Floor"),
+                z.get("zone4Floor"),
+                z.get("zone5Floor"),
+                z.get("maxHeartRateUsed"),
+                z.get("restingHeartRateUsed"),
+                z.get("lactateThresholdHeartRateUsed"),
+                json.dumps(z, ensure_ascii=False),
+                now,
+            ),
+        )
+        saved += 1
+    conn.commit()
+    log.info("[%s] HR-зон записано: %d", athlete_id, saved)
+    return saved
+
+
 def sync_hrv(client: Garmin, conn, athlete_id: str, days: int) -> int:
     existing = {
         r[0] for r in conn.execute(
@@ -414,6 +535,7 @@ def run_for(
     result = {
         "athlete_id": athlete_id,
         "activities": 0, "daily": 0, "sleep": 0, "hrv": 0,
+        "profile": 0, "hr_zones": 0,
         "tokens_str": None,
     }
 
@@ -422,6 +544,8 @@ def run_for(
         result["daily"]      = sync_daily_stats(client, conn, athlete_id, days_window)
         result["sleep"]      = sync_sleep(client, conn, athlete_id, days_window)
         result["hrv"]        = sync_hrv(client, conn, athlete_id, days_window)
+        result["profile"]    = sync_user_profile(client, conn, athlete_id)
+        result["hr_zones"]   = sync_hr_zones(client, conn, athlete_id)
     except GarminConnectTooManyRequestsError:
         log.error("[%s] Rate limit от Garmin — попробуй позже", athlete_id)
     except GarminConnectConnectionError as exc:

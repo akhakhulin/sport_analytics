@@ -195,6 +195,35 @@ def list_athletes() -> list[str]:
 
 
 @st.cache_data(ttl=300)
+def load_user_profile(athlete_id: str) -> dict | None:
+    try:
+        df = _read_sql(
+            "SELECT * FROM user_profile WHERE athlete_id = ?", (athlete_id,)
+        )
+    except Exception:
+        return None
+    if df.empty:
+        return None
+    return df.iloc[0].to_dict()
+
+
+@st.cache_data(ttl=300)
+def load_hr_zones(athlete_id: str) -> pd.DataFrame:
+    try:
+        df = _read_sql(
+            "SELECT sport, zone1_floor, zone2_floor, zone3_floor, zone4_floor, "
+            "zone5_floor, max_hr, resting_hr, lthr, training_method "
+            "FROM hr_zones WHERE athlete_id = ? "
+            "ORDER BY CASE sport WHEN 'DEFAULT' THEN 0 WHEN 'RUNNING' THEN 1 "
+            "WHEN 'CYCLING' THEN 2 ELSE 3 END",
+            (athlete_id,),
+        )
+    except Exception:
+        return pd.DataFrame()
+    return df
+
+
+@st.cache_data(ttl=300)
 def load_activities(athlete_id: str) -> pd.DataFrame:
     df = _read_sql(
         "SELECT * FROM activities WHERE athlete_id = ?", (athlete_id,)
@@ -420,6 +449,111 @@ st.caption(
     f"📐 группировка: **{AGG_NOM}**  ·  "
     f"🕐 {datetime.now().strftime('%H:%M:%S')}"
 )
+
+
+def _calc_age(birth_date: str | None) -> int | None:
+    if not birth_date:
+        return None
+    try:
+        bd = date.fromisoformat(birth_date)
+    except Exception:
+        return None
+    today = date.today()
+    return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
+
+
+with st.expander("📋 Профиль и HR-зоны", expanded=False):
+    profile = load_user_profile(selected_athlete)
+    zones_df = load_hr_zones(selected_athlete)
+
+    if profile is None and zones_df.empty:
+        st.info(
+            "Профиль ещё не синканы. После следующего синка (`sync.exe` "
+            "локально или GitHub Actions для cloud-атлетов) данные появятся."
+        )
+    else:
+        col_anthro, col_aerobic, col_zones = st.columns([1, 1, 1.4])
+
+        with col_anthro:
+            st.markdown("**Антропо**")
+            if profile:
+                age = _calc_age(profile.get("birth_date"))
+                if age is not None:
+                    st.write(f"🎂 **{age}** лет")
+                if profile.get("height_cm"):
+                    st.write(f"📏 **{int(profile['height_cm'])}** см")
+                if profile.get("weight_kg"):
+                    st.write(f"⚖️ **{profile['weight_kg']:.1f}** кг")
+                if profile.get("gender"):
+                    st.write(f"👤 {profile['gender']}")
+            else:
+                st.caption("—")
+
+        with col_aerobic:
+            st.markdown("**Аэробное**")
+            if profile:
+                vr = profile.get("vo2_max_running")
+                vc = profile.get("vo2_max_cycling")
+                if vr:
+                    st.write(f"🏃 VO₂max бег: **{vr:.0f}**")
+                if vc:
+                    st.write(f"🚴 VO₂max вело: **{vc:.0f}**")
+                if not vr and not vc:
+                    st.caption("VO₂max не настроен")
+                if profile.get("lactate_threshold_hr"):
+                    st.write(f"🩸 LTHR: **{profile['lactate_threshold_hr']}** уд/мин")
+            # Resting HR — берём из hr_zones (там точнее; в profile не приходит)
+            if not zones_df.empty:
+                rest = zones_df["resting_hr"].dropna()
+                if len(rest):
+                    st.write(f"🫀 Resting HR: **{int(rest.iloc[0])}** уд/мин")
+                mx = zones_df["max_hr"].dropna()
+                if len(mx):
+                    st.write(f"❤️ Max HR: **{int(mx.iloc[0])}** уд/мин")
+
+        with col_zones:
+            if not zones_df.empty:
+                sports = zones_df["sport"].tolist()
+                # порядок: DEFAULT → RUNNING → CYCLING
+                default_sport = (
+                    "RUNNING" if "RUNNING" in sports else sports[0]
+                )
+                sport_label = {
+                    "DEFAULT": "По умолчанию",
+                    "RUNNING": "Бег",
+                    "CYCLING": "Вело",
+                }
+                sport = st.radio(
+                    "**Зоны для:**",
+                    options=sports,
+                    format_func=lambda s: sport_label.get(s, s),
+                    index=sports.index(default_sport),
+                    horizontal=True,
+                    key="profile_hr_sport",
+                )
+                z = zones_df[zones_df["sport"] == sport].iloc[0]
+                z_floors = [
+                    int(z["zone1_floor"]), int(z["zone2_floor"]),
+                    int(z["zone3_floor"]), int(z["zone4_floor"]),
+                    int(z["zone5_floor"]),
+                ]
+                z_max = int(z["max_hr"]) if pd.notna(z["max_hr"]) else None
+                rows = [
+                    f"**Z1** ≤ {z_floors[1] - 1}",
+                    f"**Z2** {z_floors[1]}–{z_floors[2] - 1}",
+                    f"**Z3** {z_floors[2]}–{z_floors[3] - 1}",
+                    f"**Z4** {z_floors[3]}–{z_floors[4] - 1}",
+                    f"**Z5** ≥ {z_floors[4]}" + (f" (макс {z_max})" if z_max else ""),
+                ]
+                for r in rows:
+                    st.write(r)
+                if z["training_method"]:
+                    st.caption(f"метод: {z['training_method']}")
+            else:
+                st.markdown("**Зоны**")
+                st.caption("—")
+
+st.divider()
 
 c1, c2, c3, c4, c5 = st.columns(5)
 c1.metric("Тренировок", f"{len(view)}")
