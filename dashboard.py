@@ -274,15 +274,22 @@ st.sidebar.markdown(
 )
 auth.logout_button()
 
-# Селектор атлета: тренер видит всех, обычный — только себя
+# Селектор атлета: тренер видит подмножество (или всех), обычный — только себя
 all_athletes = list_athletes()
 if IS_ADMIN and all_athletes:
+    # Если у coach задан visible_athletes — фильтруем дропдаун
+    if USER.visible_athletes:
+        scoped = [a for a in all_athletes if a in USER.visible_athletes]
+        # Если по фильтру никого нет — показываем хотя бы свой athlete_id
+        all_athletes = scoped or [MY_ATHLETE]
     default_idx = all_athletes.index(MY_ATHLETE) if MY_ATHLETE in all_athletes else 0
     selected_athlete = st.sidebar.selectbox(
         "👤 Атлет",
         all_athletes,
         index=default_idx,
-        help="Тренер видит всех атлетов в общей БД.",
+        help=("Виден список атлетов, к которым у вас есть доступ."
+              if USER.visible_athletes
+              else "Тренер видит всех атлетов в общей БД."),
     )
 else:
     selected_athlete = MY_ATHLETE

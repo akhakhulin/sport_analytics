@@ -41,6 +41,7 @@ class AuthUser(NamedTuple):
     role: str          # "coach" | "athlete"
     athlete_id: str
     is_local: bool     # True — ENV-fallback (без формы)
+    visible_athletes: tuple[str, ...] | None  # None = видит всех (для coach без ограничения)
 
 
 def _users_cfg():
@@ -85,12 +86,18 @@ def _login_form(users_cfg) -> AuthUser:
         users = users_cfg["users"]
         record = users.get(username.strip())
         if record and _check_password(password, record.get("password", "")):
+            visible_raw = record.get("visible_athletes")
+            if visible_raw:
+                visible = tuple(str(a).strip() for a in visible_raw if str(a).strip())
+            else:
+                visible = None
             user = AuthUser(
                 username=username.strip(),
                 name=record.get("name", username.strip()),
                 role=record.get("role", "athlete"),
                 athlete_id=record.get("athlete_id", username.strip()),
                 is_local=False,
+                visible_athletes=visible,
             )
             st.session_state["auth_user"] = user
             st.rerun()
@@ -113,6 +120,7 @@ def require_login() -> AuthUser:
             role="coach" if is_admin else "athlete",
             athlete_id=athlete_id,
             is_local=True,
+            visible_athletes=None,
         )
     return _login_form(cfg)
 
