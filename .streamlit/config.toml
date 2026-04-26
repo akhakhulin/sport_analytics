@@ -1,0 +1,10 @@
+# Скрывает встроенный тулбар Streamlit (Share / звезда / GitHub / "Manage app").
+# Видно ТОЛЬКО владельцу приложения — обычные пользователи и так не видят.
+# С minimal — скрыто и у владельца тоже, чище UX.
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = false
+
+[browser]
+gatherUsageStats = false
