@@ -73,8 +73,7 @@ def _login_form(users_cfg) -> AuthUser:
     if "auth_user" in st.session_state:
         return st.session_state["auth_user"]
 
-    st.markdown("## 🔒 Garmin Analytics")
-    st.markdown("Войдите, чтобы открыть дашборд.")
+    st.markdown("## Sportsman Analytics")
 
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input("Логин", autocomplete="username")

@@ -206,7 +206,7 @@ def ru_activity_seasonal(activity_type: str | None, start_dt) -> str:
     return ru_activity(activity_type)
 
 st.set_page_config(
-    page_title="Garmin Dashboard",
+    page_title="Sportsman Analytics",
     layout="wide",
     page_icon="🏃",
     initial_sidebar_state="expanded",
@@ -543,7 +543,7 @@ st.sidebar.caption(
 
 # region Header + KPI
 
-st.title("🏃 Garmin Dashboard")
+st.title("🏃 Sportsman Analytics")
 st.caption(
     f"👤 **{selected_athlete}**  ·  "
     f"📅 **{start}** → **{end}**  ·  📊 **{len(view)}** активностей  ·  "
