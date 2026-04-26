@@ -174,7 +174,7 @@ def show_chart(fig, key: str, height: int | None = None, expandable: bool = True
     st.plotly_chart(fig, use_container_width=True, key=f"chart_{key}",
                     config=PLOTLY_CONFIG)
     if expandable:
-        if st.button("🔍", key=f"zoom_btn_{key}", help="Открыть в большом окне"):
+        if st.button("🔍", key=f"zoom_btn_{key}"):
             _zoom_dialog(fig.to_dict(), title=fig.layout.title.text or "")
 
 
@@ -853,8 +853,7 @@ with st.expander("⏱ Время в HR-зонах", expanded=True):
                         st.plotly_chart(bar, use_container_width=True,
                                         config=PLOTLY_CONFIG)
                         cell_key = f"zone_expand_{AGG_COL}_{label.isoformat()}"
-                        if st.button("🔍", key=cell_key,
-                                     help="Развернуть с выбором часы/проценты"):
+                        if st.button("🔍", key=cell_key):
                             _zone_period_dialog(
                                 title_str, vals, zone_names,
                                 default_mode=view_mode,
