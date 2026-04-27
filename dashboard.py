@@ -213,8 +213,10 @@ st.set_page_config(
 )
 
 
-# Кнопка коллапса сайдбара — sticky, чтобы на мобильном при скролле
-# фильтров не приходилось мотать обратно к верху.
+# Кнопка коллапса сайдбара — на мобильном фиксированная относительно
+# viewport, всегда видна при скролле фильтров.
+# На ПК остаётся sticky (sticky работает на десктопе, потому что
+# сайдбар scroll-контейнер; на мобильном — нет, поэтому fixed).
 st.markdown(
     """
     <style>
@@ -225,6 +227,15 @@ st.markdown(
         background: rgba(255, 255, 255, 0.92);
         backdrop-filter: blur(4px);
         border-radius: 8px;
+    }
+    @media (max-width: 992px) {
+        [data-testid="stSidebarCollapseButton"] {
+            position: fixed !important;
+            top: 0.5rem !important;
+            right: 0.5rem !important;
+            z-index: 9999 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        }
     }
     </style>
     """,
