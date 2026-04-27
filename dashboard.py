@@ -213,6 +213,25 @@ st.set_page_config(
 )
 
 
+# Кнопка коллапса сайдбара — sticky, чтобы на мобильном при скролле
+# фильтров не приходилось мотать обратно к верху.
+st.markdown(
+    """
+    <style>
+    [data-testid="stSidebarCollapseButton"] {
+        position: sticky;
+        top: 0.5rem;
+        z-index: 999;
+        background: rgba(255, 255, 255, 0.92);
+        backdrop-filter: blur(4px);
+        border-radius: 8px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
 # region Загрузка
 
 
