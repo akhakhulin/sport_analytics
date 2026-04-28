@@ -8,3 +8,12 @@ showErrorDetails = false
 
 [browser]
 gatherUsageStats = false
+
+# Тема под прототип Sportsmen Analytics
+[theme]
+primaryColor = "#185FA5"
+backgroundColor = "#F5F4EF"
+secondaryBackgroundColor = "#F5F4EF"
+textColor = "#2C2C2A"
+font = "sans serif"
+base = "light"

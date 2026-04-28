@@ -580,16 +580,42 @@ with _status_col:
     )
 with _refresh_col:
     if st.button("⟳", key="sa_refresh", use_container_width=True):
+        msg_kind = "info"
         if IS_ADMIN:
             ok, msg = _trigger_cloud_sync()
             if ok:
-                st.toast(f"☁️ {msg} — данные через ~30-60 сек, "
-                         "нажми ⟳ ещё раз чуть позже", icon="🚀")
+                st.session_state["_refresh_msg"] = (
+                    "success",
+                    "☁️ Cloud sync запущен. Данные подтянутся через "
+                    "30-60 сек — нажми ⟳ ещё раз через минуту.",
+                )
             else:
-                st.toast(f"⚠️ Cloud sync: {msg}", icon="⚠️")
+                st.session_state["_refresh_msg"] = (
+                    "warning",
+                    f"⚠️ Cloud sync НЕ запущен: {msg}.\n\n"
+                    "Без [github] PAT в Streamlit Secrets кнопка только "
+                    "сбрасывает кэш, не качает свежие данные из Garmin. "
+                    "Настройте по инструкции, чтобы кнопка реально "
+                    "обновляла данные."
+                )
+        else:
+            st.session_state["_refresh_msg"] = (
+                "info", "Кэш сброшен. Свежие данные подтянутся сами "
+                        "по расписанию (cron 02:00 UTC)."
+            )
         st.cache_data.clear()
-        st.toast("Кэш очищен", icon="🔄")
         st.rerun()
+
+# Показываем результат последнего нажатия (не теряется при rerun)
+_msg = st.session_state.pop("_refresh_msg", None)
+if _msg:
+    kind, text = _msg
+    if kind == "success":
+        st.sidebar.success(text, icon="✅")
+    elif kind == "warning":
+        st.sidebar.warning(text, icon="⚠️")
+    else:
+        st.sidebar.info(text, icon="ℹ️")
 
 # endregion
 

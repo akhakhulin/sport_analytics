@@ -107,13 +107,12 @@ html, body, [data-testid="stApp"] {
   color: var(--color-text-primary);
 }
 
-/* Селектор атлета — упаковываем в белый «блок» */
+/* Селектор атлета — без белой карточки, единый фон */
 [data-testid="stSidebar"] [data-testid="stSelectbox"] {
-  background: var(--color-bg-block);
-  border: 0.5px solid var(--color-border-soft);
-  border-radius: var(--r-md);
-  padding: 8px 10px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 8px;
 }
 [data-testid="stSidebar"] [data-testid="stSelectbox"] label {
   font-size: var(--fs-xs) !important;
@@ -138,14 +137,13 @@ html, body, [data-testid="stApp"] {
   color: var(--color-text-primary);
 }
 
-/* Группы radio/multiselect/segmented — каждая в свой белый блок */
+/* Группы radio/multiselect/pills/segmented — без белого фона, единый */
 [data-testid="stSidebar"] [data-testid="stRadio"],
 [data-testid="stSidebar"] [data-testid="stMultiSelect"] {
-  background: var(--color-bg-block);
-  border: 0.5px solid var(--color-border-soft);
-  border-radius: var(--r-md);
-  padding: 10px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 8px;
 }
 
 /* Лейбл секций (Период / Типы активности / Группировка) */
@@ -240,13 +238,12 @@ html, body, [data-testid="stApp"] {
   line-height: 1.6;
 }
 
-/* Pills (Типы активности) — Streamlit st.pills */
+/* Pills (Типы активности) — Streamlit st.pills, без белой карточки */
 [data-testid="stSidebar"] [data-testid="stPills"] {
-  background: var(--color-bg-block);
-  border: 0.5px solid var(--color-border-soft);
-  border-radius: var(--r-md);
-  padding: 10px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 8px;
 }
 [data-testid="stSidebar"] [data-testid="stPills"] label {
   font-size: var(--fs-xs) !important;
@@ -256,32 +253,50 @@ html, body, [data-testid="stApp"] {
   font-weight: 500;
   margin-bottom: 6px !important;
 }
-[data-testid="stSidebar"] [data-testid="stPills"] button {
-  background: var(--color-bg-app) !important;
-  border-radius: 12px !important;
+[data-testid="stSidebar"] [data-testid="stPills"] button,
+[data-testid="stSidebar"] div[data-testid^="stBaseButton-pills"],
+[data-testid="stSidebar"] [data-testid="stPills"] [role="radiogroup"] > label,
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pills"],
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pillsActive"] {
+  background: #FFFFFF !important;
+  border-radius: 14px !important;
   font-size: var(--fs-sm) !important;
-  padding: 3px 10px !important;
-  border: none !important;
+  padding: 4px 12px !important;
+  border: 0.5px solid var(--color-border-soft) !important;
   color: var(--color-text-primary) !important;
   margin: 2px !important;
+  box-shadow: none !important;
 }
 [data-testid="stSidebar"] [data-testid="stPills"] button:hover {
   background: var(--color-info-bg) !important;
+  color: var(--color-info) !important;
+  border-color: var(--color-info) !important;
 }
+/* Активный pill — синий, перекрываем дефолтный красный primary */
+[data-testid="stSidebar"] [data-testid="stPills"] button[aria-checked="true"],
 [data-testid="stSidebar"] [data-testid="stPills"] button[aria-pressed="true"],
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="primary"] {
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="primary"],
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pillsActive"] {
   background: var(--color-info) !important;
-  color: white !important;
+  color: #FFFFFF !important;
   font-weight: 500 !important;
+  border-color: var(--color-info) !important;
+}
+/* Внутренний span/p тоже белым */
+[data-testid="stSidebar"] [data-testid="stPills"] button[aria-checked="true"] *,
+[data-testid="stSidebar"] [data-testid="stPills"] button[aria-pressed="true"] *,
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="primary"] *,
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pillsActive"] * {
+  color: #FFFFFF !important;
+  fill: #FFFFFF !important;
 }
 
 /* Segmented control (Группировка) */
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] {
-  background: var(--color-bg-block);
-  border: 0.5px solid var(--color-border-soft);
-  border-radius: var(--r-md);
-  padding: 10px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 8px;
 }
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] label {
   font-size: var(--fs-xs) !important;
