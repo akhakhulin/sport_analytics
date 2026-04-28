@@ -1322,25 +1322,28 @@ with st.expander("🏋️ Training load · CTL/ATL/TSB", expanded=False):
         # TSS — серые столбики на фоне
         fig.add_trace(go.Bar(
             x=pmc_view["day"], y=pmc_view["tss"],
-            name="TSS дня", marker_color="#bdc3c7", opacity=0.5,
+            name="TSS дня", marker_color="#D0CEC8", opacity=0.6,
             hovertemplate="%{x}<br>TSS: %{y:.0f}<extra></extra>",
         ))
+        # CTL · фитнес — синий (TrainingPeaks стандарт)
         fig.add_trace(go.Scatter(
             x=pmc_view["day"], y=pmc_view["CTL"],
             name="CTL · фитнес", mode="lines",
-            line=dict(color="#27ae60", width=2.5),
+            line=dict(color="#185FA5", width=2.5),
             hovertemplate="%{x}<br>CTL: %{y:.1f}<extra></extra>",
         ))
+        # ATL · усталость — коралловый
         fig.add_trace(go.Scatter(
             x=pmc_view["day"], y=pmc_view["ATL"],
             name="ATL · усталость", mode="lines",
-            line=dict(color="#e67e22", width=2),
+            line=dict(color="#D85A30", width=2),
             hovertemplate="%{x}<br>ATL: %{y:.1f}<extra></extra>",
         ))
+        # TSB · форма — амбер пунктирный
         fig.add_trace(go.Scatter(
             x=pmc_view["day"], y=pmc_view["TSB"],
             name="TSB · форма", mode="lines",
-            line=dict(color="#2980b9", width=2, dash="dash"),
+            line=dict(color="#BA7517", width=2, dash="dash"),
             yaxis="y2",
             hovertemplate="%{x}<br>TSB: %{y:+.1f}<extra></extra>",
         ))

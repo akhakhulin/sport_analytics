@@ -431,24 +431,78 @@ html, body, [data-testid="stApp"] {
   text-decoration: underline;
 }
 
-/* Большие блоки на основном экране (expander, container) — белые тайлы */
-[data-testid="stMain"] [data-testid="stExpander"] {
-  background: var(--color-bg-block);
-  border-radius: var(--r-lg);
-  border: 0.5px solid var(--color-border-soft);
-  margin-bottom: 8px;
-}
-[data-testid="stMain"] [data-testid="stExpander"] summary {
-  font-size: var(--fs-md) !important;
-  font-weight: 500 !important;
-  padding: 10px 14px !important;
+/* Большие блоки на основном экране (expander) — белые тайлы как в прототипе */
+[data-testid="stMain"] [data-testid="stExpander"],
+[data-testid="stMain"] details {
+  background: var(--color-bg-block) !important;
+  border-radius: var(--r-lg) !important;
+  border: 0.5px solid var(--color-border-soft) !important;
+  margin-bottom: 8px !important;
+  overflow: hidden;
 }
 
-/* Любые st.container с border=True — тоже белые */
+[data-testid="stMain"] [data-testid="stExpander"] summary,
+[data-testid="stMain"] details summary {
+  font-size: var(--fs-md) !important;
+  font-weight: 500 !important;
+  padding: 12px 14px !important;
+  color: var(--color-text-primary);
+}
+
+[data-testid="stMain"] [data-testid="stExpander"] summary:hover,
+[data-testid="stMain"] details summary:hover {
+  background: var(--color-bg-app);
+}
+
+/* Контент expander — отступы и фон */
+[data-testid="stMain"] [data-testid="stExpander"] [data-testid="stExpanderDetails"],
+[data-testid="stMain"] details > div:not(summary) {
+  padding: 12px 14px !important;
+  background: var(--color-bg-block);
+  border-top: 0.5px solid var(--color-border-soft);
+}
+
+/* st.container с border — белые тайлы */
 [data-testid="stMain"] [data-testid="stContainer"][data-has-border="true"],
 [data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {
-  background: var(--color-bg-block);
-  border-radius: var(--r-lg);
-  border: 0.5px solid var(--color-border-soft);
+  background: var(--color-bg-block) !important;
+  border-radius: var(--r-lg) !important;
+  border: 0.5px solid var(--color-border-soft) !important;
+  padding: 12px 14px !important;
+  margin-bottom: 8px !important;
+}
+
+/* Заголовки H2/H3 во main — единый стиль */
+[data-testid="stMain"] h2 {
+  font-size: var(--fs-xl) !important;
+  font-weight: 500 !important;
+  margin-top: 16px !important;
+  margin-bottom: 6px !important;
+}
+[data-testid="stMain"] h3 {
+  font-size: var(--fs-lg) !important;
+  font-weight: 500 !important;
+  margin-bottom: 6px !important;
+}
+
+/* Caption / подсказки под графиками — мелкий серый */
+[data-testid="stMain"] [data-testid="stCaptionContainer"] {
+  font-size: var(--fs-sm) !important;
+  color: var(--color-text-secondary) !important;
+  line-height: 1.5;
+}
+
+/* Plotly-чарты внутри блоков — без своей рамки */
+[data-testid="stMain"] [data-testid="stPlotlyChart"] {
+  background: transparent;
+}
+
+/* Title главной страницы */
+[data-testid="stMain"] [data-testid="stHeading"] h1,
+[data-testid="stMain"] h1 {
+  font-size: var(--fs-xl) !important;
+  font-weight: 500 !important;
+  margin-bottom: 4px !important;
+  margin-top: 0 !important;
 }
 
