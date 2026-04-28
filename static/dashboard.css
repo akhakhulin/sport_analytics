@@ -238,16 +238,10 @@ html, body, [data-testid="stApp"] {
   line-height: 1.6;
 }
 
-/* Pills (Типы активности) внутри st.container — без своей рамки, она у контейнера */
-[data-testid="stSidebar"] [data-testid="stPills"] {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-bottom: 0;
-}
-
-/* st.container(border=True) в сайдбаре — превращается в белый тайл */
-[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {
+/* Element-container Streamlit, который содержит pills или segmented_control,
+   стилизуем как белый тайл (через :has(), стабильно в современных браузерах) */
+[data-testid="stSidebar"] [data-testid="element-container"]:has([data-testid="stPills"]),
+[data-testid="stSidebar"] [data-testid="element-container"]:has([data-testid="stSegmentedControl"]) {
   background: var(--color-bg-block) !important;
   border: 0.5px solid var(--color-border-soft) !important;
   border-radius: var(--r-md) !important;
