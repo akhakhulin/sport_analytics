@@ -462,13 +462,14 @@ types_all_list = sorted(df["activity_type_ru"].dropna().unique().tolist())
 in_pills = {t for vs in PILL_GROUPS.values() for t in vs}
 extra_types = [t for t in types_all_list if t not in in_pills]
 
-selected_pills = st.sidebar.pills(
-    "Активность",
-    list(PILL_GROUPS.keys()),
-    selection_mode="multi",
-    default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
-    key="sa_activity_pills",
-)
+with st.sidebar.container(border=True):
+    selected_pills = st.pills(
+        "Активность",
+        list(PILL_GROUPS.keys()),
+        selection_mode="multi",
+        default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
+        key="sa_activity_pills",
+    )
 selected_pills = selected_pills or []
 
 selected_extra: list[str] = []
@@ -495,13 +496,14 @@ for t in selected_extra:
 prev_grp = st.session_state.get("_grp_choice", "Неделя")
 default_grp = prev_grp if prev_grp in ("Неделя", "Месяц", "Год") else "Неделя"
 
-agg_label = st.sidebar.segmented_control(
-    "Группировка",
-    ["Неделя", "Месяц", "Год"],
-    default=default_grp,
-    selection_mode="single",
-    key="sa_grouping",
-)
+with st.sidebar.container(border=True):
+    agg_label = st.segmented_control(
+        "Группировка",
+        ["Неделя", "Месяц", "Год"],
+        default=default_grp,
+        selection_mode="single",
+        key="sa_grouping",
+    )
 agg_label = agg_label or default_grp
 st.session_state["_grp_choice"] = agg_label
 

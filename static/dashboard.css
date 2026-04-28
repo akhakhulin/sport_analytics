@@ -238,13 +238,21 @@ html, body, [data-testid="stApp"] {
   line-height: 1.6;
 }
 
-/* Pills (Типы активности) — белая карточка на бежевом сайдбаре */
+/* Pills (Типы активности) внутри st.container — без своей рамки, она у контейнера */
 [data-testid="stSidebar"] [data-testid="stPills"] {
-  background: var(--color-bg-block);
-  border: 0.5px solid var(--color-border-soft);
-  border-radius: var(--r-md);
-  padding: 10px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* st.container(border=True) в сайдбаре — превращается в белый тайл */
+[data-testid="stSidebar"] [data-testid="stVerticalBlockBorderWrapper"] {
+  background: var(--color-bg-block) !important;
+  border: 0.5px solid var(--color-border-soft) !important;
+  border-radius: var(--r-md) !important;
+  padding: 10px !important;
+  margin-bottom: 10px !important;
 }
 [data-testid="stSidebar"] [data-testid="stPills"] label {
   font-size: var(--fs-xs) !important;
@@ -262,13 +270,12 @@ html, body, [data-testid="stApp"] {
   margin: 2px !important;
 }
 
-/* Segmented control (Группировка) — белая карточка на бежевом сайдбаре */
+/* Segmented control (Группировка) внутри st.container — без своей рамки */
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] {
-  background: var(--color-bg-block);
-  border: 0.5px solid var(--color-border-soft);
-  border-radius: var(--r-md);
-  padding: 10px;
-  margin-bottom: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
 }
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] label {
   font-size: var(--fs-xs) !important;
