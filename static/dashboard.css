@@ -107,12 +107,13 @@ html, body, [data-testid="stApp"] {
   color: var(--color-text-primary);
 }
 
-/* Селектор атлета — без белой карточки, единый фон */
+/* Селектор атлета — белая карточка на бежевом сайдбаре */
 [data-testid="stSidebar"] [data-testid="stSelectbox"] {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-bottom: 8px;
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
 }
 [data-testid="stSidebar"] [data-testid="stSelectbox"] label {
   font-size: var(--fs-xs) !important;
@@ -137,13 +138,14 @@ html, body, [data-testid="stApp"] {
   color: var(--color-text-primary);
 }
 
-/* Группы radio/multiselect/pills/segmented — без белого фона, единый */
+/* Группы radio/multiselect — белая карточка на бежевом сайдбаре */
 [data-testid="stSidebar"] [data-testid="stRadio"],
 [data-testid="stSidebar"] [data-testid="stMultiSelect"] {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-bottom: 8px;
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
 }
 
 /* Лейбл секций (Период / Активность / Группировка / др.) — UPPERCASE мелкий */
@@ -236,12 +238,13 @@ html, body, [data-testid="stApp"] {
   line-height: 1.6;
 }
 
-/* Pills (Типы активности) — Streamlit st.pills, без белой карточки */
+/* Pills (Типы активности) — белая карточка на бежевом сайдбаре */
 [data-testid="stSidebar"] [data-testid="stPills"] {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-bottom: 8px;
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
 }
 [data-testid="stSidebar"] [data-testid="stPills"] label {
   font-size: var(--fs-xs) !important;
@@ -259,12 +262,13 @@ html, body, [data-testid="stApp"] {
   margin: 2px !important;
 }
 
-/* Segmented control (Группировка) */
+/* Segmented control (Группировка) — белая карточка на бежевом сайдбаре */
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] {
-  background: transparent;
-  border: none;
-  padding: 0;
-  margin-bottom: 8px;
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
 }
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] label {
   font-size: var(--fs-xs) !important;
@@ -331,16 +335,16 @@ html, body, [data-testid="stApp"] {
    KPI-блок (Этап 3 рестайла)
    ============================================================= */
 
-/* Стилизация st.metric под прототип — бежевая «карточка» */
+/* Стилизация st.metric под прототип — белая карточка на бежевом фоне */
 [data-testid="stMain"] [data-testid="stMetric"] {
-  background: var(--color-bg-tile);
+  background: var(--color-bg-block);
   border-radius: var(--r-lg);
   padding: 10px 14px;
   border: 0.5px solid var(--color-border-soft);
   transition: background 0.15s, border-color 0.15s;
 }
 [data-testid="stMain"] [data-testid="stMetric"]:hover {
-  background: #EAE8E0;
+  background: #FAFAF7;
 }
 
 /* Подпись KPI — мелкий серый */
@@ -365,9 +369,9 @@ html, body, [data-testid="stApp"] {
   margin-top: 3px;
 }
 
-/* Раскрытая карточка «Километров» */
+/* Раскрытая карточка «Километров» — тоже белая, но с синей рамкой выделения */
 .kpi-expanded {
-  background: var(--color-bg-tile);
+  background: var(--color-bg-block);
   border-radius: var(--r-lg);
   padding: 12px 14px;
   border: 1.5px solid var(--color-info);
@@ -424,5 +428,26 @@ html, body, [data-testid="stApp"] {
 [data-testid="stMain"] button[data-testid$="kpi_km_collapse"]:hover {
   background: var(--color-info-bg) !important;
   text-decoration: underline;
+}
+
+/* Большие блоки на основном экране (expander, container) — белые тайлы */
+[data-testid="stMain"] [data-testid="stExpander"] {
+  background: var(--color-bg-block);
+  border-radius: var(--r-lg);
+  border: 0.5px solid var(--color-border-soft);
+  margin-bottom: 8px;
+}
+[data-testid="stMain"] [data-testid="stExpander"] summary {
+  font-size: var(--fs-md) !important;
+  font-weight: 500 !important;
+  padding: 10px 14px !important;
+}
+
+/* Любые st.container с border=True — тоже белые */
+[data-testid="stMain"] [data-testid="stContainer"][data-has-border="true"],
+[data-testid="stMain"] [data-testid="stVerticalBlockBorderWrapper"] {
+  background: var(--color-bg-block);
+  border-radius: var(--r-lg);
+  border: 0.5px solid var(--color-border-soft);
 }
 
