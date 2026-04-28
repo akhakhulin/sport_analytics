@@ -146,19 +146,23 @@ html, body, [data-testid="stApp"] {
   margin-bottom: 8px;
 }
 
-/* Лейбл секций (Период / Типы активности / Группировка) */
+/* Лейбл секций (Период / Активность / Группировка / др.) — UPPERCASE мелкий */
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"],
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] *,
 [data-testid="stSidebar"] [data-testid="stRadio"] > label,
 [data-testid="stSidebar"] [data-testid="stMultiSelect"] > label,
-[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stWidgetLabel"] {
+[data-testid="stSidebar"] [data-testid="stPills"] > label,
+[data-testid="stSidebar"] [data-testid="stSegmentedControl"] > label,
+[data-testid="stSidebar"] [data-testid="stSelectbox"] > label {
   font-size: var(--fs-xs) !important;
   color: var(--color-text-secondary) !important;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  font-weight: 500;
+  font-weight: 500 !important;
   margin-bottom: 6px !important;
 }
 
-/* Радио-точки в синем фирменном цвете */
+/* Радио — только размер шрифта и hover. Цвет точки — из темы primaryColor */
 [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label {
   font-size: 12px !important;
   padding: 3px 0;
@@ -167,12 +171,6 @@ html, body, [data-testid="stApp"] {
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label:hover {
   color: var(--color-info);
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label > div:first-child {
-  border-color: rgba(0, 0, 0, 0.3);
-}
-[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label > div:first-child > div {
-  background: var(--color-info) !important;
 }
 
 /* Multiselect (Типы активности) — чипы в синем стиле */
@@ -253,42 +251,12 @@ html, body, [data-testid="stApp"] {
   font-weight: 500;
   margin-bottom: 6px !important;
 }
-[data-testid="stSidebar"] [data-testid="stPills"] button,
-[data-testid="stSidebar"] div[data-testid^="stBaseButton-pills"],
-[data-testid="stSidebar"] [data-testid="stPills"] [role="radiogroup"] > label,
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pills"],
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pillsActive"] {
-  background: #FFFFFF !important;
+/* Pills — только rounded-style и размер. Активные раскрашиваются темой */
+[data-testid="stSidebar"] [data-testid="stPills"] button {
   border-radius: 14px !important;
   font-size: var(--fs-sm) !important;
   padding: 4px 12px !important;
-  border: 0.5px solid var(--color-border-soft) !important;
-  color: var(--color-text-primary) !important;
   margin: 2px !important;
-  box-shadow: none !important;
-}
-[data-testid="stSidebar"] [data-testid="stPills"] button:hover {
-  background: var(--color-info-bg) !important;
-  color: var(--color-info) !important;
-  border-color: var(--color-info) !important;
-}
-/* Активный pill — синий, перекрываем дефолтный красный primary */
-[data-testid="stSidebar"] [data-testid="stPills"] button[aria-checked="true"],
-[data-testid="stSidebar"] [data-testid="stPills"] button[aria-pressed="true"],
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="primary"],
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pillsActive"] {
-  background: var(--color-info) !important;
-  color: #FFFFFF !important;
-  font-weight: 500 !important;
-  border-color: var(--color-info) !important;
-}
-/* Внутренний span/p тоже белым */
-[data-testid="stSidebar"] [data-testid="stPills"] button[aria-checked="true"] *,
-[data-testid="stSidebar"] [data-testid="stPills"] button[aria-pressed="true"] *,
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="primary"] *,
-[data-testid="stSidebar"] [data-testid="stPills"] button[kind="pillsActive"] * {
-  color: #FFFFFF !important;
-  fill: #FFFFFF !important;
 }
 
 /* Segmented control (Группировка) */
@@ -309,16 +277,6 @@ html, body, [data-testid="stApp"] {
 [data-testid="stSidebar"] [data-testid="stSegmentedControl"] button {
   font-size: var(--fs-sm) !important;
   padding: 4px 8px !important;
-  background: transparent !important;
-  border: none !important;
-  color: var(--color-text-secondary) !important;
-}
-[data-testid="stSidebar"] [data-testid="stSegmentedControl"] button[aria-pressed="true"],
-[data-testid="stSidebar"] [data-testid="stSegmentedControl"] button[kind="primary"] {
-  background: var(--color-bg-block) !important;
-  color: var(--color-text-primary) !important;
-  font-weight: 500 !important;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
 }
 
 /* SyncStatus — пилюли цветные */

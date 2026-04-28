@@ -467,6 +467,7 @@ selected_pills = st.sidebar.pills(
     list(PILL_GROUPS.keys()),
     selection_mode="multi",
     default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
+    key="sa_activity_pills",
 )
 selected_pills = selected_pills or []
 
@@ -490,24 +491,16 @@ for t in selected_extra:
     if t not in types_sel:
         types_sel.append(t)
 
-# 2c. Группировка — segmented control + проверка периода
-period_days_total = (end - start).days + 1
-if period_days_total <= 30:
-    grp_options = ["Неделя"]
-elif period_days_total <= 90:
-    grp_options = ["Неделя", "Месяц"]
-else:
-    grp_options = ["Неделя", "Месяц", "Год"]
-
-# Сохраняем последний выбор, но если он недоступен по новому периоду — fallback на «Неделя»
+# 2c. Группировка — segmented control с тремя опциями всегда (как в прототипе)
 prev_grp = st.session_state.get("_grp_choice", "Неделя")
-default_grp = prev_grp if prev_grp in grp_options else "Неделя"
+default_grp = prev_grp if prev_grp in ("Неделя", "Месяц", "Год") else "Неделя"
 
 agg_label = st.sidebar.segmented_control(
     "Группировка",
-    grp_options,
+    ["Неделя", "Месяц", "Год"],
     default=default_grp,
     selection_mode="single",
+    key="sa_grouping",
 )
 agg_label = agg_label or default_grp
 st.session_state["_grp_choice"] = agg_label
