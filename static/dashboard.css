@@ -327,3 +327,102 @@ html, body, [data-testid="stApp"] {
 }
 .sa-foot-link:hover { text-decoration: underline; }
 
+/* =============================================================
+   KPI-блок (Этап 3 рестайла)
+   ============================================================= */
+
+/* Стилизация st.metric под прототип — бежевая «карточка» */
+[data-testid="stMain"] [data-testid="stMetric"] {
+  background: var(--color-bg-tile);
+  border-radius: var(--r-lg);
+  padding: 10px 14px;
+  border: 0.5px solid var(--color-border-soft);
+  transition: background 0.15s, border-color 0.15s;
+}
+[data-testid="stMain"] [data-testid="stMetric"]:hover {
+  background: #EAE8E0;
+}
+
+/* Подпись KPI — мелкий серый */
+[data-testid="stMain"] [data-testid="stMetricLabel"] {
+  font-size: var(--fs-sm) !important;
+  color: var(--color-text-secondary) !important;
+  font-weight: 400;
+}
+
+/* Значение — крупно */
+[data-testid="stMain"] [data-testid="stMetricValue"] {
+  font-size: 22px !important;
+  font-weight: 500 !important;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+
+/* Дельта — мелко */
+[data-testid="stMain"] [data-testid="stMetricDelta"] {
+  font-size: var(--fs-sm) !important;
+  font-weight: 400 !important;
+  margin-top: 3px;
+}
+
+/* Раскрытая карточка «Километров» */
+.kpi-expanded {
+  background: var(--color-bg-tile);
+  border-radius: var(--r-lg);
+  padding: 12px 14px;
+  border: 1.5px solid var(--color-info);
+  position: relative;
+}
+.kpi-exp-badge {
+  position: absolute;
+  top: -8px;
+  right: 12px;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  font-size: var(--fs-xs);
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  font-weight: 500;
+}
+.kpi-exp-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 4px;
+}
+.kpi-exp-title {
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+}
+.kpi-exp-value {
+  font-size: var(--fs-2xl);
+  font-weight: 500;
+  line-height: 1.1;
+}
+.kpi-exp-meta {
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+}
+.kpi-delta-up    { color: var(--color-success); }
+.kpi-delta-down  { color: var(--color-danger); }
+.kpi-delta-none  { color: var(--color-text-tertiary); }
+
+/* Кнопка-стрелка раскрытия/сворачивания KPI */
+[data-testid="stMain"] button[data-testid$="kpi_km_expand"],
+[data-testid="stMain"] button[data-testid$="kpi_km_collapse"] {
+  background: transparent !important;
+  border: none !important;
+  color: var(--color-info) !important;
+  font-size: var(--fs-sm) !important;
+  padding: 2px 6px !important;
+  margin-top: 4px !important;
+  font-weight: 500 !important;
+}
+[data-testid="stMain"] button[data-testid$="kpi_km_expand"]:hover,
+[data-testid="stMain"] button[data-testid$="kpi_km_collapse"]:hover {
+  background: var(--color-info-bg) !important;
+  text-decoration: underline;
+}
+

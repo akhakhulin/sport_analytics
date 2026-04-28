@@ -793,21 +793,188 @@ with st.expander("📋 Профиль и HR-зоны", expanded=False):
 
 st.divider()
 
-_kpi_days = (end - start).days + 1
-_te_mean = (
-    f"{view['training_effect_aer'].mean():.2f}" if len(view) else "—"
+# ----- KPI-блок -----
+# Считаем previous-period для дельт
+period_len = max(1, (end - start).days)
+prev_end = start - timedelta(days=1)
+prev_start = prev_end - timedelta(days=period_len)
+prev_mask = (
+    (df["day"] >= prev_start) & (df["day"] <= prev_end)
+    & (df["activity_type_ru"].isin(types_sel))
 )
+view_prev = df[prev_mask]
 
-# 2 ряда × 3 колонки — на мобильном переносится опрятнее, чем 1 ряд × 5
-r1c1, r1c2, r1c3 = st.columns(3)
-r1c1.metric("Тренировок", f"{len(view)}")
-r1c2.metric("Часов", f"{view['duration_h'].sum():.1f}")
-r1c3.metric("Километров", f"{view['distance_km'].sum():.1f}")
+kpi_w_now,  kpi_w_prev  = len(view), len(view_prev)
+kpi_h_now,  kpi_h_prev  = view["duration_h"].sum(), (view_prev["duration_h"].sum() if len(view_prev) else 0.0)
+kpi_km_now, kpi_km_prev = view["distance_km"].sum(), (view_prev["distance_km"].sum() if len(view_prev) else 0.0)
+kpi_c_now,  kpi_c_prev  = view["calories"].sum(),    (view_prev["calories"].sum()    if len(view_prev) else 0.0)
 
-r2c1, r2c2, r2c3 = st.columns(3)
-r2c1.metric("Калорий", f"{view['calories'].sum():.0f}")
-r2c2.metric("TE (аэр. ср.)", _te_mean)
-r2c3.metric("Дней в окне", f"{_kpi_days}")
+
+def _delta_str(now: float, prev: float, mode: str = "pct", suffix: str = "") -> str | None:
+    """Streamlit-формат дельты: '+12' или '-3%' (стрелки и цвет — авто от знака)."""
+    if prev <= 0 or (mode == "abs" and now == prev) or (mode == "pct" and abs(now - prev) < 1e-9):
+        return None
+    if mode == "abs":
+        d = now - prev
+        return f"{int(d):+d}{suffix} vs пред."
+    d = (now - prev) / prev * 100
+    return f"{d:+.0f}% vs пред."
+
+
+# Состояние раскрытия (km раскрыт?)
+kpi_expanded = st.session_state.get("_kpi_expanded") == "km"
+
+if kpi_expanded:
+    cols = st.columns([1, 1, 2.4, 1])
+else:
+    cols = st.columns(4)
+
+# 1. Тренировок
+with cols[0]:
+    st.metric("Тренировок", f"{kpi_w_now}", _delta_str(kpi_w_now, kpi_w_prev, "abs"))
+
+# 2. Часов
+with cols[1]:
+    st.metric("Часов", f"{kpi_h_now:.1f}", _delta_str(kpi_h_now, kpi_h_prev, "pct"))
+
+# 3. Километров — раскрывается
+with cols[2]:
+    if kpi_expanded:
+        # Раскрытая карточка
+        weeks_grouped = view.groupby("week")["distance_km"].sum() if len(view) else pd.Series(dtype=float)
+        weeks_km = weeks_grouped.values if len(weeks_grouped) else []
+        cv_pct = (
+            (weeks_km.std() / weeks_km.mean() * 100) if len(weeks_km) > 1 and weeks_km.mean() > 0 else 0
+        )
+        avg_per_week = weeks_km.mean() if len(weeks_km) else 0
+        run_view = view[view["activity_type_ru"].str.startswith("Бег", na=False)]
+        avg_pace_str = "—"
+        if len(run_view) > 0 and run_view["distance_km"].sum() > 0:
+            mins = (run_view["duration_min"].sum() / run_view["distance_km"].sum())
+            avg_pace_str = f"{int(mins)}:{int((mins - int(mins)) * 60):02d}/км"
+
+        delta_pct = _delta_str(kpi_km_now, kpi_km_prev, "pct") or "—"
+        delta_cls = "kpi-delta-up" if "+" in delta_pct else ("kpi-delta-down" if "-" in delta_pct else "kpi-delta-none")
+        delta_arrow = "↑" if "+" in delta_pct else ("↓" if "-" in delta_pct else "")
+
+        st.markdown(
+            f'<div class="kpi-expanded">'
+            f'  <div class="kpi-exp-badge">★ детали раскрыты</div>'
+            f'  <div class="kpi-exp-head">'
+            f'    <span class="kpi-exp-title">Километров — детализация</span>'
+            f'  </div>'
+            f'  <div class="kpi-exp-value">{kpi_km_now:.0f}</div>'
+            f'  <div class="kpi-exp-meta">'
+            f'    <span class="{delta_cls}">{delta_arrow} {delta_pct}</span>'
+            f'    · средний темп <b>{avg_pace_str}</b>'
+            f'    · <b>{avg_per_week:.0f}</b> км/нед'
+            f'    · CV <b>{cv_pct:.0f}%</b>'
+            f'  </div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Tabs внутри раскрытой карточки
+        km_tab = st.segmented_control(
+            "kpi_km_view",
+            ["📊 По типам", "📅 По неделям", "🗓 По месяцам"],
+            default="📅 По неделям",
+            selection_mode="single",
+            key="kpi_km_tab",
+            label_visibility="collapsed",
+        )
+        km_tab = km_tab or "📅 По неделям"
+
+        SPORT_COLORS = {
+            "Бег": "#97C459", "Велосипед": "#378ADD", "Плавание": "#1D9E75",
+        }
+
+        def _sport_group(t):
+            if t in ("Бег", "Беговая дорожка", "Трейл", "Стадион", "Виртуальный бег"):
+                return "Бег"
+            if t in ("Велосипед", "Велотренажёр", "Шоссейный велосипед",
+                     "Маунтинбайк", "Гравел", "Виртуальная вело"):
+                return "Велосипед"
+            if t in ("Бассейн", "Открытая вода", "Плавание"):
+                return "Плавание"
+            return "Прочее"
+
+        view_g = view.copy()
+        view_g["sport_g"] = view_g["activity_type_ru"].apply(_sport_group)
+
+        if km_tab == "📊 По типам":
+            agg_t = view_g.groupby("sport_g")["distance_km"].sum().reset_index()
+            agg_t = agg_t[agg_t["sport_g"].isin(SPORT_COLORS)]
+            total = agg_t["distance_km"].sum() or 1
+            for _, r in agg_t.iterrows():
+                pct = r["distance_km"] / total * 100
+                color = SPORT_COLORS.get(r["sport_g"], "#888")
+                st.markdown(
+                    f'<div style="display:flex; align-items:center; gap:10px; padding:4px 0; font-size:12px;">'
+                    f'  <span style="min-width:80px;">{r["sport_g"]}</span>'
+                    f'  <span style="flex:1; height:5px; background:#F1EFE8; border-radius:3px; overflow:hidden;">'
+                    f'    <span style="display:block; height:100%; width:{pct:.0f}%; background:{color}; border-radius:3px;"></span>'
+                    f'  </span>'
+                    f'  <b style="min-width:55px; text-align:right;">{r["distance_km"]:.0f} км</b>'
+                    f'  <span style="min-width:35px; color:#5F5E5A; text-align:right;">{pct:.0f}%</span>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        elif km_tab == "📅 По неделям":
+            wk = view_g.groupby(["week", "sport_g"])["distance_km"].sum().reset_index()
+            if len(wk) > 0:
+                fig = px.bar(
+                    wk, x="week", y="distance_km", color="sport_g",
+                    color_discrete_map=SPORT_COLORS,
+                    labels={"week": "Неделя", "distance_km": "км", "sport_g": "Спорт"},
+                )
+                fig.update_layout(
+                    height=180, margin=dict(t=10, b=10, l=10, r=10),
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.4),
+                    barmode="stack",
+                    xaxis=dict(title="", showgrid=False),
+                    yaxis=dict(title="", showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
+                )
+                st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
+                stats = (
+                    f"min <b>{int(weeks_km.min())}</b>"
+                    f" · max <b>{int(weeks_km.max())}</b>"
+                    f" · CV <b>{cv_pct:.0f}%</b>"
+                ) if len(weeks_km) else ""
+                st.markdown(
+                    f'<div style="font-size:11px; color:#5F5E5A; text-align:right;">{stats}</div>',
+                    unsafe_allow_html=True,
+                )
+        else:  # По месяцам
+            mn = view_g.groupby(["month", "sport_g"])["distance_km"].sum().reset_index()
+            if len(mn) > 0:
+                fig = px.bar(
+                    mn, x="month", y="distance_km", color="sport_g",
+                    color_discrete_map=SPORT_COLORS,
+                    labels={"month": "Месяц", "distance_km": "км", "sport_g": "Спорт"},
+                )
+                fig.update_layout(
+                    height=180, margin=dict(t=10, b=10, l=10, r=10),
+                    legend=dict(orientation="h", yanchor="bottom", y=-0.4),
+                    barmode="stack",
+                    xaxis=dict(title="", showgrid=False),
+                    yaxis=dict(title="", showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
+                )
+                st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
+
+        if st.button("▾ свернуть", key="kpi_km_collapse"):
+            st.session_state["_kpi_expanded"] = None
+            st.rerun()
+    else:
+        st.metric("Километров", f"{kpi_km_now:.1f}", _delta_str(kpi_km_now, kpi_km_prev, "pct"))
+        if st.button("▸ детали", key="kpi_km_expand", use_container_width=True):
+            st.session_state["_kpi_expanded"] = "km"
+            st.rerun()
+
+# 4. Калорий
+with cols[3]:
+    st.metric("Калорий", f"{int(kpi_c_now):,}".replace(",", " "),
+              _delta_str(kpi_c_now, kpi_c_prev, "pct"))
 
 st.divider()
 
