@@ -1,0 +1,241 @@
+/* =============================================================
+   Sportsmen Analytics — глобальные стили (рестайл под прототип)
+   docs/sportsmen_analytics_interactive.html
+   ============================================================= */
+
+/* ---- 1. Design tokens ---- */
+:root {
+  /* Colors — sport types */
+  --color-run: #97C459;
+  --color-bike: #378ADD;
+  --color-swim: #1D9E75;
+
+  /* Colors — HR zones */
+  --color-z1: #C0DD97;
+  --color-z2: #97C459;
+  --color-z3: #EF9F27;
+  --color-z4: #BA7517;
+  --color-z5: #E24B4A;
+
+  /* Colors — semantic */
+  --color-success: #3B6D11;
+  --color-success-bg: #EAF3DE;
+  --color-warning: #854F0B;
+  --color-warning-bg: #FAEEDA;
+  --color-danger: #A32D2D;
+  --color-danger-bg: #FCEBEB;
+  --color-info: #185FA5;
+  --color-info-bg: #E6F1FB;
+
+  /* Colors — neutral */
+  --color-text-primary: #2C2C2A;
+  --color-text-secondary: #5F5E5A;
+  --color-text-tertiary: #888780;
+  --color-bg-app: #F5F4EF;
+  --color-bg-block: #FFFFFF;
+  --color-bg-tile: #F5F4EF;
+  --color-border: rgba(0, 0, 0, 0.15);
+  --color-border-soft: rgba(0, 0, 0, 0.10);
+
+  /* Typography */
+  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --fs-xs: 10px;
+  --fs-sm: 11px;
+  --fs-md: 13px;
+  --fs-lg: 15px;
+  --fs-xl: 18px;
+  --fs-2xl: 26px;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+
+  /* Border radius */
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 7px;
+  --r-xl: 12px;
+}
+
+/* ---- 2. App-shell базовый фон/шрифт ---- */
+html, body, [data-testid="stApp"] {
+  background: var(--color-bg-app) !important;
+  font-family: var(--font-sans) !important;
+  color: var(--color-text-primary);
+  font-size: var(--fs-md);
+}
+
+/* Главный контейнер */
+[data-testid="stMain"] .block-container {
+  max-width: 1400px;
+  padding-top: 0.75rem;
+  padding-bottom: 1rem;
+}
+
+/* ---- 3. Сайдбар ---- */
+[data-testid="stSidebar"] {
+  background: var(--color-bg-app) !important;
+  border-right: 0.5px solid var(--color-border);
+}
+
+[data-testid="stSidebar"] [data-testid="stSidebarContent"] {
+  padding-top: 0.5rem;
+}
+
+/* User header (👋 имя · роль) — компактнее, как в прототипе */
+[data-testid="stSidebar"] .stMarkdown:first-child p {
+  font-size: var(--fs-md);
+  margin-bottom: var(--sp-2);
+}
+
+/* Кнопка «Выйти» — полная ширина, светлый фон, тонкая рамка */
+[data-testid="stSidebar"] [data-testid="stButton"] > button {
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border);
+  border-radius: var(--r-md);
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--color-text-primary);
+  padding: 7px 10px;
+  transition: background 0.15s;
+}
+[data-testid="stSidebar"] [data-testid="stButton"] > button:hover {
+  background: var(--color-bg-app);
+  border-color: var(--color-border);
+  color: var(--color-text-primary);
+}
+
+/* Селектор атлета — упаковываем в белый «блок» */
+[data-testid="stSidebar"] [data-testid="stSelectbox"] {
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  margin-bottom: 10px;
+}
+[data-testid="stSidebar"] [data-testid="stSelectbox"] label {
+  font-size: var(--fs-xs) !important;
+  color: var(--color-text-secondary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 4px !important;
+}
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"] {
+  background: transparent;
+  font-size: 12px;
+}
+
+/* Заголовок «Фильтры» — крупный, как раздел */
+[data-testid="stSidebar"] h2,
+[data-testid="stSidebar"] [data-testid="stHeading"] h2 {
+  font-size: var(--fs-md);
+  margin-top: 4px;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+/* Группы radio/multiselect/segmented — каждая в свой белый блок */
+[data-testid="stSidebar"] [data-testid="stRadio"],
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] {
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+/* Лейбл секций (Период / Типы активности / Группировка) */
+[data-testid="stSidebar"] [data-testid="stRadio"] > label,
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] > label,
+[data-testid="stSidebar"] [data-testid="stRadio"] label[data-testid="stWidgetLabel"] {
+  font-size: var(--fs-xs) !important;
+  color: var(--color-text-secondary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 6px !important;
+}
+
+/* Радио-точки в синем фирменном цвете */
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label {
+  font-size: 12px !important;
+  padding: 3px 0;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label:hover {
+  color: var(--color-info);
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label > div:first-child {
+  border-color: rgba(0, 0, 0, 0.3);
+}
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label > div:first-child > div {
+  background: var(--color-info) !important;
+}
+
+/* Multiselect (Типы активности) — чипы в синем стиле */
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="select"] {
+  background: transparent;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="tag"] {
+  background: var(--color-info) !important;
+  color: white !important;
+  border-radius: 12px !important;
+  font-size: var(--fs-sm) !important;
+  padding: 2px 8px !important;
+  font-weight: 500;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="tag"] span {
+  color: white !important;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="tag"] [role="presentation"] {
+  color: white !important;
+  opacity: 0.9;
+}
+[data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="tag"]:hover {
+  background: #0C447C !important;
+}
+
+/* Кнопка коллапса сайдбара — sticky/fixed (раньше было inline) */
+[data-testid="stSidebarCollapseButton"] {
+  position: sticky;
+  top: 0.5rem;
+  z-index: 999;
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  border-radius: 8px;
+}
+@media (max-width: 992px) {
+  [data-testid="stSidebarCollapseButton"] {
+    position: fixed !important;
+    top: 0.5rem !important;
+    right: 0.5rem !important;
+    z-index: 9999 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Divider в сайдбаре — потоньше */
+[data-testid="stSidebar"] hr {
+  margin: 10px 0 !important;
+  border-color: var(--color-border-soft) !important;
+  opacity: 0.6;
+}
+
+/* «Обновить данные» — выделить как primary action */
+[data-testid="stSidebar"] [data-testid="stButton"]:last-of-type > button {
+  background: var(--color-bg-block);
+  font-weight: 500;
+}
+
+/* Мелкие подписи под виджетами (caption) */
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"],
+[data-testid="stSidebar"] .stCaption {
+  font-size: var(--fs-xs) !important;
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+}

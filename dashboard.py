@@ -213,34 +213,17 @@ st.set_page_config(
 )
 
 
-# Кнопка коллапса сайдбара — на мобильном фиксированная относительно
-# viewport, всегда видна при скролле фильтров.
-# На ПК остаётся sticky (sticky работает на десктопе, потому что
-# сайдбар scroll-контейнер; на мобильном — нет, поэтому fixed).
-st.markdown(
-    """
-    <style>
-    [data-testid="stSidebarCollapseButton"] {
-        position: sticky;
-        top: 0.5rem;
-        z-index: 999;
-        background: rgba(255, 255, 255, 0.92);
-        backdrop-filter: blur(4px);
-        border-radius: 8px;
-    }
-    @media (max-width: 992px) {
-        [data-testid="stSidebarCollapseButton"] {
-            position: fixed !important;
-            top: 0.5rem !important;
-            right: 0.5rem !important;
-            z-index: 9999 !important;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-        }
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# Подключаем общий файл стилей (рестайл под прототип)
+def _inject_dashboard_css() -> None:
+    css_path = Path(__file__).parent / "static" / "dashboard.css"
+    if css_path.exists():
+        st.markdown(
+            f"<style>{css_path.read_text(encoding='utf-8')}</style>",
+            unsafe_allow_html=True,
+        )
+
+
+_inject_dashboard_css()
 
 
 # region Загрузка
