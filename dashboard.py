@@ -424,10 +424,14 @@ max_day = df["day"].max()
 
 st.sidebar.header("Фильтры")
 
+# 2a. Период — добавлен 14d со ★, дефолт = 14d
+PERIOD_OPTIONS = ["7 дней", "14 дней ★", "30 дней", "90 дней", "365 дней", "Свой диапазон"]
+PERIOD_DAYS = {"7 дней": 7, "14 дней ★": 14, "30 дней": 30, "90 дней": 90, "365 дней": 365}
+
 preset = st.sidebar.radio(
     "Период",
-    ["7 дней", "30 дней", "90 дней", "365 дней", "Всё", "Свой диапазон"],
-    index=2,
+    PERIOD_OPTIONS,
+    index=1,  # 14 дней — рекомендованный дефолт
 )
 if preset == "Свой диапазон":
     picked = st.sidebar.date_input(
@@ -442,20 +446,72 @@ if preset == "Свой диапазон":
         start = picked
         end = date.today()
 else:
-    days_map = {"7 дней": 7, "30 дней": 30, "90 дней": 90, "365 дней": 365}
     end = max_day
-    start = min_day if preset == "Всё" else end - timedelta(days=days_map[preset])
+    start = end - timedelta(days=PERIOD_DAYS[preset])
 
-types_all = sorted(df["activity_type_ru"].dropna().unique())
-types_sel = st.sidebar.multiselect(
-    "Типы активности",
-    types_all,
-    default=types_all,
-)
+# 2b. Типы активности — pills (4 фиксированные группы) + «+ ещё» под expander.
+# Группы покрывают самые частые виды; всё остальное идёт в «+ ещё».
+PILL_GROUPS = {
+    "🏃 Бег": ["Бег", "Беговая дорожка", "Трейл", "Стадион", "Виртуальный бег"],
+    "🚴 Велик": ["Велосипед", "Велотренажёр", "Шоссейный велосипед",
+                  "Маунтинбайк", "Гравел", "Виртуальная вело"],
+    "🏊 Плав.": ["Бассейн", "Открытая вода", "Плавание"],
+    "💪 Сила": ["Силовая"],
+}
+types_all_list = sorted(df["activity_type_ru"].dropna().unique().tolist())
+in_pills = {t for vs in PILL_GROUPS.values() for t in vs}
+extra_types = [t for t in types_all_list if t not in in_pills]
 
-agg_label = st.sidebar.radio(
-    "Группировка", ["Неделя", "Месяц", "Год"], index=0, horizontal=True
+selected_pills = st.sidebar.pills(
+    "Активность",
+    list(PILL_GROUPS.keys()),
+    selection_mode="multi",
+    default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
 )
+selected_pills = selected_pills or []
+
+selected_extra: list[str] = []
+if extra_types:
+    with st.sidebar.expander(f"+ ещё ({len(extra_types)})", expanded=False):
+        selected_extra = st.multiselect(
+            "Доп. типы",
+            extra_types,
+            default=[],
+            label_visibility="collapsed",
+        )
+
+# Собираем итоговый набор Russian-имён для фильтра df
+types_sel = []
+for pill in selected_pills:
+    for t in PILL_GROUPS[pill]:
+        if t in types_all_list and t not in types_sel:
+            types_sel.append(t)
+for t in selected_extra:
+    if t not in types_sel:
+        types_sel.append(t)
+
+# 2c. Группировка — segmented control + проверка периода
+period_days_total = (end - start).days + 1
+if period_days_total <= 30:
+    grp_options = ["Неделя"]
+elif period_days_total <= 90:
+    grp_options = ["Неделя", "Месяц"]
+else:
+    grp_options = ["Неделя", "Месяц", "Год"]
+
+# Сохраняем последний выбор, но если он недоступен по новому периоду — fallback на «Неделя»
+prev_grp = st.session_state.get("_grp_choice", "Неделя")
+default_grp = prev_grp if prev_grp in grp_options else "Неделя"
+
+agg_label = st.sidebar.segmented_control(
+    "Группировка",
+    grp_options,
+    default=default_grp,
+    selection_mode="single",
+)
+agg_label = agg_label or default_grp
+st.session_state["_grp_choice"] = agg_label
+
 AGG_COL = {"Неделя": "week", "Месяц": "month", "Год": "year"}[agg_label]
 AGG_LOC = {"Неделя": "неделям", "Месяц": "месяцам", "Год": "годам"}[agg_label]
 AGG_ACC = {"Неделя": "неделю",   "Месяц": "месяц",   "Год": "год"}[agg_label]
@@ -500,20 +556,40 @@ def _trigger_cloud_sync() -> tuple[bool, str]:
         return False, f"ошибка: {exc}"
 
 
-if st.sidebar.button(
-    "🔄 Обновить данные",
-    use_container_width=True,
-):
-    if IS_ADMIN:
-        ok, msg = _trigger_cloud_sync()
-        if ok:
-            st.toast(f"☁️ {msg} — данные обновятся через ~30-60 сек, "
-                     "нажми ещё раз через минуту", icon="🚀")
-        else:
-            st.toast(f"⚠️ Cloud sync не запущен: {msg}", icon="⚠️")
-    st.cache_data.clear()
-    st.toast("Кэш очищен, читаю свежие данные...", icon="🔄")
-    st.rerun()
+# 2d. SyncStatus pill (● Свежие / Устарело / Старые) + ⟳ refresh icon
+def _sync_status() -> tuple[str, str]:
+    """Возвращает (label, css_class) по свежести самой свежей активности."""
+    last = df["day"].max() if not df.empty else None
+    if last is None:
+        return ("● Нет данных", "sa-status-old")
+    age_h = (date.today() - last).days * 24
+    if age_h < 24:
+        return ("● Свежие", "sa-status-fresh")
+    if age_h < 48:
+        return ("● Устарело", "sa-status-stale")
+    return ("● Старые", "sa-status-old")
+
+
+_status_label, _status_class = _sync_status()
+_status_col, _refresh_col = st.sidebar.columns([3, 1], gap="small")
+with _status_col:
+    st.markdown(
+        f'<div class="sa-status {_status_class}">'
+        f'<span class="dot"></span>{_status_label.lstrip("● ")}</div>',
+        unsafe_allow_html=True,
+    )
+with _refresh_col:
+    if st.button("⟳", key="sa_refresh", use_container_width=True):
+        if IS_ADMIN:
+            ok, msg = _trigger_cloud_sync()
+            if ok:
+                st.toast(f"☁️ {msg} — данные через ~30-60 сек, "
+                         "нажми ⟳ ещё раз чуть позже", icon="🚀")
+            else:
+                st.toast(f"⚠️ Cloud sync: {msg}", icon="⚠️")
+        st.cache_data.clear()
+        st.toast("Кэш очищен", icon="🔄")
+        st.rerun()
 
 # endregion
 
@@ -540,16 +616,45 @@ if prev_sig is not None and prev_sig != filter_sig:
         st.toast("Пересчитано: " + ", ".join(changed), icon="✅")
 st.session_state["_prev_filter_sig"] = filter_sig
 
-# Sidebar footer
+# 2e. Sidebar footer + модалка «О сессии»
 days_in_range = (end - start).days + 1
 last_in_db = df["day"].max() if not df.empty else None
-st.sidebar.caption(
-    f"👤 **{selected_athlete}**" + (" (админ)" if IS_ADMIN else "") + "\n\n"
-    f"📊 **{len(view)}** активностей · **{days_in_range}** дн.\n\n"
-    f"📦 {'Turso (облако)' if dbm.is_turso() else 'локально'}\n\n"
-    f"📅 Последняя в БД: **{last_in_db}**\n\n"
-    f"🕐 Отрисовано: {datetime.now().strftime('%H:%M:%S')}"
+
+
+@st.dialog("О сессии", width="small")
+def _session_info_dialog():
+    rendered = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    backend = "Turso (облако)" if dbm.is_turso() else "локально"
+    st.markdown(f"**Атлет:** `{selected_athlete}`"
+                + ("  (вы — администратор)" if IS_ADMIN else ""))
+    st.markdown(f"**Активностей в выбранном срезе:** {len(view)}")
+    st.markdown(f"**Дней в окне:** {days_in_range}")
+    st.markdown(f"**Источник данных:** {backend}")
+    st.markdown(f"**Последняя активность в БД:** `{last_in_db}`")
+    st.markdown(f"**Дашборд отрисован:** `{rendered}`")
+    diag = (
+        f"athlete: {selected_athlete}\n"
+        f"period: {start} → {end} ({days_in_range} d)\n"
+        f"activities: {len(view)}\n"
+        f"backend: {backend}\n"
+        f"last_in_db: {last_in_db}\n"
+        f"rendered: {rendered}\n"
+    )
+    st.code(diag, language=None)
+    st.caption(
+        "Скопируйте текст выше при репорте проблемы — пригодится для "
+        "диагностики."
+    )
+
+
+st.sidebar.markdown(
+    f'<div class="sa-foot">'
+    f'📊 <b>{len(view)}</b> актив. · <b>{days_in_range}</b> дн.'
+    f'</div>',
+    unsafe_allow_html=True,
 )
+if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
+    _session_info_dialog()
 
 # endregion
 

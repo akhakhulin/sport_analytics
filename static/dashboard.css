@@ -239,3 +239,118 @@ html, body, [data-testid="stApp"] {
   color: var(--color-text-secondary);
   line-height: 1.6;
 }
+
+/* Pills (Типы активности) — Streamlit st.pills */
+[data-testid="stSidebar"] [data-testid="stPills"] {
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+[data-testid="stSidebar"] [data-testid="stPills"] label {
+  font-size: var(--fs-xs) !important;
+  color: var(--color-text-secondary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 6px !important;
+}
+[data-testid="stSidebar"] [data-testid="stPills"] button {
+  background: var(--color-bg-app) !important;
+  border-radius: 12px !important;
+  font-size: var(--fs-sm) !important;
+  padding: 3px 10px !important;
+  border: none !important;
+  color: var(--color-text-primary) !important;
+  margin: 2px !important;
+}
+[data-testid="stSidebar"] [data-testid="stPills"] button:hover {
+  background: var(--color-info-bg) !important;
+}
+[data-testid="stSidebar"] [data-testid="stPills"] button[aria-pressed="true"],
+[data-testid="stSidebar"] [data-testid="stPills"] button[kind="primary"] {
+  background: var(--color-info) !important;
+  color: white !important;
+  font-weight: 500 !important;
+}
+
+/* Segmented control (Группировка) */
+[data-testid="stSidebar"] [data-testid="stSegmentedControl"] {
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 10px;
+  margin-bottom: 10px;
+}
+[data-testid="stSidebar"] [data-testid="stSegmentedControl"] label {
+  font-size: var(--fs-xs) !important;
+  color: var(--color-text-secondary) !important;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+  margin-bottom: 6px !important;
+}
+[data-testid="stSidebar"] [data-testid="stSegmentedControl"] button {
+  font-size: var(--fs-sm) !important;
+  padding: 4px 8px !important;
+  background: transparent !important;
+  border: none !important;
+  color: var(--color-text-secondary) !important;
+}
+[data-testid="stSidebar"] [data-testid="stSegmentedControl"] button[aria-pressed="true"],
+[data-testid="stSidebar"] [data-testid="stSegmentedControl"] button[kind="primary"] {
+  background: var(--color-bg-block) !important;
+  color: var(--color-text-primary) !important;
+  font-weight: 500 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* SyncStatus — пилюли цветные */
+.sa-sync-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 2px 4px;
+}
+.sa-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: var(--fs-xs);
+  padding: 3px 9px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.sa-status .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.sa-status-fresh   { background: var(--color-success-bg); color: var(--color-success); }
+.sa-status-stale   { background: var(--color-warning-bg); color: var(--color-warning); }
+.sa-status-old     { background: var(--color-danger-bg);  color: var(--color-danger); }
+
+/* «Обновить» иконка справа от пилюли */
+[data-testid="stSidebar"] [data-testid="stButton"][data-testid$="-refresh-icon"] > button,
+[data-testid="stSidebar"] button[data-testid$="refresh-icon"] {
+  padding: 3px 8px !important;
+  font-size: var(--fs-sm) !important;
+}
+
+/* Footer-инфо */
+.sa-foot {
+  font-size: var(--fs-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 6px 2px 0;
+}
+.sa-foot-link {
+  color: var(--color-info);
+  cursor: pointer;
+  text-decoration: none;
+  font-weight: 500;
+}
+.sa-foot-link:hover { text-decoration: underline; }
+
