@@ -519,35 +519,52 @@ in_pills = {t for vs in PILL_GROUPS.values() for t in vs}
 extra_types = [t for t in types_all_list if t not in in_pills]
 
 
-def _activity_emoji(t: str) -> str:
-    """Эмодзи перед именем типа активности (для pills в сайдбаре).
-    Соответствует SVG-иконкам из docs/sport_icons_pack.html."""
+def _activity_material_icon(t: str) -> str:
+    """Material Icons-метка перед именем типа активности.
+    Streamlit рендерит «:material/icon_name:» как векторную иконку Material Symbols.
+    Для единообразия с другими местами дашборда (drilldown'ы, side-table)."""
     if not isinstance(t, str):
         return t
     tl = t.lower()
     if "конёк" in tl or "конек" in tl:
-        return f"⛷️ {t}"
+        return f":material/cross_country_skiing: {t}"
     if "классика" in tl:
-        return f"🎿 {t}"
+        return f":material/downhill_skiing: {t}"
     if t.startswith("Лыжи"):
-        return f"⛷️ {t}"
+        return f":material/downhill_skiing: {t}"
     if t.startswith("Лыжероллеры"):
-        return f"🛼 {t}"
+        return f":material/cross_country_skiing: {t}"
     if t in ("Силовая",):
-        return f"💪 {t}"
+        return f":material/fitness_center: {t}"
     if t in ("Беговая дорожка", "Виртуальный бег"):
-        return f"🏃 {t}"
+        return f":material/directions_run: {t}"
     if t.startswith("Бег") or t in ("Трейл", "Стадион"):
-        return f"🏃 {t}"
+        return f":material/directions_run: {t}"
+    if t in ("Велотренажёр", "Виртуальная вело"):
+        return f":material/directions_bike: {t}"
     if "велосипед" in tl or "вело" in tl or "маунтин" in tl or "гравел" in tl:
-        return f"🚴 {t}"
+        return f":material/directions_bike: {t}"
     if t in ("Бассейн", "Открытая вода", "Плавание"):
-        return f"🏊 {t}"
+        return f":material/pool: {t}"
     if t in ("Йога", "Пилатес"):
-        return f"🧘 {t}"
-    if t in ("Хайкинг", "Ходьба"):
-        return f"🥾 {t}"
+        return f":material/self_improvement: {t}"
+    if t in ("Хайкинг",):
+        return f":material/hiking: {t}"
+    if t in ("Ходьба",):
+        return f":material/directions_walk: {t}"
     return t
+
+
+_PILL_GROUP_LABELS = {
+    "🏃 Бег": ":material/directions_run: Бег",
+    "🚴 Велик": ":material/directions_bike: Велик",
+    "🏊 Плав.": ":material/pool: Плав.",
+    "💪 Сила": ":material/fitness_center: Сила",
+}
+
+
+def _pill_group_label(key: str) -> str:
+    return _PILL_GROUP_LABELS.get(key, key)
 
 with st.sidebar.container(border=True, key="sa_activity_tile"):
     selected_pills = st.pills(
@@ -556,6 +573,7 @@ with st.sidebar.container(border=True, key="sa_activity_tile"):
         selection_mode="multi",
         default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
         key="sa_activity_pills",
+        format_func=_pill_group_label,
     )
     selected_pills = selected_pills or []
 
@@ -570,7 +588,7 @@ with st.sidebar.container(border=True, key="sa_activity_tile"):
             default=extra_types,  # все включены по умолчанию
             key=_extra_key,
             label_visibility="collapsed",
-            format_func=_activity_emoji,
+            format_func=_activity_material_icon,
         )
         selected_extra = selected_extra or []
 
