@@ -422,12 +422,21 @@ html, body, [data-testid="stApp"] {
   cursor: pointer !important;
   padding: 0 !important;
 }
-/* Hover над всей карточкой — лёгкое затемнение через metric */
+/* Кликабельные KPI: лёгкая подсветка + cursor:pointer (отличает от не-кликабельных Калорий/Набор) */
+[data-testid="stMain"] .st-key-kpi_card_workouts [data-testid="stMetric"],
+[data-testid="stMain"] .st-key-kpi_card_hours [data-testid="stMetric"],
+[data-testid="stMain"] .st-key-kpi_card_km [data-testid="stMetric"] {
+  background: #F8FAFD !important;
+  border-color: rgba(24, 95, 165, 0.18) !important;
+  cursor: pointer !important;
+  transition: background 0.15s, border-color 0.15s;
+}
+/* Hover-усиление */
 [data-testid="stMain"] .st-key-kpi_card_workouts:hover [data-testid="stMetric"],
 [data-testid="stMain"] .st-key-kpi_card_hours:hover [data-testid="stMetric"],
 [data-testid="stMain"] .st-key-kpi_card_km:hover [data-testid="stMetric"] {
-  background: #FAFAF7 !important;
-  cursor: pointer;
+  background: #EAF2FB !important;
+  border-color: rgba(24, 95, 165, 0.45) !important;
 }
 
 /* === KPI drilldown panel (синяя рамка + бейдж) === */

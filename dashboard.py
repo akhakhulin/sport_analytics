@@ -518,6 +518,37 @@ types_all_list = sorted(df.loc[_types_period_mask, "activity_type_ru"].dropna().
 in_pills = {t for vs in PILL_GROUPS.values() for t in vs}
 extra_types = [t for t in types_all_list if t not in in_pills]
 
+
+def _activity_emoji(t: str) -> str:
+    """Эмодзи перед именем типа активности (для pills в сайдбаре).
+    Соответствует SVG-иконкам из docs/sport_icons_pack.html."""
+    if not isinstance(t, str):
+        return t
+    tl = t.lower()
+    if "конёк" in tl or "конек" in tl:
+        return f"⛷️ {t}"
+    if "классика" in tl:
+        return f"🎿 {t}"
+    if t.startswith("Лыжи"):
+        return f"⛷️ {t}"
+    if t.startswith("Лыжероллеры"):
+        return f"🛼 {t}"
+    if t in ("Силовая",):
+        return f"💪 {t}"
+    if t in ("Беговая дорожка", "Виртуальный бег"):
+        return f"🏃 {t}"
+    if t.startswith("Бег") or t in ("Трейл", "Стадион"):
+        return f"🏃 {t}"
+    if "велосипед" in tl or "вело" in tl or "маунтин" in tl or "гравел" in tl:
+        return f"🚴 {t}"
+    if t in ("Бассейн", "Открытая вода", "Плавание"):
+        return f"🏊 {t}"
+    if t in ("Йога", "Пилатес"):
+        return f"🧘 {t}"
+    if t in ("Хайкинг", "Ходьба"):
+        return f"🥾 {t}"
+    return t
+
 with st.sidebar.container(border=True, key="sa_activity_tile"):
     selected_pills = st.pills(
         "Активность",
@@ -539,6 +570,7 @@ with st.sidebar.container(border=True, key="sa_activity_tile"):
             default=extra_types,  # все включены по умолчанию
             key=_extra_key,
             label_visibility="collapsed",
+            format_func=_activity_emoji,
         )
         selected_extra = selected_extra or []
 
@@ -777,7 +809,7 @@ if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
 
 # region Header + KPI
 
-_title_col, _action_col = st.columns([5, 1])
+_title_col, _action_col = st.columns([10, 2])
 with _title_col:
     st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
 with _action_col:
