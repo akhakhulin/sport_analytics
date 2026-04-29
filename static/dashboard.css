@@ -598,3 +598,13 @@ html, body, [data-testid="stApp"] {
   margin-top: 0 !important;
 }
 
+/* Защита от обрезания заголовка-имени атлета: колонка с h1 не должна
+   усекать содержимое (Streamlit может ставить overflow:hidden). */
+[data-testid="stMain"] [data-testid="stColumn"]:has(> div > div > [data-testid="stMarkdown"] h1) {
+  overflow: visible !important;
+  min-width: 0;
+}
+[data-testid="stMain"] [data-testid="stColumn"] h1 {
+  overflow: visible !important;
+}
+
