@@ -803,18 +803,15 @@ st.sidebar.markdown(
 )
 if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
     _session_info_dialog()
+if st.sidebar.button("📄 PDF-экспорт", key="pdf_export", use_container_width=True):
+    st.toast("PDF-экспорт ещё в разработке", icon="📄")
 
 # endregion
 
 
 # region Header + KPI
 
-_title_col, _action_col = st.columns([14, 2], vertical_alignment="center")
-with _title_col:
-    st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
-with _action_col:
-    if st.button("📄 PDF-экспорт", key="pdf_export", use_container_width=True):
-        st.toast("PDF-экспорт ещё в разработке", icon="📄")
+st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
 st.caption(
     f"👤 **{selected_athlete}**  ·  "
     f"📅 **{start}** → **{end}**  ·  📊 **{len(view)}** активностей  ·  "
