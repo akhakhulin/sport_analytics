@@ -592,15 +592,26 @@ html, body, [data-testid="stApp"] {
   background: transparent;
 }
 
-/* Title главной страницы — на всю ширину main, без колонок */
+/* Title главной страницы — гарантированно не обрезается:
+   родитель не должен ограничивать высоту, h1 имеет line-height и padding */
+[data-testid="stMain"] [data-testid="stHeading"],
+[data-testid="stMain"] [data-testid="stHeading"] > div,
+[data-testid="stMain"] [data-testid="stMarkdownContainer"]:has(> h1) {
+  overflow: visible !important;
+  height: auto !important;
+  min-height: auto !important;
+  max-height: none !important;
+  padding: 0 !important;
+}
 [data-testid="stMain"] [data-testid="stHeading"] h1,
 [data-testid="stMain"] h1 {
-  font-size: var(--fs-xl) !important;
+  font-size: 22px !important;
   font-weight: 500 !important;
-  line-height: 1.4 !important;
-  margin-bottom: 4px !important;
-  margin-top: 0 !important;
-  white-space: nowrap;
-  overflow: visible;
+  line-height: 1.5 !important;
+  padding: 8px 0 4px !important;
+  margin: 0 0 4px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  height: auto !important;
 }
 
