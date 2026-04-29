@@ -1764,25 +1764,42 @@ def _render_detalization(_view: pd.DataFrame, agg_col: str, metric: str) -> None
             _cols_per_row = _size_map[_size_p]
             _cell_h = _cell_h_map[_size_p]
 
-            # Активные типы из sidebar pills + extra (порядок как в групировках)
-            _active_types: list[str] = []
+            # Группируем мелкие типы в супер-группы (PILL_GROUPS),
+            # чтобы ось X не превращалась в простыню из 10+ столбиков.
+            # Лыжи · конёк/классика и Лыжероллеры остаются индивидуально —
+            # их различать важно для тренировочного контекста.
+            def _super_group(t: str) -> str:
+                for pill, sub in PILL_GROUPS.items():
+                    if t in sub:
+                        return pill  # «🏃 Бег», «🚴 Велик», «🏊 Плав.», «💪 Сила»
+                return t  # Лыжи · конёк / Лыжи · классика / Лыжероллеры · ... — раздельно
+
+            # Активные супер-группы из sidebar pills + extra
+            _active_groups: list[str] = []
             for _pill in (selected_pills or []):
-                for _t in PILL_GROUPS.get(_pill, []):
-                    if _t not in _active_types:
-                        _active_types.append(_t)
+                if _pill not in _active_groups:
+                    _active_groups.append(_pill)
             for _t in (selected_extra or []):
-                if _t not in _active_types:
-                    _active_types.append(_t)
+                _g = _super_group(_t)
+                if _g not in _active_groups:
+                    _active_groups.append(_g)
 
-            # Только те типы которые реально были в выбранном периоде с >0 часов
-            _types_in_view = set(view_eff["activity_type_ru"].unique())
-            _active_types = [t for t in _active_types if t in _types_in_view]
+            # Только группы что реально присутствуют в view_eff
+            _groups_in_view = set(view_eff["activity_type_ru"].apply(_super_group).unique())
+            _active_groups = [g for g in _active_groups if g in _groups_in_view]
 
-            if not _active_types:
+            if not _active_groups:
                 st.info("Нет активностей за выбранный период.")
             else:
-                _periods = sorted(view_eff[agg_col].dropna().unique())
-                _n = len(_periods)
+                # Заранее агрегируем часы по периоду × супер-группе и фильтруем
+                # периоды с нулевой суммой
+                _view_g = view_eff.copy()
+                _view_g["_super"] = _view_g["activity_type_ru"].apply(_super_group)
+                _agg_p = (_view_g.groupby([agg_col, "_super"])[col_value].sum()
+                                  .reset_index())
+                _agg_p = _agg_p[_agg_p[col_value] > 0]
+                _periods_with_data = sorted(_agg_p[agg_col].unique())
+                _n = len(_periods_with_data)
 
                 def _period_title(p):
                     if agg_col == "year":
@@ -1794,50 +1811,50 @@ def _render_detalization(_view: pd.DataFrame, agg_col: str, metric: str) -> None
                         return f"{p.strftime('%d %b')} – {end_p.strftime('%d %b')}"
                     return f"{p.day}–{end_p.day} {p.strftime('%b')}"
 
-                for _start in range(0, _n, _cols_per_row):
-                    _chunk = _periods[_start:_start + _cols_per_row]
-                    _cols = st.columns(_cols_per_row)
-                    for _i, _p in enumerate(_chunk):
-                        _pview = view_eff[view_eff[agg_col] == _p]
-                        _hours = [
-                            float(_pview[_pview["activity_type_ru"] == _t][col_value].sum() or 0)
-                            for _t in _active_types
-                        ]
-                        _total_p = sum(_hours) or 1
-                        _pcts = [v / _total_p * 100 for v in _hours]
-                        _texts = [
-                            f"{p:.0f}%<br>{v:.1f} ч" if v > 0 else ""
-                            for p, v in zip(_pcts, _hours)
-                        ]
-                        _colors = [_type_color(_t) for _t in _active_types]
+                if _n == 0:
+                    st.info("Нет периодов с данными.")
+                else:
+                    for _start in range(0, _n, _cols_per_row):
+                        _chunk = _periods_with_data[_start:_start + _cols_per_row]
+                        _cols = st.columns(_cols_per_row)
+                        for _i, _p in enumerate(_chunk):
+                            _p_data = _agg_p[_agg_p[agg_col] == _p].set_index("_super")[col_value]
+                            _hours = [float(_p_data.get(g, 0.0)) for g in _active_groups]
+                            _total_p = sum(_hours) or 1
+                            _pcts = [v / _total_p * 100 for v in _hours]
+                            _texts = [
+                                f"{p:.0f}%<br>{v:.1f} ч" if v > 0 else ""
+                                for p, v in zip(_pcts, _hours)
+                            ]
+                            _colors = [_type_color(g) for g in _active_groups]
 
-                        _bar = go.Figure(go.Bar(
-                            x=_active_types,
-                            y=_hours,
-                            marker=dict(color=_colors),
-                            text=_texts,
-                            textposition="outside",
-                            cliponaxis=False,
-                        ))
-                        _bar.update_layout(
-                            height=_cell_h,
-                            title=dict(text=_period_title(_p), x=0.5, xanchor="center",
-                                       font=dict(size=13)),
-                            showlegend=False,
-                            margin=dict(t=40, b=40, l=10, r=10),
-                            xaxis=dict(title="", fixedrange=True, tickangle=-25),
-                            yaxis=dict(title="ч", fixedrange=True, rangemode="tozero",
-                                       gridcolor="rgba(0,0,0,0.05)"),
-                            paper_bgcolor="rgba(0,0,0,0)",
-                            plot_bgcolor="rgba(0,0,0,0)",
-                            uniformtext_minsize=8,
-                            uniformtext_mode="hide",
-                        )
-                        with _cols[_i]:
-                            st.plotly_chart(_bar, use_container_width=True, config=PLOTLY_CONFIG)
-                    for _j in range(len(_chunk), _cols_per_row):
-                        with _cols[_j]:
-                            st.empty()
+                            _bar = go.Figure(go.Bar(
+                                x=_active_groups,
+                                y=_hours,
+                                marker=dict(color=_colors),
+                                text=_texts,
+                                textposition="outside",
+                                cliponaxis=False,
+                            ))
+                            _bar.update_layout(
+                                height=_cell_h,
+                                title=dict(text=_period_title(_p), x=0.5, xanchor="center",
+                                           font=dict(size=13)),
+                                showlegend=False,
+                                margin=dict(t=40, b=40, l=10, r=10),
+                                xaxis=dict(title="", fixedrange=True, tickangle=-25),
+                                yaxis=dict(title="ч", fixedrange=True, rangemode="tozero",
+                                           gridcolor="rgba(0,0,0,0.05)"),
+                                paper_bgcolor="rgba(0,0,0,0)",
+                                plot_bgcolor="rgba(0,0,0,0)",
+                                uniformtext_minsize=8,
+                                uniformtext_mode="hide",
+                            )
+                            with _cols[_i]:
+                                st.plotly_chart(_bar, use_container_width=True, config=PLOTLY_CONFIG)
+                        for _j in range(len(_chunk), _cols_per_row):
+                            with _cols[_j]:
+                                st.empty()
 
 
 with st.expander("📊 Детализация · Время", expanded=True):
