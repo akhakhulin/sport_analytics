@@ -1819,17 +1819,21 @@ def _render_detalization(_view: pd.DataFrame, agg_col: str, metric: str) -> None
                         _cols = st.columns(_cols_per_row)
                         for _i, _p in enumerate(_chunk):
                             _p_data = _agg_p[_agg_p[agg_col] == _p].set_index("_super")[col_value]
-                            _hours = [float(_p_data.get(g, 0.0)) for g in _active_groups]
+                            # Берём ТОЛЬКО группы с >0 часов в этом периоде —
+                            # пустые столбцы на оси X не рисуем
+                            _hours_full = [(g, float(_p_data.get(g, 0.0))) for g in _active_groups]
+                            _hours_full = [(g, v) for g, v in _hours_full if v > 0]
+                            if not _hours_full:
+                                continue
+                            _xs = [g for g, _ in _hours_full]
+                            _hours = [v for _, v in _hours_full]
                             _total_p = sum(_hours) or 1
                             _pcts = [v / _total_p * 100 for v in _hours]
-                            _texts = [
-                                f"{p:.0f}%<br>{v:.1f} ч" if v > 0 else ""
-                                for p, v in zip(_pcts, _hours)
-                            ]
-                            _colors = [_type_color(g) for g in _active_groups]
+                            _texts = [f"{p:.0f}%<br>{v:.1f} ч" for p, v in zip(_pcts, _hours)]
+                            _colors = [_type_color(g) for g in _xs]
 
                             _bar = go.Figure(go.Bar(
-                                x=_active_groups,
+                                x=_xs,
                                 y=_hours,
                                 marker=dict(color=_colors),
                                 text=_texts,
