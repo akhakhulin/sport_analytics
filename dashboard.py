@@ -1729,6 +1729,116 @@ def _render_detalization(_view: pd.DataFrame, agg_col: str, metric: str) -> None
             unsafe_allow_html=True,
         )
 
+    # ===== Подробнее по периодам — сетка bar-чартов: один период = один чарт,
+    # на оси X активности из sidebar pills, на Y — часы (только для metric="time")
+    if metric == "time":
+        st.markdown(
+            '<div style="margin-top:14px;"></div>',
+            unsafe_allow_html=True,
+        )
+        show_periods_dd = st.toggle(
+            "📊 Подробнее по периодам",
+            value=False,
+            key=f"detal_{metric}_periods_show",
+        )
+        if show_periods_dd:
+            _hdr_l, _hdr_r = st.columns([3, 2])
+            with _hdr_l:
+                st.markdown(
+                    f'<div style="font-size:13px; font-weight:500; padding-top:6px;">'
+                    f'**Часы по {_per_unit}, разбивка по активностям**'
+                    f'</div>'.replace("**", ""),
+                    unsafe_allow_html=True,
+                )
+            with _hdr_r:
+                _size_p = st.radio(
+                    "Размер",
+                    ["Мелкие", "Средние", "Крупные"],
+                    index=1,
+                    horizontal=True,
+                    key=f"detal_{metric}_periods_size",
+                    label_visibility="collapsed",
+                )
+            _size_map = {"Мелкие": 5, "Средние": 4, "Крупные": 3}
+            _cell_h_map = {"Мелкие": 220, "Средние": 280, "Крупные": 360}
+            _cols_per_row = _size_map[_size_p]
+            _cell_h = _cell_h_map[_size_p]
+
+            # Активные типы из sidebar pills + extra (порядок как в групировках)
+            _active_types: list[str] = []
+            for _pill in (selected_pills or []):
+                for _t in PILL_GROUPS.get(_pill, []):
+                    if _t not in _active_types:
+                        _active_types.append(_t)
+            for _t in (selected_extra or []):
+                if _t not in _active_types:
+                    _active_types.append(_t)
+
+            # Только те типы которые реально были в выбранном периоде с >0 часов
+            _types_in_view = set(view_eff["activity_type_ru"].unique())
+            _active_types = [t for t in _active_types if t in _types_in_view]
+
+            if not _active_types:
+                st.info("Нет активностей за выбранный период.")
+            else:
+                _periods = sorted(view_eff[agg_col].dropna().unique())
+                _n = len(_periods)
+
+                def _period_title(p):
+                    if agg_col == "year":
+                        return p.strftime("%Y")
+                    if agg_col == "month":
+                        return p.strftime("%b %Y")
+                    end_p = p + pd.Timedelta(days=6)
+                    if p.month != end_p.month:
+                        return f"{p.strftime('%d %b')} – {end_p.strftime('%d %b')}"
+                    return f"{p.day}–{end_p.day} {p.strftime('%b')}"
+
+                for _start in range(0, _n, _cols_per_row):
+                    _chunk = _periods[_start:_start + _cols_per_row]
+                    _cols = st.columns(_cols_per_row)
+                    for _i, _p in enumerate(_chunk):
+                        _pview = view_eff[view_eff[agg_col] == _p]
+                        _hours = [
+                            float(_pview[_pview["activity_type_ru"] == _t][col_value].sum() or 0)
+                            for _t in _active_types
+                        ]
+                        _total_p = sum(_hours) or 1
+                        _pcts = [v / _total_p * 100 for v in _hours]
+                        _texts = [
+                            f"{p:.0f}%<br>{v:.1f} ч" if v > 0 else ""
+                            for p, v in zip(_pcts, _hours)
+                        ]
+                        _colors = [_type_color(_t) for _t in _active_types]
+
+                        _bar = go.Figure(go.Bar(
+                            x=_active_types,
+                            y=_hours,
+                            marker=dict(color=_colors),
+                            text=_texts,
+                            textposition="outside",
+                            cliponaxis=False,
+                        ))
+                        _bar.update_layout(
+                            height=_cell_h,
+                            title=dict(text=_period_title(_p), x=0.5, xanchor="center",
+                                       font=dict(size=13)),
+                            showlegend=False,
+                            margin=dict(t=40, b=40, l=10, r=10),
+                            xaxis=dict(title="", fixedrange=True, tickangle=-25),
+                            yaxis=dict(title="ч", fixedrange=True, rangemode="tozero",
+                                       gridcolor="rgba(0,0,0,0.05)"),
+                            paper_bgcolor="rgba(0,0,0,0)",
+                            plot_bgcolor="rgba(0,0,0,0)",
+                            uniformtext_minsize=8,
+                            uniformtext_mode="hide",
+                        )
+                        with _cols[_i]:
+                            st.plotly_chart(_bar, use_container_width=True, config=PLOTLY_CONFIG)
+                    for _j in range(len(_chunk), _cols_per_row):
+                        with _cols[_j]:
+                            st.empty()
+
 
 with st.expander("📊 Детализация · Время", expanded=True):
     _render_detalization(view, AGG_COL, metric="time")
