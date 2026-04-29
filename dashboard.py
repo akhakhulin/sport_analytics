@@ -809,14 +809,9 @@ if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
 
 # region Header + KPI
 
-_title_col, _action_col = st.columns([14, 2])
+_title_col, _action_col = st.columns([14, 2], vertical_alignment="center")
 with _title_col:
-    st.markdown(
-        f'<h1 style="font-size:20px; font-weight:500; margin:0; '
-        f'white-space:nowrap; overflow:visible; line-height:1.25;">'
-        f'🏃 Аналитика Спортсмена · {selected_athlete}</h1>',
-        unsafe_allow_html=True,
-    )
+    st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
 with _action_col:
     if st.button("📄 PDF-экспорт", key="pdf_export", use_container_width=True):
         st.toast("PDF-экспорт ещё в разработке", icon="📄")

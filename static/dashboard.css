@@ -598,13 +598,17 @@ html, body, [data-testid="stApp"] {
   margin-top: 0 !important;
 }
 
-/* Защита от обрезания заголовка-имени атлета: колонка с h1 не должна
-   усекать содержимое (Streamlit может ставить overflow:hidden). */
-[data-testid="stMain"] [data-testid="stColumn"]:has(> div > div > [data-testid="stMarkdown"] h1) {
+/* Защита от обрезания заголовка-имени атлета:
+   - сама колонка не обрезает контент
+   - h1 не уезжает за границы контейнера и не обрезается сверху */
+[data-testid="stMain"] [data-testid="stColumn"] {
   overflow: visible !important;
   min-width: 0;
 }
+[data-testid="stMain"] [data-testid="stColumn"] [data-testid="stHeading"],
 [data-testid="stMain"] [data-testid="stColumn"] h1 {
   overflow: visible !important;
+  white-space: nowrap;
+  line-height: 1.4 !important;
 }
 
