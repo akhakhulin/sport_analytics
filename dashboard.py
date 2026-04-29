@@ -1593,19 +1593,36 @@ def _render_detalization(_view: pd.DataFrame, agg_col: str, metric: str) -> None
 
     _per_unit = {"week": "нед", "month": "мес", "year": "год"}.get(agg_col, "период")
 
-    # Top row: Stat row слева + Размер графика справа
-    top_l, top_r = st.columns([3, 2])
-    with top_l:
+    # Stat row — всегда виден (как в «Пульс: время в зонах»)
+    st.markdown(
+        f'<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;'
+        f' padding-bottom:12px; margin-bottom:14px; border-bottom:0.5px solid rgba(0,0,0,0.1);">'
+        f'<span style="font-size:24px; font-weight:500; line-height:1;">{fmt_total(_total)}</span>'
+        f'<span style="font-size:11px; color:#5F5E5A;">'
+        f'{fmt_avg(_avg_per)} {unit_short}/{_per_unit} · CV {_cv:.0f}% · {_cv_label}'
+        f'</span></div>',
+        unsafe_allow_html=True,
+    )
+
+    # Toggle «Подробнее по периодам» — по аналогии с «Пульс: время в зонах»
+    show_detail = st.toggle(
+        "📊 Подробнее по периодам",
+        value=False,
+        key=f"detal_{metric}_show",
+    )
+    if not show_detail:
+        return
+
+    # Размер графика — справа от заголовка детализации
+    _hdr_l, _hdr_r = st.columns([3, 2])
+    with _hdr_l:
         st.markdown(
-            f'<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;'
-            f' padding-bottom:12px; margin-bottom:14px; border-bottom:0.5px solid rgba(0,0,0,0.1);">'
-            f'<span style="font-size:24px; font-weight:500; line-height:1;">{fmt_total(_total)}</span>'
-            f'<span style="font-size:11px; color:#5F5E5A;">'
-            f'{fmt_avg(_avg_per)} {unit_short}/{_per_unit} · CV {_cv:.0f}% · {_cv_label}'
-            f'</span></div>',
+            f'<div style="font-size:13px; font-weight:500; padding-top:6px;">'
+            f'Разбивка по {_per_unit}'
+            f'</div>',
             unsafe_allow_html=True,
         )
-    with top_r:
+    with _hdr_r:
         size_label = st.radio(
             "Размер графика",
             ["Мелкие", "Средние", "Крупные"],
