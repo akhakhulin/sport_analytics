@@ -248,6 +248,22 @@ html, body, [data-testid="stApp"] {
   padding: 10px !important;
   margin-bottom: 10px !important;
 }
+
+/* st.container(border=True, key="...") в сайдбаре — белый тайл
+   Streamlit ставит класс st-key-<key> на stElementContainer-обёртку */
+[data-testid="stSidebar"] .st-key-sa_activity_tile,
+[data-testid="stSidebar"] .st-key-sa_grouping_tile {
+  background: var(--color-bg-block) !important;
+  border: 0.5px solid var(--color-border-soft) !important;
+  border-radius: var(--r-md) !important;
+  padding: 10px !important;
+  margin-bottom: 10px !important;
+}
+/* Внутренний stVerticalBlock не должен перебивать фон */
+[data-testid="stSidebar"] .st-key-sa_activity_tile [data-testid="stVerticalBlock"],
+[data-testid="stSidebar"] .st-key-sa_grouping_tile [data-testid="stVerticalBlock"] {
+  background: transparent !important;
+}
 [data-testid="stSidebar"] [data-testid="stPills"] label {
   font-size: var(--fs-xs) !important;
   color: var(--color-text-secondary) !important;
@@ -370,6 +386,72 @@ html, body, [data-testid="stApp"] {
   margin-top: 3px;
 }
 
+/* === KPI overlay-кнопка: делает всю карточку кликабельной (вместо текстовой «детали») === */
+[data-testid="stMain"] .st-key-kpi_card_workouts,
+[data-testid="stMain"] .st-key-kpi_card_hours,
+[data-testid="stMain"] .st-key-kpi_card_km {
+  position: relative !important;
+}
+/* Прячем последнюю кнопку в карточке — тянем поверх metric, делаем прозрачной */
+[data-testid="stMain"] .st-key-kpi_card_workouts [data-testid="stElementContainer"]:has([data-testid="stButton"]),
+[data-testid="stMain"] .st-key-kpi_card_hours [data-testid="stElementContainer"]:has([data-testid="stButton"]),
+[data-testid="stMain"] .st-key-kpi_card_km [data-testid="stElementContainer"]:has([data-testid="stButton"]) {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  margin: 0 !important;
+  z-index: 10 !important;
+}
+[data-testid="stMain"] .st-key-kpi_card_workouts [data-testid="stButton"],
+[data-testid="stMain"] .st-key-kpi_card_hours [data-testid="stButton"],
+[data-testid="stMain"] .st-key-kpi_card_km [data-testid="stButton"] {
+  width: 100% !important;
+  height: 100% !important;
+}
+[data-testid="stMain"] .st-key-kpi_card_workouts [data-testid="stButton"] button,
+[data-testid="stMain"] .st-key-kpi_card_hours [data-testid="stButton"] button,
+[data-testid="stMain"] .st-key-kpi_card_km [data-testid="stButton"] button {
+  width: 100% !important;
+  height: 100% !important;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  opacity: 0 !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+}
+/* Hover над всей карточкой — лёгкое затемнение через metric */
+[data-testid="stMain"] .st-key-kpi_card_workouts:hover [data-testid="stMetric"],
+[data-testid="stMain"] .st-key-kpi_card_hours:hover [data-testid="stMetric"],
+[data-testid="stMain"] .st-key-kpi_card_km:hover [data-testid="stMetric"] {
+  background: #FAFAF7 !important;
+  cursor: pointer;
+}
+
+/* === KPI drilldown panel (синяя рамка + бейдж) === */
+[data-testid="stMain"] .st-key-kpi_dd_panel {
+  border: 1.5px solid var(--color-info) !important;
+  border-radius: var(--r-lg) !important;
+  padding: 14px !important;
+  margin-top: 14px !important;
+  background: var(--color-bg-block) !important;
+  position: relative;
+}
+.kpi-dd-badge {
+  position: absolute;
+  top: -8px;
+  left: 14px;
+  background: var(--color-info-bg);
+  color: var(--color-info);
+  font-size: var(--fs-xs);
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  font-weight: 500;
+  z-index: 2;
+}
+
 /* Раскрытая карточка «Километров» — тоже белая, но с синей рамкой выделения */
 .kpi-expanded {
   background: var(--color-bg-block);
@@ -447,11 +529,12 @@ html, body, [data-testid="stApp"] {
   font-weight: 500 !important;
   padding: 12px 14px !important;
   color: var(--color-text-primary);
+  background: var(--color-bg-block) !important;
 }
 
 [data-testid="stMain"] [data-testid="stExpander"] summary:hover,
 [data-testid="stMain"] details summary:hover {
-  background: var(--color-bg-app);
+  background: #FAFAF7 !important;
 }
 
 /* Контент expander — отступы и фон */

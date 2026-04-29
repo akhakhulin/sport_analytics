@@ -60,6 +60,22 @@ def fmt_dur(hours):
         return f"{mins} мин" if mins > 0 else ""
     return f"{h:.1f} ч"
 
+
+def fmt_hm(hours):
+    """Часы:минуты в виде «N ч NN мин» / «N ч» / «NN мин»."""
+    try:
+        h = float(hours)
+    except (TypeError, ValueError):
+        return "0"
+    if h <= 0:
+        return "0"
+    total_min = int(round(h * 60))
+    if total_min < 60:
+        return f"{total_min} мин"
+    hh = total_min // 60
+    mm = total_min % 60
+    return f"{hh} ч {mm:02d} мин" if mm else f"{hh} ч"
+
 ACTIVITY_TYPE_RU = {
     "running": "Бег",
     "indoor_running": "Беговая дорожка",
@@ -316,6 +332,38 @@ def load_activities(athlete_id: str) -> pd.DataFrame:
             lambda raw, k=f"hrTimeInZone_{i}": (json.loads(raw).get(k) or 0)
         )
     df["hr_zone_total_sec"] = df[[f"z{i}_sec" for i in range(1, 6)]].sum(axis=1)
+
+    # Дозаполнение зон по avg_hr — для активностей где HR писался, но Garmin не разложил
+    # время по зонам полностью (типично для силовых: avg_hr есть, hrTimeInZone_* нулевые/частичные).
+    # Берём DEFAULT-зоны атлета и относим недостающее время в зону по avg_hr.
+    _z = _read_sql(
+        "SELECT zone1_floor, zone2_floor, zone3_floor, zone4_floor, zone5_floor "
+        "FROM hr_zones WHERE athlete_id = ? AND sport = 'DEFAULT' LIMIT 1",
+        (athlete_id,),
+    )
+    if not _z.empty:
+        z1_f, z2_f, z3_f, z4_f, z5_f = (
+            int(_z.iloc[0]["zone1_floor"]), int(_z.iloc[0]["zone2_floor"]),
+            int(_z.iloc[0]["zone3_floor"]), int(_z.iloc[0]["zone4_floor"]),
+            int(_z.iloc[0]["zone5_floor"]),
+        )
+
+        def _zone_for_hr(hr: float) -> int:
+            if hr >= z5_f: return 5
+            if hr >= z4_f: return 4
+            if hr >= z3_f: return 3
+            if hr >= z2_f: return 2
+            return 1  # включая <z1_f — относим в Z1, всё равно низкая нагрузка
+
+        gap = (df["duration_sec"].fillna(0) - df["hr_zone_total_sec"]).clip(lower=0)
+        has_hr = df["avg_hr"].notna() & (df["avg_hr"] > 0)
+        mask_fill = has_hr & (gap > 1)
+        if mask_fill.any():
+            zones_idx = df.loc[mask_fill, "avg_hr"].apply(_zone_for_hr)
+            for i in range(1, 6):
+                sub = mask_fill & (zones_idx.reindex(df.index, fill_value=0) == i)
+                df.loc[sub, f"z{i}_sec"] = df.loc[sub, f"z{i}_sec"] + gap.loc[sub]
+            df["hr_zone_total_sec"] = df[[f"z{i}_sec" for i in range(1, 6)]].sum(axis=1)
     return df
 
 
@@ -402,12 +450,18 @@ if IS_ADMIN and all_athletes:
         "👤 Атлет",
         all_athletes,
         index=default_idx,
-        help=("Виден список атлетов, к которым у вас есть доступ."
-              if USER.visible_athletes
-              else "Тренер видит всех атлетов в общей БД."),
+        help="Выберите атлета",
     )
 else:
     selected_athlete = MY_ATHLETE
+    # Атлет видит только себя — селекторы не показываем, но сам label оставляем
+    st.sidebar.markdown(
+        f'<div style="font-size:var(--fs-xs); text-transform:uppercase; '
+        f'letter-spacing:0.5px; color:var(--color-text-secondary); '
+        f'font-weight:500; margin:8px 0 4px 0;">👤 Атлет</div>'
+        f'<div style="font-size:12px; padding:4px 0;">{selected_athlete}</div>',
+        unsafe_allow_html=True,
+    )
 
 df = load_activities(selected_athlete)
 daily = load_daily(selected_athlete)
@@ -458,28 +512,35 @@ PILL_GROUPS = {
     "🏊 Плав.": ["Бассейн", "Открытая вода", "Плавание"],
     "💪 Сила": ["Силовая"],
 }
-types_all_list = sorted(df["activity_type_ru"].dropna().unique().tolist())
+# Учитываем только активности, попавшие в выбранный период
+_types_period_mask = (df["day"] >= start) & (df["day"] <= end)
+types_all_list = sorted(df.loc[_types_period_mask, "activity_type_ru"].dropna().unique().tolist())
 in_pills = {t for vs in PILL_GROUPS.values() for t in vs}
 extra_types = [t for t in types_all_list if t not in in_pills]
 
-selected_pills = st.sidebar.pills(
-    "Активность",
-    list(PILL_GROUPS.keys()),
-    selection_mode="multi",
-    default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
-    key="sa_activity_pills",
-)
-selected_pills = selected_pills or []
+with st.sidebar.container(border=True, key="sa_activity_tile"):
+    selected_pills = st.pills(
+        "Активность",
+        list(PILL_GROUPS.keys()),
+        selection_mode="multi",
+        default=list(PILL_GROUPS.keys()),  # все 4 включены по умолчанию
+        key="sa_activity_pills",
+    )
+    selected_pills = selected_pills or []
 
-selected_extra: list[str] = []
-if extra_types:
-    with st.sidebar.expander(f"+ ещё ({len(extra_types)})", expanded=False):
-        selected_extra = st.multiselect(
+    # Дополнительные типы за период — отдельные pills, всегда видимы и все включены
+    selected_extra: list[str] = []
+    if extra_types:
+        _extra_key = f"sa_extra_pills_{abs(hash(tuple(extra_types)))}"
+        selected_extra = st.pills(
             "Доп. типы",
             extra_types,
-            default=[],
+            selection_mode="multi",
+            default=extra_types,  # все включены по умолчанию
+            key=_extra_key,
             label_visibility="collapsed",
         )
+        selected_extra = selected_extra or []
 
 # Собираем итоговый набор Russian-имён для фильтра df
 types_sel = []
@@ -491,19 +552,56 @@ for t in selected_extra:
     if t not in types_sel:
         types_sel.append(t)
 
-# 2c. Группировка — segmented control с тремя опциями всегда (как в прототипе)
-prev_grp = st.session_state.get("_grp_choice", "Неделя")
-default_grp = prev_grp if prev_grp in ("Неделя", "Месяц", "Год") else "Неделя"
+# 2c. Группировка — segmented control с доступностью по периоду (ТЗ §4.1.5):
+#   все 3 кнопки видны всегда; недоступные приглушаются через CSS
+#   ≤30d → только Неделя; 31–179d → +Месяц; ≥180d → все три
+GRP_ALL = ["Неделя", "Месяц", "Год"]
+period_days_total = (end - start).days + 1
+if period_days_total <= 30:
+    grp_available = {"Неделя"}
+    grp_disabled_idx = [2, 3]  # nth-child: Месяц, Год
+    grp_hint = "Месяц от 31 дня · Год от 180 дней"
+elif period_days_total < 180:
+    grp_available = {"Неделя", "Месяц"}
+    grp_disabled_idx = [3]
+    grp_hint = "Год доступен от 180 дней"
+else:
+    grp_available = set(GRP_ALL)
+    grp_disabled_idx = []
+    grp_hint = ""
 
-agg_label = st.sidebar.segmented_control(
-    "Группировка",
-    ["Неделя", "Месяц", "Год"],
-    default=default_grp,
-    selection_mode="single",
-    key="sa_grouping",
-)
-agg_label = agg_label or default_grp
-st.session_state["_grp_choice"] = agg_label
+# CSS-инжекция: приглушаем недоступные кнопки сегментед-контрола в сайдбаре.
+# В Streamlit 1.56 segmented_control рендерится как [data-testid="stButtonGroup"] с <button>'ами
+# внутри. Ловим по индексу через nth-of-type внутри st-key-<key> wrapper'а.
+if grp_disabled_idx:
+    _disabled_selectors = ", ".join(
+        f'[data-testid="stSidebar"] .st-key-sa_grouping button:nth-of-type({i})'
+        for i in grp_disabled_idx
+    )
+    st.sidebar.markdown(
+        f"<style>{_disabled_selectors} {{ opacity: 0.35 !important; pointer-events: none !important; cursor: not-allowed !important; }}</style>",
+        unsafe_allow_html=True,
+    )
+
+prev_grp = st.session_state.get("_grp_choice", "Неделя")
+default_grp = prev_grp if prev_grp in grp_available else "Неделя"
+
+with st.sidebar.container(border=True, key="sa_grouping_tile"):
+    agg_label = st.segmented_control(
+        "Группировка",
+        GRP_ALL,
+        default=default_grp,
+        selection_mode="single",
+        key="sa_grouping",
+        help=grp_hint or None,
+    )
+    agg_label = agg_label or default_grp
+    # На случай если пользователь как-то прокликал недоступную — фолбэк
+    if agg_label not in grp_available:
+        agg_label = "Неделя"
+    st.session_state["_grp_choice"] = agg_label
+    if grp_hint:
+        st.caption(f"⚠️ {grp_hint}")
 
 AGG_COL = {"Неделя": "week", "Месяц": "month", "Год": "year"}[agg_label]
 AGG_LOC = {"Неделя": "неделям", "Месяц": "месяцам", "Год": "годам"}[agg_label]
@@ -573,7 +671,6 @@ with _status_col:
     )
 with _refresh_col:
     if st.button("⟳", key="sa_refresh", use_container_width=True):
-        msg_kind = "info"
         if IS_ADMIN:
             ok, msg = _trigger_cloud_sync()
             if ok:
@@ -582,19 +679,19 @@ with _refresh_col:
                     "☁️ Cloud sync запущен. Данные подтянутся через "
                     "30-60 сек — нажми ⟳ ещё раз через минуту.",
                 )
-            else:
+            elif msg.startswith("не настроен"):
+                # Github PAT не настроен — тихий fallback на сброс кэша
                 st.session_state["_refresh_msg"] = (
-                    "warning",
-                    f"⚠️ Cloud sync НЕ запущен: {msg}.\n\n"
-                    "Без [github] PAT в Streamlit Secrets кнопка только "
-                    "сбрасывает кэш, не качает свежие данные из Garmin. "
-                    "Настройте по инструкции, чтобы кнопка реально "
-                    "обновляла данные."
+                    "info", "Кэш сброшен. Свежие данные подтянутся "
+                            "по расписанию (cron 02:00 UTC).",
                 )
+            else:
+                # PAT есть, но запрос не прошёл — это уже стоит показать
+                st.session_state["_refresh_msg"] = ("warning", f"⚠️ Cloud sync: {msg}")
         else:
             st.session_state["_refresh_msg"] = (
                 "info", "Кэш сброшен. Свежие данные подтянутся сами "
-                        "по расписанию (cron 02:00 UTC)."
+                        "по расписанию (cron 02:00 UTC).",
             )
         st.cache_data.clear()
         st.rerun()
@@ -680,7 +777,12 @@ if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
 
 # region Header + KPI
 
-st.title("🏃 Sportsmen Analytics")
+_title_col, _action_col = st.columns([5, 1])
+with _title_col:
+    st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
+with _action_col:
+    if st.button("📄 PDF-экспорт", key="pdf_export", use_container_width=True):
+        st.toast("PDF-экспорт ещё в разработке", icon="📄")
 st.caption(
     f"👤 **{selected_athlete}**  ·  "
     f"📅 **{start}** → **{end}**  ·  📊 **{len(view)}** активностей  ·  "
@@ -791,8 +893,6 @@ with st.expander("📋 Профиль и HR-зоны", expanded=False):
                 st.markdown("**Зоны**")
                 st.caption("—")
 
-st.divider()
-
 # ----- KPI-блок -----
 # Считаем previous-period для дельт
 period_len = max(1, (end - start).days)
@@ -807,7 +907,24 @@ view_prev = df[prev_mask]
 kpi_w_now,  kpi_w_prev  = len(view), len(view_prev)
 kpi_h_now,  kpi_h_prev  = view["duration_h"].sum(), (view_prev["duration_h"].sum() if len(view_prev) else 0.0)
 kpi_km_now, kpi_km_prev = view["distance_km"].sum(), (view_prev["distance_km"].sum() if len(view_prev) else 0.0)
+kpi_e_now,  kpi_e_prev  = (
+    float(view["elevation_gain_m"].fillna(0).sum()),
+    float(view_prev["elevation_gain_m"].fillna(0).sum()) if len(view_prev) else 0.0,
+)
 kpi_c_now,  kpi_c_prev  = view["calories"].sum(),    (view_prev["calories"].sum()    if len(view_prev) else 0.0)
+
+
+def _avg_hr_weighted(_v: pd.DataFrame) -> float:
+    """Средний пульс по периоду: avg_hr, взвешенный по длительности (только записи где HR писался)."""
+    if _v is None or len(_v) == 0:
+        return 0.0
+    src = _v[(_v["avg_hr"].fillna(0) > 0) & (_v["duration_sec"].fillna(0) > 0)]
+    if src.empty:
+        return 0.0
+    return float((src["avg_hr"] * src["duration_sec"]).sum() / src["duration_sec"].sum())
+
+
+kpi_hr_now,  kpi_hr_prev  = _avg_hr_weighted(view), _avg_hr_weighted(view_prev)
 
 
 def _delta_str(now: float, prev: float, mode: str = "pct", suffix: str = "") -> str | None:
@@ -821,169 +938,346 @@ def _delta_str(now: float, prev: float, mode: str = "pct", suffix: str = "") -> 
     return f"{d:+.0f}% vs пред."
 
 
-# Состояние раскрытия (km раскрыт?)
-kpi_expanded = st.session_state.get("_kpi_expanded") == "km"
+# Состояние drilldown'а: None | "workouts" | "hours" | "km"
+kpi_drilldown = st.session_state.get("_kpi_drilldown")
 
-if kpi_expanded:
-    cols = st.columns([1, 1, 2.4, 1])
-else:
-    cols = st.columns(4)
+SPORT_COLORS = {"Бег": "#97C459", "Велосипед": "#378ADD", "Плавание": "#1D9E75"}
 
-# 1. Тренировок
-with cols[0]:
-    st.metric("Тренировок", f"{kpi_w_now}", _delta_str(kpi_w_now, kpi_w_prev, "abs"))
+# Запасная палитра для типов вне трёх основных групп (лыжи, лыжероллеры, и т.п.)
+_TYPE_FALLBACK_PALETTE = [
+    "#5F4FB0",  # фиолетовый
+    "#D85A30",  # оранжевый
+    "#0F6E56",  # тёмно-зелёный
+    "#854F0B",  # коричневый
+    "#A32D2D",  # красный
+    "#185FA5",  # тёмно-синий
+    "#888780",  # серый
+]
 
-# 2. Часов
-with cols[1]:
-    st.metric("Часов", f"{kpi_h_now:.1f}", _delta_str(kpi_h_now, kpi_h_prev, "pct"))
+# SVG-иконки видов спорта (из docs/sport_icons_pack.html)
+_SPORT_ICONS_SVG = {
+    "run": '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="14.5" cy="4.5" r="1.8" fill="currentColor"/><path d="M5 21l3-5 4-2 1-5 4 4 4 0"/><path d="M9 13l3-3 4 2"/><path d="M5.5 9l3-1.5 2 1.5"/></g>',
+    "bike": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="3.5"/><circle cx="18.5" cy="17.5" r="3.5"/><circle cx="14" cy="4.5" r="1.5" fill="currentColor"/><path d="M5.5 17.5l4-7.5h6l3 7.5"/><path d="M9.5 10l-1.5-3h-2"/><path d="M15.5 10l-1.5-2.5"/><path d="M12.5 14l-3 3.5"/></g>',
+    "swim": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="17" cy="6" r="1.6" fill="currentColor"/><path d="M3 11l5-3 5 4 5-2"/><path d="M2 16q2 -1.5 4 0t4 0t4 0t4 0t4 0"/><path d="M2 20q2 -1.5 4 0t4 0t4 0t4 0t4 0"/></g>',
+    "ski_skate": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="3.5" r="1.6" fill="currentColor"/><path d="M11 7l2 2 -1 4 3 2"/><path d="M3 21l7-9"/><path d="M11 21l9-7"/><path d="M9 6l-3 1"/><path d="M16 11l3 -1"/></g>',
+    "ski_classic": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="3.5" r="1.6" fill="currentColor"/><path d="M11.5 6.5l1.5 3 -1 4 3 2"/><path d="M2 21l8 -3"/><path d="M14 21l8 -3"/><path d="M5 8l-1 12"/><path d="M19 8l1 12"/></g>',
+    "ski": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="3.5" r="1.6" fill="currentColor"/><path d="M12 6l1 3l-1 4l3 2"/><line x1="3" y1="20" x2="20" y2="14"/><line x1="6" y1="22" x2="22" y2="16"/></g>',
+    "strength": '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="9" width="3" height="6" rx="0.5"/><rect x="19" y="9" width="3" height="6" rx="0.5"/><rect x="5" y="10.5" width="2" height="3" rx="0.3"/><rect x="17" y="10.5" width="2" height="3" rx="0.3"/><line x1="7" y1="12" x2="17" y2="12"/></g>',
+    "treadmill": '<g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="4.5" r="1.5" fill="currentColor"/><path d="M7 13l2 -3l3 -1l-1 -3l2 2l3 0"/><path d="M3 18l3 -2l13 0l3 2"/><line x1="3" y1="20" x2="21" y2="20"/><line x1="14" y1="9" x2="18" y2="6"/></g>',
+    "bike_stationary": '<g fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4" r="1.5" fill="currentColor"/><circle cx="9" cy="16" r="3.5"/><path d="M11 9l3 -2l1 4l-2 3"/><line x1="14" y1="2" x2="14" y2="20"/><line x1="11" y1="20" x2="17" y2="20"/><line x1="14" y1="11" x2="20" y2="11"/></g>',
+    "rowing": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="5" r="1.6" fill="currentColor"/><path d="M3 13l4 -3 5 1 6 -4"/><path d="M7 10l1 4"/><path d="M11 11l-2 5"/><path d="M2 19q2 -1.5 4 0t4 0t4 0t4 0t4 0"/></g>',
+    "yoga": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="4.5" r="1.6" fill="currentColor"/><path d="M12 7l0 6"/><path d="M12 9l-5 2l5 0"/><path d="M12 9l5 2l-5 0"/><path d="M7 18l5 -5l5 5"/><path d="M5 19l14 0"/></g>',
+    "hike": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="14" cy="4.5" r="1.6" fill="currentColor"/><path d="M5 21l3 -5l4 -1l-1 -5l4 4l3 0"/><path d="M9 14l4 -3"/><path d="M3 21l4 -10l4 -1l5 -5l5 16"/></g>',
+    "walk": '<g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4.5" r="1.7" fill="currentColor"/><path d="M7 21l3 -5l3 -2l-1 -4l3 3l3 1"/><path d="M10 14l2 -3"/><path d="M9 9l3 -1l3 2"/></g>',
+    "other": '<g fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></g>',
+}
 
-# 3. Километров — раскрывается
-with cols[2]:
-    if kpi_expanded:
-        # Раскрытая карточка
-        weeks_grouped = view.groupby("week")["distance_km"].sum() if len(view) else pd.Series(dtype=float)
-        weeks_km = weeks_grouped.values if len(weeks_grouped) else []
-        cv_pct = (
-            (weeks_km.std() / weeks_km.mean() * 100) if len(weeks_km) > 1 and weeks_km.mean() > 0 else 0
-        )
-        avg_per_week = weeks_km.mean() if len(weeks_km) else 0
-        run_view = view[view["activity_type_ru"].str.startswith("Бег", na=False)]
-        avg_pace_str = "—"
-        if len(run_view) > 0 and run_view["distance_km"].sum() > 0:
-            mins = (run_view["duration_min"].sum() / run_view["distance_km"].sum())
-            avg_pace_str = f"{int(mins)}:{int((mins - int(mins)) * 60):02d}/км"
+# Маппинг activity_type_ru → ключ иконки
+_ACTIVITY_ICON_MAP = {
+    "Бег": "run",
+    "Беговая дорожка": "treadmill",
+    "Трейл": "run",
+    "Стадион": "run",
+    "Виртуальный бег": "treadmill",
+    "Велосипед": "bike",
+    "Велотренажёр": "bike_stationary",
+    "Шоссейный велосипед": "bike",
+    "Маунтинбайк": "bike",
+    "Гравел": "bike",
+    "Виртуальная вело": "bike_stationary",
+    "Бассейн": "swim",
+    "Открытая вода": "swim",
+    "Плавание": "swim",
+    "Силовая": "strength",
+    "Лыжи · конёк": "ski_skate",
+    "Лыжи · классика": "ski_classic",
+    "Лыжероллеры · конёк": "ski_skate",
+    "Лыжероллеры · классика": "ski_classic",
+    "Йога": "yoga",
+    "Пилатес": "yoga",
+    "Кардио": "other",
+}
 
-        delta_pct = _delta_str(kpi_km_now, kpi_km_prev, "pct") or "—"
-        delta_cls = "kpi-delta-up" if "+" in delta_pct else ("kpi-delta-down" if "-" in delta_pct else "kpi-delta-none")
-        delta_arrow = "↑" if "+" in delta_pct else ("↓" if "-" in delta_pct else "")
 
+def _sport_icon_html(activity_type_ru: str, size: int = 18, color: str | None = None) -> str:
+    """Inline SVG-иконка вида спорта. Цвет по умолчанию — _type_color()."""
+    name = _ACTIVITY_ICON_MAP.get(activity_type_ru, "other")
+    body = _SPORT_ICONS_SVG.get(name, _SPORT_ICONS_SVG["other"])
+    c = color or _type_color(activity_type_ru)
+    return (
+        f'<svg width="{size}" height="{size}" viewBox="0 0 24 24" '
+        f'style="color:{c}; flex-shrink:0; vertical-align:middle;">{body}</svg>'
+    )
+
+
+def _sport_group(t: str) -> str:
+    if t in ("Бег", "Беговая дорожка", "Трейл", "Стадион", "Виртуальный бег"):
+        return "Бег"
+    if t in ("Велосипед", "Велотренажёр", "Шоссейный велосипед",
+             "Маунтинбайк", "Гравел", "Виртуальная вело"):
+        return "Велосипед"
+    if t in ("Бассейн", "Открытая вода", "Плавание"):
+        return "Плавание"
+    return "Прочее"
+
+
+def _type_color(t: str) -> str:
+    """Цвет конкретной активности: явные цвета для частых типов,
+    SPORT_COLORS для Бег/Велик/Плав, иначе стабильный из fallback-палитры по hash."""
+    if isinstance(t, str):
+        # Лыжи: конёк — тёмно-синий, классика — светло-синий (палитра sport_icons_pack)
+        if "конёк" in t.lower() or "конек" in t.lower():
+            if t.startswith("Лыжероллеры"):
+                return "#5F4FB0"  # фиолетовый
+            return "#4A6FA5"  # тёмно-синий — конёк
+        if "классика" in t.lower():
+            if t.startswith("Лыжероллеры"):
+                return "#8B6FB5"  # светло-фиолетовый — лыжероллеры классика
+            return "#6B8AB5"  # светло-синий — классика
+        if t.startswith("Лыжи"):
+            return "#4A6FA5"  # дефолт для лыж — тёмно-синий
+        if t.startswith("Лыжероллеры"):
+            return "#5F4FB0"  # дефолт для лыжероллеров — фиолетовый
+    grp = _sport_group(t)
+    if grp in SPORT_COLORS:
+        return SPORT_COLORS[grp]
+    return _TYPE_FALLBACK_PALETTE[abs(hash(t)) % len(_TYPE_FALLBACK_PALETTE)]
+
+
+def _render_activities_table(_view: pd.DataFrame) -> None:
+    """Таблица активностей — для drilldown «Тренировок»."""
+    show = _view[
+        ["start_time_local", "activity_type_ru", "activity_name", "distance_km",
+         "duration_h", "avg_hr", "max_hr", "training_effect_aer",
+         "training_effect_ana", "calories"]
+    ].copy()
+    show["duration_h"] = show["duration_h"].round(2)
+    show["distance_km"] = show["distance_km"].round(2)
+    show = show.sort_values("start_time_local", ascending=False)
+    show = show.rename(columns={
+        "start_time_local": "Старт", "activity_type_ru": "Тип",
+        "activity_name": "Название", "distance_km": "км", "duration_h": "ч",
+        "avg_hr": "ср.HR", "max_hr": "макс.HR",
+        "training_effect_aer": "TE аэр.", "training_effect_ana": "TE анаэр.",
+        "calories": "кал",
+    })
+    st.dataframe(show, use_container_width=True, height=400)
+
+
+def _render_hours_drilldown(_view: pd.DataFrame) -> None:
+    """Drilldown «Часов» — разбивка по конкретным типам активности
+    (по аналогии с Расстоянием: каждый тип отдельной строкой со своим цветом)."""
+    if len(_view) == 0:
+        st.info("Нет данных для выбранного периода.")
+        return
+
+    agg = (
+        _view.groupby("activity_type_ru")["duration_h"].sum()
+        .reset_index()
+        .sort_values("duration_h", ascending=False)
+    )
+    total_h = float(agg["duration_h"].sum())
+    if total_h <= 0:
+        st.info("Нет часов для выбранного среза.")
+        return
+
+    st.markdown(
+        f'<div style="font-size:13px; margin-bottom:10px;">'
+        f'  Всего <b>{total_h:.1f} ч</b> по видам активности:'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    for _, r in agg.iterrows():
+        t = r["activity_type_ru"]
+        pct = r["duration_h"] / total_h * 100 if total_h > 0 else 0
+        color = _type_color(t)
+        icon = _sport_icon_html(t, size=18)
         st.markdown(
-            f'<div class="kpi-expanded">'
-            f'  <div class="kpi-exp-badge">★ детали раскрыты</div>'
-            f'  <div class="kpi-exp-head">'
-            f'    <span class="kpi-exp-title">Километров — детализация</span>'
-            f'  </div>'
-            f'  <div class="kpi-exp-value">{kpi_km_now:.0f}</div>'
-            f'  <div class="kpi-exp-meta">'
-            f'    <span class="{delta_cls}">{delta_arrow} {delta_pct}</span>'
-            f'    · средний темп <b>{avg_pace_str}</b>'
-            f'    · <b>{avg_per_week:.0f}</b> км/нед'
-            f'    · CV <b>{cv_pct:.0f}%</b>'
-            f'  </div>'
+            f'<div style="display:flex; align-items:center; gap:10px; padding:5px 0; font-size:13px;">'
+            f'  <span style="min-width:170px; display:flex; align-items:center; gap:8px;">'
+            f'    {icon}<span>{t}</span>'
+            f'  </span>'
+            f'  <span style="flex:1; height:8px; background:#F1EFE8; border-radius:4px; overflow:hidden;">'
+            f'    <span style="display:block; height:100%; width:{pct:.1f}%; background:{color}; border-radius:4px;"></span>'
+            f'  </span>'
+            f'  <b style="min-width:75px; text-align:right;">{r["duration_h"]:.1f} ч</b>'
+            f'  <span style="min-width:45px; color:#5F5E5A; text-align:right;">{pct:.1f}%</span>'
             f'</div>',
             unsafe_allow_html=True,
         )
 
-        # Tabs внутри раскрытой карточки
-        km_tab = st.segmented_control(
-            "kpi_km_view",
-            ["📊 По типам", "📅 По неделям", "🗓 По месяцам"],
-            default="📅 По неделям",
-            selection_mode="single",
-            key="kpi_km_tab",
-            label_visibility="collapsed",
+
+def _render_km_drilldown(_view: pd.DataFrame) -> None:
+    """Drilldown «Расстояние» — разбивка по конкретным типам активности
+    (без бакета «Прочее»; каждый тип отдельной строкой со своим цветом)."""
+    df_km = _view[_view["distance_km"] > 0].copy()
+    if df_km.empty:
+        st.info("Нет активностей с измеренным расстоянием в выбранном срезе.")
+        return
+
+    agg = (
+        df_km.groupby("activity_type_ru")["distance_km"].sum()
+        .reset_index()
+        .sort_values("distance_km", ascending=False)
+    )
+    total_km = float(agg["distance_km"].sum())
+
+    st.markdown(
+        f'<div style="font-size:13px; margin-bottom:10px;">'
+        f'  Всего <b>{total_km:.1f} км</b> по видам активности:'
+        f'</div>',
+        unsafe_allow_html=True,
+    )
+
+    for _, r in agg.iterrows():
+        t = r["activity_type_ru"]
+        pct = r["distance_km"] / total_km * 100 if total_km > 0 else 0
+        color = _type_color(t)
+        icon = _sport_icon_html(t, size=18)
+        st.markdown(
+            f'<div style="display:flex; align-items:center; gap:10px; padding:5px 0; font-size:13px;">'
+            f'  <span style="min-width:170px; display:flex; align-items:center; gap:8px;">'
+            f'    {icon}<span>{t}</span>'
+            f'  </span>'
+            f'  <span style="flex:1; height:8px; background:#F1EFE8; border-radius:4px; overflow:hidden;">'
+            f'    <span style="display:block; height:100%; width:{pct:.1f}%; background:{color}; border-radius:4px;"></span>'
+            f'  </span>'
+            f'  <b style="min-width:75px; text-align:right;">{r["distance_km"]:.1f} км</b>'
+            f'  <span style="min-width:45px; color:#5F5E5A; text-align:right;">{pct:.1f}%</span>'
+            f'</div>',
+            unsafe_allow_html=True,
         )
-        km_tab = km_tab or "📅 По неделям"
 
-        SPORT_COLORS = {
-            "Бег": "#97C459", "Велосипед": "#378ADD", "Плавание": "#1D9E75",
+
+def _kpi_toggle(key: str) -> None:
+    cur = st.session_state.get("_kpi_drilldown")
+    st.session_state["_kpi_drilldown"] = None if cur == key else key
+
+
+# Инжектим CSS активной карточки (синяя рамка + треугольник вниз)
+if kpi_drilldown:
+    st.markdown(
+        f"""
+<style>
+[data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown} {{
+  position: relative !important;
+}}
+[data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown} [data-testid="stMetric"] {{
+  border: 2px solid var(--color-info) !important;
+  border-radius: var(--r-lg) !important;
+  background: #F7FAFD !important;
+}}
+[data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown}::after {{
+  content: '';
+  position: absolute;
+  bottom: -14px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 12px solid transparent;
+  border-right: 12px solid transparent;
+  border-top: 14px solid var(--color-info);
+  z-index: 11;
+}}
+[data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown}::before {{
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0; height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-top: 11px solid var(--color-bg-block);
+  z-index: 12;
+}}
+</style>
+""",
+        unsafe_allow_html=True,
+    )
+
+# Оборачиваем 6 KPI в expander «Всего»
+with st.expander("Всего", expanded=True):
+    cols = st.columns(6)
+
+    # 1. Тренировок — overlay-button делает всю карточку кликабельной
+    with cols[0]:
+        with st.container(key="kpi_card_workouts"):
+            st.metric("Тренировок", f"{kpi_w_now}", _delta_str(kpi_w_now, kpi_w_prev, "abs"))
+            if st.button(" ", key="kpi_workouts_btn", use_container_width=True):
+                _kpi_toggle("workouts")
+                st.rerun()
+
+    # 2. Время (формат «N ч NN мин»)
+    with cols[1]:
+        with st.container(key="kpi_card_hours"):
+            st.metric("Время", fmt_hm(kpi_h_now), _delta_str(kpi_h_now, kpi_h_prev, "pct"))
+            if st.button(" ", key="kpi_hours_btn", use_container_width=True):
+                _kpi_toggle("hours")
+                st.rerun()
+
+    # 3. Средний пульс (взвешенный по duration) — без drilldown
+    with cols[2]:
+        with st.container(key="kpi_card_avghr"):
+            _hr_value = f"{int(round(kpi_hr_now))} уд/мин" if kpi_hr_now > 0 else "—"
+            st.metric(
+                "Средний пульс",
+                _hr_value,
+                _delta_str(kpi_hr_now, kpi_hr_prev, "abs", suffix=" уд"),
+            )
+
+    # 4. Расстояние
+    with cols[3]:
+        with st.container(key="kpi_card_km"):
+            st.metric("Расстояние", f"{kpi_km_now:.1f} км", _delta_str(kpi_km_now, kpi_km_prev, "pct"))
+            if st.button(" ", key="kpi_km_btn", use_container_width=True):
+                _kpi_toggle("km")
+                st.rerun()
+
+    # 5. Набор (elevation_gain) — без drilldown
+    with cols[4]:
+        with st.container(key="kpi_card_elevation"):
+            st.metric(
+                "Набор",
+                f"{int(round(kpi_e_now)):,} м".replace(",", " "),
+                _delta_str(kpi_e_now, kpi_e_prev, "pct"),
+            )
+
+    # 6. Калорий — без drilldown
+    with cols[5]:
+        with st.container(key="kpi_card_calories"):
+            st.metric(
+                "Калорий",
+                f"{int(kpi_c_now):,} ккал".replace(",", " "),
+                _delta_str(kpi_c_now, kpi_c_prev, "pct"),
+            )
+
+    # === Drilldown panel — внутри expander «Всего», на всю ширину ===
+    if kpi_drilldown:
+        _DD_TITLES = {
+            "workouts": "Тренировок",
+            "hours": "Часов",
+            "km": "Расстояние",
         }
-
-        def _sport_group(t):
-            if t in ("Бег", "Беговая дорожка", "Трейл", "Стадион", "Виртуальный бег"):
-                return "Бег"
-            if t in ("Велосипед", "Велотренажёр", "Шоссейный велосипед",
-                     "Маунтинбайк", "Гравел", "Виртуальная вело"):
-                return "Велосипед"
-            if t in ("Бассейн", "Открытая вода", "Плавание"):
-                return "Плавание"
-            return "Прочее"
-
-        view_g = view.copy()
-        view_g["sport_g"] = view_g["activity_type_ru"].apply(_sport_group)
-
-        if km_tab == "📊 По типам":
-            agg_t = view_g.groupby("sport_g")["distance_km"].sum().reset_index()
-            agg_t = agg_t[agg_t["sport_g"].isin(SPORT_COLORS)]
-            total = agg_t["distance_km"].sum() or 1
-            for _, r in agg_t.iterrows():
-                pct = r["distance_km"] / total * 100
-                color = SPORT_COLORS.get(r["sport_g"], "#888")
-                st.markdown(
-                    f'<div style="display:flex; align-items:center; gap:10px; padding:4px 0; font-size:12px;">'
-                    f'  <span style="min-width:80px;">{r["sport_g"]}</span>'
-                    f'  <span style="flex:1; height:5px; background:#F1EFE8; border-radius:3px; overflow:hidden;">'
-                    f'    <span style="display:block; height:100%; width:{pct:.0f}%; background:{color}; border-radius:3px;"></span>'
-                    f'  </span>'
-                    f'  <b style="min-width:55px; text-align:right;">{r["distance_km"]:.0f} км</b>'
-                    f'  <span style="min-width:35px; color:#5F5E5A; text-align:right;">{pct:.0f}%</span>'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-        elif km_tab == "📅 По неделям":
-            wk = view_g.groupby(["week", "sport_g"])["distance_km"].sum().reset_index()
-            if len(wk) > 0:
-                fig = px.bar(
-                    wk, x="week", y="distance_km", color="sport_g",
-                    color_discrete_map=SPORT_COLORS,
-                    labels={"week": "Неделя", "distance_km": "км", "sport_g": "Спорт"},
-                )
-                fig.update_layout(
-                    height=180, margin=dict(t=10, b=10, l=10, r=10),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.4),
-                    barmode="stack",
-                    xaxis=dict(title="", showgrid=False),
-                    yaxis=dict(title="", showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
-                )
-                st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-                stats = (
-                    f"min <b>{int(weeks_km.min())}</b>"
-                    f" · max <b>{int(weeks_km.max())}</b>"
-                    f" · CV <b>{cv_pct:.0f}%</b>"
-                ) if len(weeks_km) else ""
-                st.markdown(
-                    f'<div style="font-size:11px; color:#5F5E5A; text-align:right;">{stats}</div>',
-                    unsafe_allow_html=True,
-                )
-        else:  # По месяцам
-            mn = view_g.groupby(["month", "sport_g"])["distance_km"].sum().reset_index()
-            if len(mn) > 0:
-                fig = px.bar(
-                    mn, x="month", y="distance_km", color="sport_g",
-                    color_discrete_map=SPORT_COLORS,
-                    labels={"month": "Месяц", "distance_km": "км", "sport_g": "Спорт"},
-                )
-                fig.update_layout(
-                    height=180, margin=dict(t=10, b=10, l=10, r=10),
-                    legend=dict(orientation="h", yanchor="bottom", y=-0.4),
-                    barmode="stack",
-                    xaxis=dict(title="", showgrid=False),
-                    yaxis=dict(title="", showgrid=True, gridcolor="rgba(0,0,0,0.05)"),
-                )
-                st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-
-        if st.button("▾ свернуть", key="kpi_km_collapse"):
-            st.session_state["_kpi_expanded"] = None
-            st.rerun()
-    else:
-        st.metric("Километров", f"{kpi_km_now:.1f}", _delta_str(kpi_km_now, kpi_km_prev, "pct"))
-        if st.button("▸ детали", key="kpi_km_expand", use_container_width=True):
-            st.session_state["_kpi_expanded"] = "km"
-            st.rerun()
-
-# 4. Калорий
-with cols[3]:
-    st.metric("Калорий", f"{int(kpi_c_now):,}".replace(",", " "),
-              _delta_str(kpi_c_now, kpi_c_prev, "pct"))
-
-st.divider()
+        with st.container(key="kpi_dd_panel"):
+            st.markdown(
+                f'<div class="kpi-dd-badge">★ детализация · {_DD_TITLES[kpi_drilldown]}</div>',
+                unsafe_allow_html=True,
+            )
+            if kpi_drilldown == "workouts":
+                _render_activities_table(view)
+            elif kpi_drilldown == "hours":
+                _render_hours_drilldown(view)
+            elif kpi_drilldown == "km":
+                _render_km_drilldown(view)
 
 # endregion
 
 
 # region HR зоны
 
-with st.expander("⏱ Время в HR-зонах", expanded=True):
+with st.expander("⏱ Пульс: время в зонах", expanded=True):
     zone_total = pd.DataFrame(
         {
             "zone": [f"Z{i}" for i in range(1, 6)],
@@ -993,292 +1287,632 @@ with st.expander("⏱ Время в HR-зонах", expanded=True):
     zone_total["zone_label"] = zone_total["zone"].map(ZONE_NAMES)
     zone_total["color"] = zone_total["zone"].map(ZONE_COLORS)
 
-    left, right = st.columns([1, 1])
+    _total_hours = zone_total["hours"].sum()
 
-    with left:
-        if zone_total["hours"].sum() > 0:
-            fig = px.bar(
-                zone_total,
-                x="zone",
-                y="hours",
-                color="zone",
-                color_discrete_map=ZONE_COLORS,
-                text=zone_total["hours"].apply(fmt_dur),
-                custom_data=["zone_label"],
-            )
-            fig.update_traces(
-                textposition="outside",
-                cliponaxis=False,
-                hovertemplate="%{customdata[0]}: %{text}<extra></extra>",
-            )
-            fig.update_layout(
-                showlegend=False,
-                xaxis=dict(title="", tickangle=0, fixedrange=True),
-                yaxis=dict(title="часов", rangemode="tozero", fixedrange=True),
-                height=320,
-                title="Время в HR-зонах",
-                margin=dict(t=50, b=30, l=30, r=10),
-            )
-            show_chart(fig, "hr_zones_bar")
-        else:
-            st.info("Нет данных по HR-зонам в выбранном срезе.")
+    if _total_hours <= 0:
+        st.info("Нет данных по HR-зонам в выбранном срезе.")
+    else:
+        zone_total["pct"] = zone_total["hours"] / _total_hours * 100
 
-    with right:
-        total = zone_total["hours"].sum()
-        if total > 0:
-            zone_total["pct"] = zone_total["hours"] / total * 100
-            legend_labels = [
-                f"{name} — {pct:.1f}%"
-                for name, pct in zip(zone_total["zone_label"], zone_total["pct"])
-            ]
-            fig = go.Figure(
-                go.Pie(
-                    labels=legend_labels,
-                    values=zone_total["hours"],
-                    marker=dict(colors=[ZONE_COLORS[z] for z in zone_total["zone"]]),
-                    hole=0.45,
-                    sort=False,
-                    textinfo="none",
-                    customdata=[[fmt_dur(h)] for h in zone_total["hours"]],
-                    hovertemplate="%{label}<br>%{customdata[0]}<extra></extra>",
-                )
-            )
-            fig.update_layout(
-                height=360,
-                title="Распределение HR-зон",
-                showlegend=True,
-                legend=dict(
-                    orientation="v",
-                    yanchor="middle", y=0.5,
-                    xanchor="left", x=1.02,
-                    font=dict(size=13),
-                    itemclick=False, itemdoubleclick=False,
-                ),
-                margin=dict(t=50, b=20, l=10, r=10),
-            )
-            show_chart(fig, "hr_zones_pie")
+        # Поляризация (Seiler 3-zone): L=Z1+Z2, M=Z3, H=Z4+Z5 — по часам, не по округлённым процентам
+        _h = zone_total["hours"].tolist()
+        _low_pct = (_h[0] + _h[1]) / _total_hours * 100
+        _mid_pct = _h[2] / _total_hours * 100
+        _high_pct = (_h[3] + _h[4]) / _total_hours * 100
+        _poly_str = f"{round(_low_pct)}/{round(_mid_pct)}/{round(_high_pct)}"
 
-    # Динамика по периодам (неделя/месяц)
-    view_mode = st.radio(
-        "Вид",
-        ["Часы", "Проценты"],
-        index=1 if AGG_COL == "month" else 0,
-        horizontal=True,
-        key="hr_zones_view_mode",
-    )
+        with st.container(border=True):
+                # Donut с центральным текстом (общее время в зонах) — слева
+                # Таблица Z5→Z1: имя · время · % — справа
+                def _fmt_hm(h: float) -> str:
+                    if h is None or h <= 0:
+                        return "0"
+                    total_min = int(round(h * 60))
+                    if total_min < 60:
+                        return f"{total_min} мин"
+                    hh = total_min // 60
+                    mm = total_min % 60
+                    return f"{hh} ч {mm:02d} мин" if mm else f"{hh} ч"
 
-    period = view.groupby(AGG_COL)[[f"z{i}_sec" for i in range(1, 6)]].sum() / 3600
-    if not period.empty and period.values.sum() > 0:
-        zone_cols = [f"z{i}_sec" for i in range(1, 6)]
-        zone_names = [f"Z{i}" for i in range(1, 6)]
+                _total_label = _fmt_hm(_total_hours)
+                pie_left, table_right = st.columns([1, 1.1])
 
-        period_nonzero = period[period.sum(axis=1) > 0].sort_index()
-        n = len(period_nonzero)
-        if n > 0:
-            size_label = st.radio(
-                "Размер графиков",
-                ["Мелкие", "Средние", "Крупные", "Огромные"],
-                index=1,
-                horizontal=True,
-                key="donut_size",
-            )
-            size_map = {"Мелкие": 5, "Средние": 4, "Крупные": 3, "Огромные": 2}
-            cell_height_map = {"Мелкие": 260, "Средние": 360, "Крупные": 480, "Огромные": 640}
-            cols_per_row = size_map[size_label]
-            cell_height = cell_height_map[size_label]
-
-            units_label = "%" if view_mode == "Проценты" else "часы"
-            st.markdown(f"**HR-зоны по {AGG_LOC} ({units_label})**")
-
-            periods_list = list(period_nonzero.iterrows())
-
-            def _week_range(d):
-                end = d + pd.Timedelta(days=6)
-                if d.year != end.year:
-                    return f"{d.strftime('%d %b %Y')} – {end.strftime('%d %b %Y')}"
-                if d.month != end.month:
-                    return f"{d.strftime('%d %b')} – {end.strftime('%d %b %Y')}"
-                return f"{d.day}–{end.day} {d.strftime('%b %Y')}"
-
-            def _title_for(label):
-                if AGG_COL == "year":
-                    return label.strftime("%Y")
-                if AGG_COL == "month":
-                    return label.strftime("%b %Y")
-                if AGG_COL == "week":
-                    return _week_range(label)
-                return label.strftime("%d %b")
-
-            for start_idx in range(0, n, cols_per_row):
-                chunk = periods_list[start_idx : start_idx + cols_per_row]
-                cols = st.columns(cols_per_row)
-                for i, (label, row) in enumerate(chunk):
-                    vals = [row[col] for col in zone_cols]
-                    tot = sum(vals) or 1
-                    pcts = [v / tot * 100 for v in vals]
-                    title_str = _title_for(label)
-
-                    dur_text = [fmt_dur(v) for v in vals]
-                    if view_mode == "Проценты":
-                        y_vals = pcts
-                        text = [f"{p:.0f}%" if p > 0 else "" for p in pcts]
-                        hover = "%{x}: %{y:.0f}%<br>%{customdata}<extra></extra>"
-                    else:
-                        y_vals = vals
-                        text = dur_text
-                        hover = "%{x}: %{customdata}<extra></extra>"
-                    bar = go.Figure(
-                        go.Bar(
-                            x=zone_names,
-                            y=y_vals,
-                            marker=dict(color=[ZONE_COLORS[z] for z in zone_names]),
-                            text=text,
-                            textposition="outside",
-                            cliponaxis=False,
-                            customdata=dur_text,
-                            hovertemplate=hover,
+                with pie_left:
+                    fig = go.Figure(
+                        go.Pie(
+                            labels=zone_total["zone_label"],
+                            values=zone_total["hours"],
+                            marker=dict(colors=[ZONE_COLORS[z] for z in zone_total["zone"]]),
+                            hole=0.65,
+                            sort=False,
+                            textinfo="none",
+                            customdata=[[_fmt_hm(h)] for h in zone_total["hours"]],
+                            hovertemplate="%{label}<br>%{customdata[0]}<extra></extra>",
                         )
                     )
-                    bar.update_layout(
-                        height=cell_height,
-                        title=dict(text=title_str, x=0.5, xanchor="center",
-                                   font=dict(size=14)),
+                    fig.update_layout(
+                        height=220,
                         showlegend=False,
-                        margin=dict(t=40, b=30, l=10, r=10),
-                        xaxis=dict(title="", fixedrange=True),
-                        yaxis=dict(title="", fixedrange=True,
-                                   rangemode="tozero"),
-                        uniformtext_minsize=8,
-                        uniformtext_mode="hide",
-                    )
-                    with cols[i]:
-                        st.plotly_chart(bar, use_container_width=True,
-                                        config=PLOTLY_CONFIG)
-                        cell_key = f"zone_expand_{AGG_COL}_{label.isoformat()}"
-                        if st.button("🔍", key=cell_key):
-                            _zone_period_dialog(
-                                title_str, vals, zone_names,
-                                default_mode=view_mode,
+                        margin=dict(t=10, b=10, l=10, r=10),
+                        paper_bgcolor="rgba(0,0,0,0)",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        annotations=[
+                            dict(
+                                text=(
+                                    f"<b style='font-size:18px;color:#2C2C2A;'>{_total_label}</b>"
+                                    f"<br>"
+                                    f"<span style='font-size:11px;color:#5F5E5A;'>Общее время</span>"
+                                ),
+                                x=0.5, y=0.5,
+                                showarrow=False,
+                                xanchor="center", yanchor="middle",
                             )
-                # Пустые колонки в последнем ряду — без контента, сохраняют ширину
-                for j in range(len(chunk), cols_per_row):
-                    with cols[j]:
-                        st.empty()
-
-            # Лупа: увеличенный donut выбранного периода
-            def _period_label(d):
-                if AGG_COL == "year":
-                    return d.strftime("%Y")
-                if AGG_COL == "month":
-                    return d.strftime("%B %Y")
-                return f"Неделя {_week_range(d)}"
-
-            period_labels = {d: _period_label(d) for d in period_nonzero.index}
-            zoom_key = st.selectbox(
-                "🔍 Приблизить",
-                options=list(period_labels.keys()),
-                format_func=lambda d: period_labels[d],
-                index=len(period_labels) - 1,
-                key="hr_zoom_period",
-            )
-            if zoom_key is not None:
-                zrow = period_nonzero.loc[zoom_key]
-                zvals = [zrow[col] for col in zone_cols]
-                ztotal = sum(zvals)
-                zfig = go.Figure(
-                    go.Pie(
-                        labels=[ZONE_NAMES[z] for z in zone_names],
-                        values=zvals,
-                        marker=dict(colors=[ZONE_COLORS[z] for z in zone_names]),
-                        hole=0.55,
-                        textinfo="label+percent",
-                        textposition="outside",
-                        sort=False,
-                        customdata=[[fmt_dur(v)] for v in zvals],
-                        hovertemplate=(
-                            "%{label}<br>"
-                            "%{customdata[0]} (%{percent})<extra></extra>"
-                        ),
+                        ],
                     )
-                )
-                zfig.update_layout(
-                    height=520,
-                    title=(
-                        f"{period_labels[zoom_key]} — всего "
-                        f"{fmt_dur(ztotal)}"
-                    ),
-                    showlegend=False,
-                    margin=dict(t=60, b=20, l=20, r=20),
-                )
-                show_chart(zfig, "hr_zones_zoom")
+                    st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
+                    st.markdown(
+                        f'<div style="margin-top:6px; text-align:center;">'
+                        f'  <span class="hrz-poly">✓ Поляризация {_poly_str}</span>'
+                        f'  <span class="hrz-poly-hint">≈ Seiler 80/20</span>'
+                        f'</div>',
+                        unsafe_allow_html=True,
+                    )
+
+                with table_right:
+                    rows_html = ""
+                    # Z5 → Z1 (как в скриншоте-эталоне)
+                    for _, _r in zone_total[::-1].iterrows():
+                        _z = _r["zone"]
+                        _color = _r["color"]
+                        rows_html += (
+                            f'<div style="display:flex; align-items:center; gap:10px; '
+                            f'padding:5px 0; font-size:13px; border-bottom:0.5px solid rgba(0,0,0,0.08);">'
+                            f'<span style="display:inline-flex; align-items:center; gap:6px; min-width:80px;">'
+                            f'<span style="width:9px; height:9px; border-radius:2px; background:{_color};"></span>'
+                            f'<b>{_z}</b><span style="color:#5F5E5A;">·</span>'
+                            f'<span>{ZONE_NAMES[_z].split("·",1)[1].strip() if "·" in ZONE_NAMES[_z] else ZONE_NAMES[_z]}</span>'
+                            f'</span>'
+                            f'<span style="flex:1; text-align:right; color:#2C2C2A;">{_fmt_hm(_r["hours"])}</span>'
+                            f'<span style="min-width:50px; text-align:right; color:#5F5E5A;">{_r["pct"]:.1f}%</span>'
+                            f'</div>'
+                        )
+                    st.markdown(
+                        f'<div style="padding:6px 4px;">{rows_html}</div>',
+                        unsafe_allow_html=True,
+                    )
+
+        # Стили для пилюль Поляризации (используются внутри тайла под donut)
+        st.markdown(
+            '<style>'
+            '.hrz-poly { display:inline-flex; align-items:center; gap:5px; '
+            'background:#EAF3DE; color:#3B6D11; font-size:12px; padding:3px 10px; '
+            'border-radius:5px; font-weight:500; }'
+            '.hrz-poly-hint { font-size:11px; color:#5F5E5A; margin-left:10px; }'
+            '</style>',
+            unsafe_allow_html=True,
+        )
+
+    # Подробнее по периодам — вместо вложенного expander (Streamlit nested expanders не поддерживает)
+    show_periods = st.toggle(
+        "📊 Подробнее по периодам", value=False, key="hr_zones_show_periods"
+    )
+    if show_periods:
+        # Динамика по периодам — без фильтра по активности и без переключения часы/проценты:
+        # на bar показываем сразу часы (ось Y) и % сверху над столбиком.
+        period = view.groupby(AGG_COL)[[f"z{i}_sec" for i in range(1, 6)]].sum() / 3600
+        if not period.empty and period.values.sum() > 0:
+            zone_cols = [f"z{i}_sec" for i in range(1, 6)]
+            zone_names = [f"Z{i}" for i in range(1, 6)]
+
+            period_nonzero = period[period.sum(axis=1) > 0].sort_index()
+            n = len(period_nonzero)
+            if n > 0:
+                hdr_l, hdr_r = st.columns([3, 2])
+                with hdr_l:
+                    st.markdown(f"**HR-зоны по {AGG_LOC} (часы и %)**")
+                with hdr_r:
+                    size_label = st.radio(
+                        "Размер графиков",
+                        ["Мелкие", "Средние", "Крупные"],
+                        index=1,
+                        horizontal=True,
+                        key="donut_size",
+                        label_visibility="collapsed",
+                    )
+                size_map = {"Мелкие": 5, "Средние": 4, "Крупные": 3}
+                cell_height_map = {"Мелкие": 260, "Средние": 360, "Крупные": 480}
+                cols_per_row = size_map[size_label]
+                cell_height = cell_height_map[size_label]
+
+                periods_list = list(period_nonzero.iterrows())
+
+                def _week_range(d):
+                    end = d + pd.Timedelta(days=6)
+                    if d.year != end.year:
+                        return f"{d.strftime('%d %b %Y')} – {end.strftime('%d %b %Y')}"
+                    if d.month != end.month:
+                        return f"{d.strftime('%d %b')} – {end.strftime('%d %b %Y')}"
+                    return f"{d.day}–{end.day} {d.strftime('%b %Y')}"
+
+                def _title_for(label):
+                    if AGG_COL == "year":
+                        return label.strftime("%Y")
+                    if AGG_COL == "month":
+                        return label.strftime("%b %Y")
+                    if AGG_COL == "week":
+                        return _week_range(label)
+                    return label.strftime("%d %b")
+
+                for start_idx in range(0, n, cols_per_row):
+                    chunk = periods_list[start_idx : start_idx + cols_per_row]
+                    cols = st.columns(cols_per_row)
+                    for i, (label, row) in enumerate(chunk):
+                        vals = [row[col] for col in zone_cols]
+                        tot = sum(vals) or 1
+                        pcts = [v / tot * 100 for v in vals]
+                        title_str = _title_for(label)
+
+                        dur_text = [fmt_dur(v) for v in vals]
+                        # На bar выводим оба значения: % сверху, время снизу (две строки через <br>)
+                        text = [
+                            (f"{p:.0f}%<br>{d}" if v > 0 else "")
+                            for p, d, v in zip(pcts, dur_text, vals)
+                        ]
+                        bar = go.Figure(
+                            go.Bar(
+                                x=zone_names,
+                                y=vals,  # Y-ось = часы
+                                marker=dict(color=[ZONE_COLORS[z] for z in zone_names]),
+                                text=text,
+                                textposition="outside",
+                                cliponaxis=False,
+                                customdata=[[d, p] for d, p in zip(dur_text, pcts)],
+                                hovertemplate="%{x}: %{customdata[0]} · %{customdata[1]:.1f}%<extra></extra>",
+                            )
+                        )
+                        bar.update_layout(
+                            height=cell_height,
+                            title=dict(text=title_str, x=0.5, xanchor="center",
+                                       font=dict(size=14)),
+                            showlegend=False,
+                            margin=dict(t=40, b=30, l=10, r=10),
+                            xaxis=dict(title="", fixedrange=True),
+                            yaxis=dict(title="", fixedrange=True,
+                                       rangemode="tozero"),
+                            uniformtext_minsize=8,
+                            uniformtext_mode="hide",
+                        )
+                        with cols[i]:
+                            st.plotly_chart(bar, use_container_width=True,
+                                            config=PLOTLY_CONFIG)
+                    # Пустые колонки в последнем ряду — без контента, сохраняют ширину
+                    for j in range(len(chunk), cols_per_row):
+                        with cols[j]:
+                            st.empty()
 
 # endregion
 
 
-# region Объём
+# region Детализация · Время / Расстояние (Вариант A — Сумма)
+# Прототип: docs/drilldown_time_variant_a.html
 
-with st.expander(f"📅 Объём по {AGG_LOC}", expanded=True):
-    agg = view.groupby(AGG_COL).agg(
-        activities=("activity_id", "count"),
-        km=("distance_km", "sum"),
-        hours=("duration_h", "sum"),
-        te_aer=("training_effect_aer", "mean"),
-    ).reset_index()
+def _render_detalization(_view: pd.DataFrame, agg_col: str, metric: str) -> None:
+    """Стэк-bar по периодам + таблица сумм по типам + футер min/avg/max.
 
-    col1, col2 = st.columns(2)
-    with col1:
-        fig = px.bar(agg, x=AGG_COL, y="hours",
-                     labels={AGG_COL: agg_label, "hours": "Часов"})
-        fig.update_layout(height=320, title=f"Часы за {AGG_ACC}")
-        show_chart(fig, "vol_hours")
-    with col2:
-        fig = px.bar(agg, x=AGG_COL, y="km",
-                     labels={AGG_COL: agg_label, "km": "км"})
-        fig.update_layout(height=320, title=f"Километры за {AGG_ACC}")
-        show_chart(fig, "vol_km")
+    metric ∈ {"time", "distance"} управляет источником данных и форматом.
+    """
+    if metric == "time":
+        col_value = "duration_h"
+        unit_short = "ч"
+        col_table_h = "Часов"
+        fmt_total = lambda v: fmt_hm(v)            # «N ч NN мин»
+        fmt_cell = lambda v: f"{v:.1f}"            # часы с десятой
+        fmt_avg = lambda v: f"{v:.1f}"
+        fmt_minmax = lambda v: f"{v:.1f} ч"
+        view_eff = _view
+    else:  # distance
+        col_value = "distance_km"
+        unit_short = "км"
+        col_table_h = "км"
+        fmt_total = lambda v: f"{v:.1f} км"
+        fmt_cell = lambda v: f"{v:.1f}"
+        fmt_avg = lambda v: f"{v:.1f}"
+        fmt_minmax = lambda v: f"{v:.1f} км"
+        view_eff = _view[_view["distance_km"].fillna(0) > 0]
 
-    # Разбивка по типам активности
-    by_type = view.groupby([AGG_COL, "activity_type_ru"]).agg(
-        hours=("duration_h", "sum"),
-        count=("activity_id", "count"),
-    ).reset_index()
-    if not by_type.empty:
-        fig = px.bar(
-            by_type, x=AGG_COL, y="hours", color="activity_type_ru",
-            labels={AGG_COL: agg_label, "hours": "Часов", "activity_type_ru": "Тип"},
+    if len(view_eff) == 0 or view_eff[col_value].sum() <= 0:
+        st.info("Нет данных для выбранного периода.")
+        return
+
+    _total = float(view_eff[col_value].sum())
+    _per = view_eff.groupby(agg_col)[col_value].sum().sort_index()
+    _per_nonzero = _per[_per > 0]
+    _n_periods = max(1, len(_per_nonzero))
+    _avg_per = _total / _n_periods
+
+    if len(_per_nonzero) > 1 and _per_nonzero.mean() > 0:
+        _cv = float(_per_nonzero.std() / _per_nonzero.mean() * 100)
+    else:
+        _cv = 0.0
+
+    if _cv < 15:
+        _cv_label = "стабильно"
+    elif _cv < 30:
+        _cv_label = "нормально"
+    elif _cv < 50:
+        _cv_label = "хаотично"
+    else:
+        _cv_label = "нерегулярно"
+
+    _per_unit = {"week": "нед", "month": "мес", "year": "год"}.get(agg_col, "период")
+
+    # Top row: Stat row слева + Размер графика справа
+    top_l, top_r = st.columns([3, 2])
+    with top_l:
+        st.markdown(
+            f'<div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;'
+            f' padding-bottom:12px; margin-bottom:14px; border-bottom:0.5px solid rgba(0,0,0,0.1);">'
+            f'<span style="font-size:24px; font-weight:500; line-height:1;">{fmt_total(_total)}</span>'
+            f'<span style="font-size:11px; color:#5F5E5A;">'
+            f'{fmt_avg(_avg_per)} {unit_short}/{_per_unit} · CV {_cv:.0f}% · {_cv_label}'
+            f'</span></div>',
+            unsafe_allow_html=True,
         )
-        fig.update_layout(height=350, barmode="stack",
-                          title=f"Часы по типам активности ({AGG_NOM})")
-        show_chart(fig, "vol_by_type")
+    with top_r:
+        size_label = st.radio(
+            "Размер графика",
+            ["Мелкие", "Средние", "Крупные"],
+            index=1,
+            horizontal=True,
+            key=f"detal_{metric}_size",
+            label_visibility="collapsed",
+        )
+    _chart_h = {"Мелкие": 240, "Средние": 320, "Крупные": 440}[size_label]
 
+    chart_col, table_col = st.columns([1, 0.45])
+
+    with chart_col:
+        _grp = view_eff.groupby([agg_col, "activity_type_ru"])[col_value].sum().reset_index()
+        _grp = _grp[_grp[col_value] > 0]
+        if not _grp.empty:
+            _unique_types = list(_grp["activity_type_ru"].unique())
+            _color_map = {t: _type_color(t) for t in _unique_types}
+            _tot_per = _grp.groupby(agg_col)[col_value].sum().reset_index()
+
+            fig_dd = go.Figure()
+            for _t in _unique_types:
+                _sub = _grp[_grp["activity_type_ru"] == _t]
+                fig_dd.add_trace(
+                    go.Bar(
+                        x=_sub[agg_col], y=_sub[col_value],
+                        name=_t,
+                        marker_color=_color_map[_t],
+                        hovertemplate=f"<b>{_t}</b>: %{{y:.1f}} {unit_short}<extra></extra>",
+                    )
+                )
+            fig_dd.add_trace(
+                go.Scatter(
+                    x=_tot_per[agg_col], y=_tot_per[col_value],
+                    text=[f"{v:.1f}" for v in _tot_per[col_value]],
+                    mode="text", textposition="top center",
+                    textfont=dict(size=10, color="#2C2C2A"),
+                    showlegend=False, hoverinfo="skip",
+                )
+            )
+            fig_dd.update_layout(
+                barmode="stack",
+                height=_chart_h,
+                margin=dict(t=20, b=10, l=10, r=10),
+                paper_bgcolor="rgba(0,0,0,0)",
+                plot_bgcolor="rgba(0,0,0,0)",
+                xaxis=dict(title="", showgrid=False, fixedrange=True),
+                yaxis=dict(title=unit_short, showgrid=True,
+                           gridcolor="rgba(0,0,0,0.05)",
+                           fixedrange=True, rangemode="tozero"),
+                showlegend=False,  # своя HTML-легенда ниже с SVG-иконками
+                hovermode="x unified",
+            )
+            st.plotly_chart(fig_dd, use_container_width=True, config=PLOTLY_CONFIG)
+
+            # Кастомная HTML-легенда: SVG-иконка + название по типу активности
+            _legend_parts = []
+            for _t in _unique_types:
+                _ico = _sport_icon_html(_t, size=14)
+                _legend_parts.append(
+                    f'<span style="display:inline-flex; align-items:center; gap:5px;">'
+                    f'{_ico}<span>{_t}</span></span>'
+                )
+            st.markdown(
+                f'<div style="display:flex; flex-wrap:wrap; gap:14px; '
+                f'justify-content:center; padding:4px 8px 0; font-size:11px; color:#2C2C2A;">'
+                f'{"".join(_legend_parts)}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    with table_col:
+        _sum_by_type = view_eff.groupby("activity_type_ru")[col_value].sum().sort_values(ascending=False)
+        _sum_by_type = _sum_by_type[_sum_by_type > 0]
+
+        _rows = (
+            '<div style="font-size:10px; font-weight:500; margin-bottom:8px;'
+            ' color:#5F5E5A; text-transform:uppercase; letter-spacing:0.5px;">'
+            'Сумма за период</div>'
+            '<div style="font-size:11px;">'
+            '<div style="display:grid; grid-template-columns:1fr 90px; padding:4px 6px;'
+            ' border-bottom:0.5px solid rgba(0,0,0,0.15); font-weight:500;'
+            ' color:#5F5E5A; font-size:9px; text-transform:uppercase;'
+            ' letter-spacing:0.4px;"><span>Тип</span>'
+            f'<span style="text-align:right;">{col_table_h}</span></div>'
+        )
+        for _t, _h in _sum_by_type.items():
+            _pct = _h / _total * 100 if _total > 0 else 0
+            _ico = _sport_icon_html(_t, size=16)
+            _rows += (
+                f'<div style="display:grid; grid-template-columns:1fr 90px; padding:6px 6px;'
+                f' border-bottom:0.5px solid rgba(0,0,0,0.08); align-items:center;">'
+                f'<span style="display:flex; align-items:center; gap:7px;">'
+                f'{_ico}'
+                f'<span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{_t}</span>'
+                f'</span>'
+                f'<span style="text-align:right; font-variant-numeric:tabular-nums;">'
+                f'{fmt_cell(_h)} · {_pct:.0f}%</span>'
+                f'</div>'
+            )
+        _rows += (
+            f'<div style="display:grid; grid-template-columns:1fr 90px; padding:7px 6px;'
+            f' background:#F5F4EF; border-radius:4px; margin-top:4px; font-weight:500;'
+            f' align-items:center;">'
+            f'<span>Итого</span>'
+            f'<span style="text-align:right; font-variant-numeric:tabular-nums;">{fmt_total(_total)}</span>'
+            f'</div></div>'
+        )
+        st.markdown(_rows, unsafe_allow_html=True)
+
+    if len(_per_nonzero) > 0:
+        st.markdown(
+            f'<div style="display:flex; gap:14px; font-size:10px; color:#5F5E5A;'
+            f' margin-top:10px; padding-top:10px; border-top:0.5px solid rgba(0,0,0,0.1);'
+            f' flex-wrap:wrap; align-items:center;">'
+            f'<span style="margin-left:auto;">'
+            f'min <b style="color:#2C2C2A;">{fmt_minmax(_per_nonzero.min())}</b> · '
+            f'avg <b style="color:#2C2C2A;">{fmt_minmax(_per_nonzero.mean())}</b> · '
+            f'max <b style="color:#2C2C2A;">{fmt_minmax(_per_nonzero.max())}</b>'
+            f'</span></div>',
+            unsafe_allow_html=True,
+        )
+
+
+with st.expander("📊 Детализация · Время", expanded=True):
+    _render_detalization(view, AGG_COL, metric="time")
+
+with st.expander("📊 Детализация · Расстояние", expanded=True):
+    _render_detalization(view, AGG_COL, metric="distance")
+
+# endregion
+
+
+# region Объём — заменён блоками «📊 Детализация · Время / Расстояние»
 # endregion
 
 
 # region Recovery
 
+def _sparkline_line_svg(values: list[float], color: str, fill_color: str | None = None,
+                        norm_band: tuple[float, float] | None = None,
+                        width: int = 220, height: int = 44) -> str:
+    """Тонкая sparkline (polyline) с опциональной полосой «нормы» сзади."""
+    vals = [v for v in values if v is not None and not pd.isna(v)]
+    if len(vals) < 2:
+        return f'<svg width="100%" height="{height}" viewBox="0 0 {width} {height}"></svg>'
+    vmin, vmax = min(vals), max(vals)
+    if vmax - vmin < 1e-9:
+        vmax = vmin + 1
+    pad = 4
+    inner_h = height - pad * 2
+    pts = []
+    for i, v in enumerate(vals):
+        x = (i / (len(vals) - 1)) * width
+        y = pad + (1 - (v - vmin) / (vmax - vmin)) * inner_h
+        pts.append(f"{x:.1f},{y:.1f}")
+    band = ""
+    if norm_band:
+        lo, hi = norm_band
+        if vmax > lo and vmin < hi:
+            yhi = pad + (1 - (min(hi, vmax) - vmin) / (vmax - vmin)) * inner_h
+            ylo = pad + (1 - (max(lo, vmin) - vmin) / (vmax - vmin)) * inner_h
+            band = (f'<rect x="0" y="{yhi:.1f}" width="{width}" '
+                    f'height="{(ylo - yhi):.1f}" fill="{fill_color or color}" opacity="0.10"/>')
+    return (
+        f'<svg width="100%" height="{height}" viewBox="0 0 {width} {height}" '
+        f'preserveAspectRatio="none" style="display:block;">'
+        f'{band}'
+        f'<polyline points="{" ".join(pts)}" fill="none" '
+        f'stroke="{color}" stroke-width="1.4" stroke-linejoin="round"/>'
+        f'</svg>'
+    )
+
+
+def _sparkline_bars_svg(values: list[float], target: float | None = None,
+                        color: str = "#185FA5", width: int = 220, height: int = 44) -> str:
+    """Sparkline-bar для сна: столбики + опциональная пунктирная линия цели."""
+    vals = [v if (v is not None and not pd.isna(v)) else 0 for v in values]
+    if not vals:
+        return f'<svg width="100%" height="{height}"></svg>'
+    vmax = max([*vals, target or 0])
+    if vmax <= 0:
+        vmax = 1
+    n = len(vals)
+    bw = max(2, (width - (n - 1) * 1) / max(n, 1))
+    rects = []
+    for i, v in enumerate(vals):
+        bh = (v / vmax) * (height - 4)
+        x = i * (bw + 1)
+        y = (height - 2) - bh
+        rects.append(f'<rect x="{x:.1f}" y="{y:.1f}" width="{bw:.1f}" '
+                     f'height="{bh:.1f}" fill="{color}" rx="0.5"/>')
+    target_line = ""
+    if target and target > 0:
+        ty = (height - 2) - (target / vmax) * (height - 4)
+        target_line = (f'<line x1="0" y1="{ty:.1f}" x2="{width}" y2="{ty:.1f}" '
+                       f'stroke="#1D9E75" stroke-width="0.8" stroke-dasharray="3,2"/>')
+    return (
+        f'<svg width="100%" height="{height}" viewBox="0 0 {width} {height}" '
+        f'preserveAspectRatio="none" style="display:block;">'
+        f'{target_line}{"".join(rects)}'
+        f'</svg>'
+    )
+
+
+def _delta_arrow_str(d: float, kind: str) -> tuple[str, str]:
+    """Возвращает (текст, цвет) для дельты. kind = 'rhr' (↓ хорошо) | 'hrv' (↑ хорошо)."""
+    if d == 0 or pd.isna(d):
+        return ("", "#5F5E5A")
+    if kind == "rhr":
+        good = d < 0
+    else:  # hrv
+        good = d > 0
+    arrow = "↓" if d < 0 else "↑"
+    color = "#3B6D11" if good else "#A32D2D"
+    return (f"{arrow} {int(round(d)):+d}", color)
+
+
 if not daily.empty:
-    recovery = daily[(daily["day"] >= start) & (daily["day"] <= end)].copy()
+    recovery = daily[(daily["day"] >= start) & (daily["day"] <= end)].copy().sort_values("day")
     if not recovery.empty:
-        with st.expander("💤 Восстановление", expanded=False):
+        with st.expander("💤 Recovery-метрики · RHR · HRV · сон", expanded=False):
+            # Предыдущий период — для дельт
+            _prev_len = max(1, (end - start).days)
+            _prev_end = start - timedelta(days=1)
+            _prev_start = _prev_end - timedelta(days=_prev_len)
+            recovery_prev = daily[(daily["day"] >= _prev_start) & (daily["day"] <= _prev_end)].copy()
+
             cols = st.columns(3)
-            if "resting_hr" in recovery:
-                with cols[0]:
-                    fig = px.line(recovery.sort_values("day"), x="day", y="resting_hr",
-                                  labels={"day": "", "resting_hr": "RHR"})
-                    fig.update_layout(height=280, title="Пульс покоя")
-                    show_chart(fig, "rec_rhr")
-            if "hrv_night" in recovery:
-                with cols[1]:
-                    fig = px.line(recovery.sort_values("day"), x="day", y="hrv_night",
-                                  labels={"day": "", "hrv_night": "HRV, мс"})
-                    fig.update_layout(height=280, title="HRV за ночь")
-                    show_chart(fig, "rec_hrv")
-            if "sleep_h" in recovery:
-                with cols[2]:
-                    fig = px.bar(recovery.sort_values("day"), x="day", y="sleep_h",
-                                 labels={"day": "", "sleep_h": "часов"})
-                    fig.update_layout(height=280, title="Сон")
-                    show_chart(fig, "rec_sleep")
+
+            # ===== 1. Пульс покоя (RHR) =====
+            with cols[0]:
+                with st.container(border=True):
+                    if "resting_hr" in recovery and recovery["resting_hr"].notna().any():
+                        rhr = recovery["resting_hr"].dropna()
+                        rhr_now = float(rhr.iloc[-1])
+                        rhr_avg = float(rhr.mean())
+                        rhr_prev_avg = (
+                            float(recovery_prev["resting_hr"].dropna().mean())
+                            if "resting_hr" in recovery_prev and recovery_prev["resting_hr"].notna().any()
+                            else 0.0
+                        )
+                        d = rhr_now - rhr_prev_avg if rhr_prev_avg else 0
+                        d_text, d_color = _delta_arrow_str(d, "rhr")
+                        norm_ref = 50
+                        if rhr_avg < norm_ref:
+                            foot_color, foot_text = "#3B6D11", f"лучше нормы ({norm_ref} ср.)"
+                        elif rhr_avg < norm_ref + 10:
+                            foot_color, foot_text = "#5F5E5A", f"в норме (~{norm_ref})"
+                        else:
+                            foot_color, foot_text = "#854F0B", f"выше нормы ({norm_ref})"
+                        spark = _sparkline_line_svg(
+                            rhr.tolist(), color="#185FA5",
+                            fill_color="#378ADD",
+                            norm_band=(40, 60),
+                        )
+                        st.markdown(
+                            f'<div style="display:flex; justify-content:space-between; '
+                            f'align-items:center; font-size:12px; font-weight:500;">'
+                            f'<span>💗 Пульс покоя</span>'
+                            f'<span style="color:{d_color}; font-size:11px;">{d_text}</span>'
+                            f'</div>'
+                            f'<div style="display:flex; align-items:baseline; gap:5px; margin-top:4px;">'
+                            f'<span style="font-size:24px; font-weight:500; line-height:1;">{rhr_now:.0f}</span>'
+                            f'<span style="font-size:11px; color:#5F5E5A;">уд/мин</span>'
+                            f'</div>'
+                            f'{spark}'
+                            f'<div style="font-size:10px; color:{foot_color}; margin-top:4px;">{foot_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown('<div style="font-size:12px; color:#5F5E5A;">💗 Пульс покоя — нет данных</div>',
+                                    unsafe_allow_html=True)
+
+            # ===== 2. HRV за ночь =====
+            with cols[1]:
+                with st.container(border=True):
+                    if "hrv_night" in recovery and recovery["hrv_night"].notna().any():
+                        hrv = recovery["hrv_night"].dropna()
+                        hrv_now = float(hrv.iloc[-1])
+                        hrv_avg = float(hrv.mean())
+                        hrv_prev_avg = (
+                            float(recovery_prev["hrv_night"].dropna().mean())
+                            if "hrv_night" in recovery_prev and recovery_prev["hrv_night"].notna().any()
+                            else 0.0
+                        )
+                        d = hrv_now - hrv_prev_avg if hrv_prev_avg else 0
+                        d_text, d_color = _delta_arrow_str(d, "hrv")
+                        if 60 <= hrv_avg <= 80:
+                            foot_color, foot_text = "#3B6D11", "в полосе нормы (60–80)"
+                        elif hrv_avg < 60:
+                            foot_color, foot_text = "#854F0B", "ниже нормы (60–80)"
+                        else:
+                            foot_color, foot_text = "#3B6D11", "выше нормы (60–80)"
+                        spark = _sparkline_line_svg(
+                            hrv.tolist(), color="#0F6E56",
+                            fill_color="#1D9E75",
+                            norm_band=(60, 80),
+                        )
+                        st.markdown(
+                            f'<div style="display:flex; justify-content:space-between; '
+                            f'align-items:center; font-size:12px; font-weight:500;">'
+                            f'<span>📊 HRV за ночь</span>'
+                            f'<span style="color:{d_color}; font-size:11px;">{d_text}</span>'
+                            f'</div>'
+                            f'<div style="display:flex; align-items:baseline; gap:5px; margin-top:4px;">'
+                            f'<span style="font-size:24px; font-weight:500; line-height:1;">{hrv_now:.0f}</span>'
+                            f'<span style="font-size:11px; color:#5F5E5A;">мс</span>'
+                            f'</div>'
+                            f'{spark}'
+                            f'<div style="font-size:10px; color:{foot_color}; margin-top:4px;">{foot_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown('<div style="font-size:12px; color:#5F5E5A;">📊 HRV за ночь — нет данных</div>',
+                                    unsafe_allow_html=True)
+
+            # ===== 3. Сон =====
+            with cols[2]:
+                with st.container(border=True):
+                    if "sleep_h" in recovery and recovery["sleep_h"].notna().any():
+                        sleep = recovery["sleep_h"].dropna()
+                        sleep_now = float(sleep.iloc[-1])
+                        sleep_avg = float(sleep.mean())
+                        target_h = 8.0
+                        if sleep_avg >= target_h:
+                            head_color, head_text = "#3B6D11", f"✓ {sleep_avg:.1f}ч ср."
+                            foot_color = "#3B6D11"
+                            foot_text = f"среднее за период {sleep_avg:.1f} ч"
+                        else:
+                            head_color = "#854F0B"
+                            head_text = f"⚠ {sleep_avg:.1f}ч ср."
+                            deficit = target_h - sleep_avg
+                            foot_color, foot_text = "#854F0B", f"дефицит {deficit:.1f}ч от цели {target_h:.0f}ч"
+                        bars = _sparkline_bars_svg(
+                            sleep.tolist(), target=target_h, color="#185FA5",
+                        )
+                        st.markdown(
+                            f'<div style="display:flex; justify-content:space-between; '
+                            f'align-items:center; font-size:12px; font-weight:500;">'
+                            f'<span>🌙 Сон</span>'
+                            f'<span style="color:{head_color}; font-size:11px;">{head_text}</span>'
+                            f'</div>'
+                            f'<div style="display:flex; align-items:baseline; gap:5px; margin-top:4px;">'
+                            f'<span style="font-size:24px; font-weight:500; line-height:1;">{sleep_now:.1f}</span>'
+                            f'<span style="font-size:11px; color:#5F5E5A;">часов вчера</span>'
+                            f'</div>'
+                            f'{bars}'
+                            f'<div style="font-size:10px; color:{foot_color}; margin-top:4px;">{foot_text}</div>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        st.markdown('<div style="font-size:12px; color:#5F5E5A;">🌙 Сон — нет данных</div>',
+                                    unsafe_allow_html=True)
 
 # endregion
 
@@ -1383,40 +2017,7 @@ with st.expander("🏋️ Training load · CTL/ATL/TSB", expanded=False):
 # endregion
 
 
-# region Таблица активностей
-
-with st.expander(f"📋 Активности ({len(view)})", expanded=False):
-    show = view[
-        [
-            "start_time_local",
-            "activity_type_ru",
-            "activity_name",
-            "distance_km",
-            "duration_h",
-            "avg_hr",
-            "max_hr",
-            "training_effect_aer",
-            "training_effect_ana",
-            "calories",
-        ]
-    ].copy()
-    show["duration_h"] = show["duration_h"].round(2)
-    show["distance_km"] = show["distance_km"].round(2)
-    show = show.sort_values("start_time_local", ascending=False)
-    show = show.rename(
-        columns={
-            "start_time_local": "Старт",
-            "activity_type_ru": "Тип",
-            "activity_name": "Название",
-            "distance_km": "км",
-            "duration_h": "ч",
-            "avg_hr": "ср.HR",
-            "max_hr": "макс.HR",
-            "training_effect_aer": "TE аэр.",
-            "training_effect_ana": "TE анаэр.",
-            "calories": "кал",
-        }
-    )
-    st.dataframe(show, use_container_width=True, height=400)
-
+# region Таблица активностей — переехала в drilldown «Тренировок» в KPI-блоке «Всего»
 # endregion
+
+

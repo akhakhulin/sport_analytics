@@ -13,3 +13,13 @@ dist/
 # IDE
 .vscode/
 *.code-workspace
+
+# Локальные снимки/тестовые скрипты для дев-цикла (не для деплоя)
+dash_*.png
+*_dom.html
+inspect_*.py
+probe_*.py
+snap_*.py
+snap5.py
+diag_card.py
+check_styles.py
