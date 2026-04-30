@@ -819,9 +819,6 @@ st.sidebar.markdown(
     f'</div>',
     unsafe_allow_html=True,
 )
-st.sidebar.page_link(
-    "pages/1_Comparison.py", label="📊 Сравнение периодов", icon=None
-)
 if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
     _session_info_dialog()
 if st.sidebar.button("📄 PDF-экспорт", key="pdf_export", use_container_width=True):
