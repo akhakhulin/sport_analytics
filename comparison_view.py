@@ -474,10 +474,13 @@ def render(
                         f'</div>'
                     )
                 st.markdown(rows_html, unsafe_allow_html=True)
+            # Итого — без фона (фон #F5F4EF сливался со страничным),
+            # выделено тонким border-top + bolder text внутри белой карточки
             st.markdown(
                 f'<div style="display:flex; justify-content:space-between; '
-                f'background:#F5F4EF; padding:8px 10px; border-radius:5px; '
-                f'margin-top:8px; font-size:13px; font-weight:500;">'
+                f'border-top:1px solid rgba(0,0,0,0.08); '
+                f'padding-top:10px; margin-top:10px; '
+                f'font-size:13px; font-weight:600; color:#2C2C2A;">'
                 f'<span>Итого:</span>'
                 f'<span style="font-variant-numeric:tabular-nums;">'
                 f'{p["totals"]["hours"]:.1f} ч · {p["totals"]["km"]:.1f} км'
