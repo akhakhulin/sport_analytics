@@ -1,13 +1,19 @@
 """
-Общий рендер блока «Сравнение периодов».
-Спека: docs/Сравнение периодов/SPECIFICATION_period_comparison.md
+Сравнение периодов — реализация по прототипу
+docs/comparison_react/comparison_prototype.html.
 
 Используется:
-- pages/1_📊_Сравнение_периодов.py — отдельная страница (key_prefix="cmp_page")
-- dashboard.py, tab2 — внутри главной страницы (key_prefix="cmp_tab")
+- pages (если будет создана) — отдельная страница
+- dashboard.py, tab2 — внутри главной страницы
 
-Префикс ключей разделяет state между двумя местами, чтобы выбор на
-странице не перетирал выбор в tab2 и наоборот.
+Структура (5 блоков):
+1. Hero — три большие метрики (Часов / Километров / Активностей)
+2. Period controls — два периода в одной карточке через VS-разделитель
+3. Activity filter — горизонтальная полоса с toggle и chip'ами
+4. Breakdown — парные горизонтальные бары по видам спорта + total
+5. Insight — info/warn плашка под содержимым
+
+Префикс ключей разделяет state между разными местами вызова.
 """
 
 from __future__ import annotations
@@ -17,6 +23,8 @@ from datetime import date, timedelta
 import pandas as pd
 import streamlit as st
 
+from sport_icons import sport_icon_html, type_color
+
 
 _MONTHS_RU = {
     1: "янв", 2: "фев", 3: "мар", 4: "апр", 5: "мая", 6: "июн",
@@ -24,7 +32,7 @@ _MONTHS_RU = {
 }
 
 
-def _format_period(start: date, end: date) -> str:
+def _format_date_range(start: date, end: date) -> str:
     if start.year == end.year:
         return (
             f'{start.day} {_MONTHS_RU[start.month]} – '
@@ -36,7 +44,26 @@ def _format_period(start: date, end: date) -> str:
     )
 
 
-def _delta(v1: float, v2: float) -> tuple[float, float, str]:
+def _pluralize(n: int, forms: tuple[str, str, str]) -> str:
+    """forms = (1, 2-4, 5+) — для русского склонения."""
+    mod10 = n % 10
+    mod100 = n % 100
+    if mod10 == 1 and mod100 != 11:
+        return forms[0]
+    if mod10 in (2, 3, 4) and mod100 not in (12, 13, 14):
+        return forms[1]
+    return forms[2]
+
+
+def _fmt_hours(h: float) -> str:
+    return f"{h:.1f}"
+
+
+def _fmt_km(km: float) -> str:
+    return f"{km:.0f}" if km >= 100 else f"{km:.1f}"
+
+
+def _compute_delta(v1: float, v2: float) -> tuple[float, float, str]:
     abs_d = v1 - v2
     pct = (abs_d / v2 * 100) if v2 > 0 else (100.0 if v1 > 0 else 0.0)
     if abs(pct) < 5:
@@ -48,18 +75,39 @@ def _delta(v1: float, v2: float) -> tuple[float, float, str]:
     return abs_d, pct, direction
 
 
-def _delta_format(abs_d: float, pct: float, direction: str, suffix: str = "") -> str:
+def _delta_badge(
+    abs_d: float, pct: float, direction: str,
+    unit: str = "", size: str = "md",
+    show_abs: bool = True, show_pct: bool = True,
+) -> str:
+    """Цветная плашка дельты — копирует .delta из прототипа."""
     if direction == "flat":
-        bg, color, arrow = "#F1EFE8", "#5F5E5A", "≈"
+        bg, fg, arrow = "#F1EFE8", "#5F5E5A", "≈"
     elif direction == "up":
-        bg, color, arrow = "#EAF3DE", "#3B6D11", "↑"
+        bg, fg, arrow = "#EAF3DE", "#3B6D11", "↑"
     else:
-        bg, color, arrow = "#FCEBEB", "#A32D2D", "↓"
+        bg, fg, arrow = "#FCEBEB", "#A32D2D", "↓"
+    sign = "+" if abs_d > 0 else ""
+    abs_val = (
+        f"{abs_d:.0f}" if abs(abs_d) >= 100 else f"{abs_d:.1f}"
+    )
+    pct_val = f"{sign}{pct:.0f}%"
+    padding = "3px 9px" if size == "md" else "2px 7px"
+    fontsz = "12px" if size == "md" else "10px"
+    parts: list[str] = [f"<span>{arrow}</span>"]
+    if show_abs:
+        unit_part = f" {unit}" if unit else ""
+        parts.append(f"<span>{sign}{abs_val}{unit_part}</span>")
+    if show_abs and show_pct:
+        parts.append('<span style="opacity:0.6">·</span>')
+    if show_pct:
+        parts.append(f"<span>{pct_val}</span>")
     return (
-        f'<span style="background:{bg}; color:{color}; '
-        f'padding:3px 8px; border-radius:5px; font-weight:500; font-size:12px; '
-        f'font-variant-numeric:tabular-nums;">'
-        f'{arrow} {abs_d:+.1f}{suffix} ({pct:+.0f}%)</span>'
+        f'<span style="display:inline-flex; align-items:center; gap:4px; '
+        f'border-radius:4px; font-weight:600; font-variant-numeric:tabular-nums; '
+        f'background:{bg}; color:{fg}; padding:{padding}; font-size:{fontsz};">'
+        f'{"".join(parts)}'
+        f'</span>'
     )
 
 
@@ -69,48 +117,130 @@ def render(
     key_prefix: str = "cmp",
     show_title: bool = True,
 ) -> None:
-    """Рендерит UI сравнения двух периодов.
+    """Рендерит UI сравнения двух периодов по прототипу.
 
-    df — DataFrame активностей; ожидаемые колонки:
+    df — DataFrame активностей с колонками:
       day, activity_type_ru, duration_h, distance_km, activity_id
     key_prefix — префикс session_state и widget-ключей.
-    show_title — показывать ли st.title (на отдельной странице да, в tab2 нет).
+    show_title — показывать ли header (Title + subtitle).
     """
 
     K = key_prefix
 
-    # ===== CSS: стилизуем все контейнеры под stExpander из tab1 =====
-    # (белый фон, тонкая рамка, скругление 7px, паддинг). Селекторы
-    # .st-key-<key> — стабильны (см. memory: feedback_streamlit_css.md).
+    # ===== Стили (по comparison_prototype.html) =====
+    # Стилизуем только наши компоненты через .st-key-{K}_*; остальной CSS
+    # уже задан в static/dashboard.css. Inline-html-блоки внутри карточек
+    # стилизуются классами `cmp-*` ниже.
     st.markdown(
-        f'<style>'
-        f'.st-key-{K}_period_input_1, .st-key-{K}_period_input_2,'
-        f'.st-key-{K}_filter,'
-        f'.st-key-{K}_period_card_1, .st-key-{K}_period_card_2,'
-        f'.st-key-{K}_result {{'
-        f'  background: #FFFFFF !important;'
-        f'  border-radius: 7px !important;'
-        f'  border: 0.5px solid rgba(0,0,0,0.10) !important;'
-        f'  padding: 12px 14px !important;'
-        f'  margin-bottom: 8px !important;'
-        f'}}'
-        f'</style>',
+        f"""<style>
+.st-key-{K}_hero, .st-key-{K}_controls,
+.st-key-{K}_filter, .st-key-{K}_breakdown,
+.st-key-{K}_insight {{
+  background: #FFFFFF !important;
+  border-radius: 10px !important;
+  border: 0.5px solid rgba(0,0,0,0.08) !important;
+  padding: 14px !important;
+  margin-bottom: 8px !important;
+}}
+.st-key-{K}_hero {{
+  background: linear-gradient(135deg, #FFFFFF 0%, #F5F4EF 100%) !important;
+  padding: 18px 20px !important;
+}}
+
+.cmp-h-uppercase {{ font-size:10px; color:#5F5E5A; text-transform:uppercase;
+  letter-spacing:0.6px; font-weight:600; margin-bottom:10px; }}
+.cmp-hero-grid {{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }}
+.cmp-hero-name {{ font-size:10px; color:#5F5E5A; text-transform:uppercase;
+  letter-spacing:0.4px; font-weight:500; margin-bottom:3px; }}
+.cmp-hero-row {{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap;
+  margin-bottom:4px; }}
+.cmp-hero-cur {{ font-size:28px; font-weight:600; line-height:1;
+  letter-spacing:-0.5px; font-variant-numeric:tabular-nums; }}
+.cmp-hero-vs {{ font-size:11px; color:#5F5E5A; }}
+.cmp-hero-prev {{ font-size:14px; color:#5F5E5A; font-weight:500;
+  font-variant-numeric:tabular-nums; }}
+
+.cmp-period-label {{ display:flex; align-items:center; gap:6px; font-size:10px;
+  font-weight:600; color:#5F5E5A; text-transform:uppercase; letter-spacing:0.5px;
+  margin-bottom:6px; }}
+.cmp-dot {{ width:8px; height:8px; border-radius:50%; display:inline-block; }}
+.cmp-dot-cur {{ background:#185FA5; }}
+.cmp-dot-cmp {{ background:#888780; }}
+
+.cmp-vs-circle {{ width:28px; height:28px; background:#F5F4EF; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; font-size:10px;
+  font-weight:600; color:#5F5E5A; margin: 16px auto 0; }}
+
+.cmp-meta {{ font-size:10px; color:#888780; font-variant-numeric:tabular-nums;
+  margin-top:4px; }}
+.cmp-meta b {{ color:#2C2C2A; font-weight:500; }}
+
+.cmp-bar-row {{ display:grid; grid-template-columns:160px 1fr 110px;
+  align-items:center; gap:14px; padding:10px 0;
+  border-bottom:0.5px solid rgba(0,0,0,0.06); }}
+.cmp-bar-row:last-child {{ border-bottom:none; }}
+.cmp-bar-row-name {{ display:flex; align-items:center; gap:8px;
+  font-size:12px; font-weight:500; min-width:0; overflow:hidden; }}
+.cmp-bar-row-name span:last-child {{ overflow:hidden; text-overflow:ellipsis;
+  white-space:nowrap; }}
+.cmp-bar-pair {{ display:flex; flex-direction:column; gap:4px; }}
+.cmp-bar-track {{ display:flex; align-items:center; gap:8px; height:16px; }}
+.cmp-bar-fill-wrap {{ flex:1; height:14px; background:#F5F4EF;
+  border-radius:3px; overflow:hidden; }}
+.cmp-bar-fill {{ height:100%; border-radius:3px; }}
+.cmp-bar-fill-cur {{ background:#185FA5; }}
+.cmp-bar-fill-prev {{ background:#B8B6AE; }}
+.cmp-bar-value {{ font-size:10px; font-variant-numeric:tabular-nums;
+  font-weight:600; min-width:60px; text-align:right; white-space:nowrap; }}
+.cmp-bar-value-cur {{ color:#2C2C2A; }}
+.cmp-bar-value-prev {{ color:#5F5E5A; }}
+.cmp-bar-row-delta {{ text-align:right; }}
+
+.cmp-tag-new {{ display:inline-block; padding:2px 7px; font-size:10px;
+  font-weight:600; background:#EAF3DE; color:#3B6D11; border-radius:4px; }}
+.cmp-tag-gone {{ display:inline-block; padding:2px 7px; font-size:10px;
+  font-weight:600; background:#F1EFE8; color:#5F5E5A; border-radius:4px; }}
+
+.cmp-total-row {{ display:grid; grid-template-columns:160px 1fr 110px;
+  gap:14px; padding:12px 0 4px; margin-top:8px;
+  border-top:0.5px solid rgba(0,0,0,0.15); font-weight:600; font-size:12px; }}
+.cmp-total-vals {{ display:flex; flex-direction:column; gap:3px; }}
+.cmp-total-val {{ display:flex; justify-content:space-between; font-size:11px;
+  font-variant-numeric:tabular-nums; }}
+.cmp-total-val-cur {{ color:#185FA5; }}
+.cmp-total-val-prev {{ color:#888780; font-weight:500; }}
+
+.cmp-empty {{ text-align:center; padding:32px; color:#5F5E5A; font-size:12px; }}
+
+.cmp-insight {{ display:flex; align-items:flex-start; gap:10px;
+  padding:10px 12px; border-radius:6px; font-size:11px; line-height:1.5; }}
+.cmp-insight-icon {{ width:16px; height:16px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; font-size:10px;
+  font-weight:700; }}
+.cmp-insight-info {{ background:#E6F1FB; color:#185FA5; }}
+.cmp-insight-info .cmp-insight-icon {{ background:#185FA5; color:#E6F1FB; }}
+.cmp-insight-warn {{ background:#FAEEDA; color:#854F0B; }}
+.cmp-insight-warn .cmp-insight-icon {{ background:#854F0B; color:#FAEEDA; }}
+
+@media (max-width: 720px) {{
+  .cmp-hero-grid {{ grid-template-columns: 1fr !important; }}
+  .cmp-hero-cur {{ font-size: 24px !important; }}
+  .cmp-bar-row, .cmp-total-row {{ grid-template-columns: 1fr !important; }}
+}}
+</style>""",
         unsafe_allow_html=True,
     )
 
-    # ===== Шапка + help =====
     if show_title:
-        st.title("📊 Сравнение периодов")
-    st.markdown(
-        '<div style="background:#E6F1FB; color:#185FA5; padding:10px 14px; '
-        'border-radius:6px; font-size:12px; line-height:1.5; margin-bottom:14px;">'
-        '<b>Как работает:</b> выбери два периода через даты или быстрые шаблоны. '
-        'По умолчанию учитываются <b>все виды</b> активности. Для «честного» '
-        'сравнения только по конкретным дисциплинам — переключи фильтр на «Выбрать» '
-        'и оставь нужные виды.'
-        '</div>',
-        unsafe_allow_html=True,
-    )
+        st.markdown(
+            '<div style="margin-bottom:6px;">'
+            '<h1 style="font-size:18px; font-weight:600; margin:0 0 2px 0;">'
+            'Сравнение периодов</h1>'
+            '<div style="font-size:11px; color:#5F5E5A;">'
+            'Гибкий анализ объёма тренировок между двумя периодами</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
 
     # ===== State init (с дефолтами) =====
     today = date.today()
@@ -123,278 +253,84 @@ def render(
     if f"{K}_p2_end" not in st.session_state:
         st.session_state[f"{K}_p2_end"] = today - timedelta(days=14)
     if f"{K}_filter_mode" not in st.session_state:
-        st.session_state[f"{K}_filter_mode"] = "Все активности"
+        st.session_state[f"{K}_filter_mode"] = "Все"
+    if f"{K}_selected_sports" not in st.session_state:
+        st.session_state[f"{K}_selected_sports"] = []
 
-    # ===== Helpers для preset =====
-    # ВАЖНО: эти callbacks вызываются ЧЕРЕЗ st.button(on_click=...) — они
-    # выполняются ДО рендера виджетов на следующем rerun, поэтому могут
-    # менять session_state[key], даже если key совпадает с key виджета
-    # date_input. Прямой вызов после st.button() приведёт к
-    # StreamlitAPIException ("cannot be modified after the widget is
-    # instantiated").
-    def _apply_preset_p1_days(days: int) -> None:
-        today_local = date.today()
-        st.session_state[f"{K}_p1_end"] = today_local
-        st.session_state[f"{K}_p1_start"] = today_local - timedelta(days=days - 1)
+    # ===== Preset callbacks =====
+    def _p1_days(days: int) -> None:
+        t = date.today()
+        st.session_state[f"{K}_p1_end"] = t
+        st.session_state[f"{K}_p1_start"] = t - timedelta(days=days - 1)
 
-    def _apply_preset_p1_curmonth() -> None:
-        today_local = date.today()
-        st.session_state[f"{K}_p1_start"] = today_local.replace(day=1)
-        st.session_state[f"{K}_p1_end"] = today_local
+    def _p1_curmonth() -> None:
+        t = date.today()
+        st.session_state[f"{K}_p1_start"] = t.replace(day=1)
+        st.session_state[f"{K}_p1_end"] = t
 
-    def _apply_preset_p2_prev_period() -> None:
-        p1_start = st.session_state[f"{K}_p1_start"]
-        p1_end = st.session_state[f"{K}_p1_end"]
-        p1_len = (p1_end - p1_start).days + 1
-        end_d = p1_start - timedelta(days=1)
-        start_d = end_d - timedelta(days=p1_len - 1)
+    def _p2_prev_period() -> None:
+        s = st.session_state[f"{K}_p1_start"]
+        e = st.session_state[f"{K}_p1_end"]
+        plen = (e - s).days + 1
+        end_d = s - timedelta(days=1)
+        start_d = end_d - timedelta(days=plen - 1)
         st.session_state[f"{K}_p2_start"] = start_d
         st.session_state[f"{K}_p2_end"] = end_d
 
-    def _apply_preset_p2_year_ago() -> None:
-        p1_start = st.session_state[f"{K}_p1_start"]
-        p1_end = st.session_state[f"{K}_p1_end"]
-        st.session_state[f"{K}_p2_start"] = p1_start - timedelta(days=365)
-        st.session_state[f"{K}_p2_end"] = p1_end - timedelta(days=365)
+    def _p2_year_ago() -> None:
+        s = st.session_state[f"{K}_p1_start"]
+        e = st.session_state[f"{K}_p1_end"]
+        st.session_state[f"{K}_p2_start"] = s - timedelta(days=365)
+        st.session_state[f"{K}_p2_end"] = e - timedelta(days=365)
 
-    def _apply_preset_p2_prev_month() -> None:
-        today_local = date.today()
-        first_of_curr = today_local.replace(day=1)
-        end_d = first_of_curr - timedelta(days=1)
+    def _p2_prev_month() -> None:
+        t = date.today()
+        first = t.replace(day=1)
+        end_d = first - timedelta(days=1)
         start_d = end_d.replace(day=1)
         st.session_state[f"{K}_p2_start"] = start_d
         st.session_state[f"{K}_p2_end"] = end_d
 
-    # ===== Render Period Input =====
-    def _render_period_input(period_num: int, color: str) -> None:
-        label = "Период 1 · Основной" if period_num == 1 else "Период 2 · Сравнение"
-        key_start = f"{K}_p{period_num}_start"
-        key_end = f"{K}_p{period_num}_end"
+    def _set_filter_all() -> None:
+        st.session_state[f"{K}_filter_mode"] = "Все"
 
-        with st.container(border=True, key=f"{K}_period_input_{period_num}"):
-            st.markdown(
-                f'<div style="display:flex; align-items:center; gap:8px; '
-                f'font-size:10px; color:#5F5E5A; font-weight:500; '
-                f'text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">'
-                f'<span style="display:inline-block; width:8px; height:8px; '
-                f'border-radius:50%; background:{color};"></span>{label}'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+    def _set_filter_custom() -> None:
+        st.session_state[f"{K}_filter_mode"] = "Выбрать"
 
-            # ВАЖНО: один key для виджета и для логики (без value=).
-            # Preset-кнопки меняют ss[key_start] / ss[key_end] напрямую —
-            # на следующем rerun date_input подхватит новое значение.
-            # Если бы мы передавали value=, Streamlit на 2-м рендере
-            # игнорирует его и использует внутренний widget state — preset
-            # переставал бы работать.
-            date_cols = st.columns([2, 1, 2])
-            with date_cols[0]:
-                st.date_input(
-                    "От",
-                    key=key_start,
-                    label_visibility="collapsed",
-                )
-            with date_cols[1]:
-                st.markdown(
-                    '<div style="text-align:center; padding-top:6px; color:#5F5E5A;">→</div>',
-                    unsafe_allow_html=True,
-                )
-            with date_cols[2]:
-                st.date_input(
-                    "До",
-                    key=key_end,
-                    label_visibility="collapsed",
-                )
-
-            # Presets — используем on_click callbacks (см. комментарий
-            # к _apply_preset_p*_*)
-            if period_num == 1:
-                preset_cols = st.columns(4)
-                with preset_cols[0]:
-                    st.button(
-                        "7 дней",
-                        key=f"{K}_p1_preset_7",
-                        use_container_width=True,
-                        on_click=_apply_preset_p1_days,
-                        args=(7,),
-                    )
-                with preset_cols[1]:
-                    st.button(
-                        "14 дней",
-                        key=f"{K}_p1_preset_14",
-                        use_container_width=True,
-                        on_click=_apply_preset_p1_days,
-                        args=(14,),
-                    )
-                with preset_cols[2]:
-                    st.button(
-                        "30 дней",
-                        key=f"{K}_p1_preset_30",
-                        use_container_width=True,
-                        on_click=_apply_preset_p1_days,
-                        args=(30,),
-                    )
-                with preset_cols[3]:
-                    st.button(
-                        "Текущий месяц",
-                        key=f"{K}_p1_preset_curmonth",
-                        use_container_width=True,
-                        on_click=_apply_preset_p1_curmonth,
-                    )
-            else:
-                preset_cols = st.columns(3)
-                with preset_cols[0]:
-                    st.button(
-                        "Предыдущий равный",
-                        key=f"{K}_p2_preset_prev",
-                        use_container_width=True,
-                        on_click=_apply_preset_p2_prev_period,
-                    )
-                with preset_cols[1]:
-                    st.button(
-                        "Год назад",
-                        key=f"{K}_p2_preset_year",
-                        use_container_width=True,
-                        on_click=_apply_preset_p2_year_ago,
-                    )
-                with preset_cols[2]:
-                    st.button(
-                        "Прошлый месяц",
-                        key=f"{K}_p2_preset_prevmonth",
-                        use_container_width=True,
-                        on_click=_apply_preset_p2_prev_month,
-                    )
-
-            # Meta
-            days_count = (
-                st.session_state[key_end] - st.session_state[key_start]
-            ).days + 1
-            if not df.empty:
-                mask = (df["day"] >= st.session_state[key_start]) & (
-                    df["day"] <= st.session_state[key_end]
-                )
-                act_count = int(mask.sum())
-            else:
-                act_count = 0
-            st.markdown(
-                f'<div style="margin-top:8px; font-size:11px; color:#5F5E5A;">'
-                f'<b>{days_count}</b> дней · <b>{act_count}</b> активностей</div>',
-                unsafe_allow_html=True,
-            )
-
-    # Render two period inputs side-by-side
-    period_cols = st.columns(2)
-    with period_cols[0]:
-        _render_period_input(1, "#185FA5")
-    with period_cols[1]:
-        _render_period_input(2, "#888780")
-
-    # ===== Activity Filter =====
-    def _get_period_sports(start_d: date, end_d: date) -> set:
-        if df.empty:
-            return set()
-        mask = (df["day"] >= start_d) & (df["day"] <= end_d)
-        return set(df.loc[mask, "activity_type_ru"].dropna().unique())
-
-    p1_sports = _get_period_sports(
-        st.session_state[f"{K}_p1_start"], st.session_state[f"{K}_p1_end"]
-    )
-    p2_sports = _get_period_sports(
-        st.session_state[f"{K}_p2_start"], st.session_state[f"{K}_p2_end"]
-    )
-    all_available_sports = sorted(p1_sports | p2_sports)
-
-    with st.container(border=True, key=f"{K}_filter"):
-        filter_cols = st.columns([3, 2])
-        with filter_cols[0]:
-            st.markdown(
-                '<div style="font-size:13px; font-weight:500; padding-top:6px;">'
-                'Активности</div>',
-                unsafe_allow_html=True,
-            )
-        with filter_cols[1]:
-            st.segmented_control(
-                "Режим",
-                ["Все активности", "Выбрать"],
-                default=st.session_state.get(f"{K}_filter_mode", "Все активности"),
-                selection_mode="single",
-                key=f"{K}_filter_mode",
-                label_visibility="collapsed",
-            )
-
-        mode_choice = (
-            st.session_state.get(f"{K}_filter_mode", "Все активности")
-            or "Все активности"
-        )
-
-        if mode_choice == "Выбрать":
-            if not all_available_sports:
-                st.info("Нет активностей в выбранных периодах для фильтрации.")
-                selected_sports = []
-            else:
-                _ms_key = (
-                    f"{K}_sports_pills_"
-                    f"{abs(hash(tuple(all_available_sports)))}"
-                )
-                selected_sports = st.pills(
-                    "Виды спорта",
-                    all_available_sports,
-                    selection_mode="multi",
-                    default=all_available_sports,
-                    key=_ms_key,
-                    label_visibility="collapsed",
-                )
-                selected_sports = selected_sports or []
-                st.session_state[f"{K}_selected_sports"] = selected_sports
-                if not selected_sports:
-                    st.markdown(
-                        '<div style="background:#FAEEDA; color:#854F0B; padding:6px 10px; '
-                        'border-radius:5px; font-size:11px; margin-top:8px;">'
-                        '⚠️ Не выбрано ни одной активности — выберите хотя бы один вид'
-                        '</div>',
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        f'<div style="background:#E6F1FB; color:#185FA5; padding:6px 10px; '
-                        f'border-radius:5px; font-size:11px; margin-top:8px;">'
-                        f'✓ Выбрано <b>{len(selected_sports)}</b>: '
-                        f'{", ".join(selected_sports)}'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
+    def _toggle_sport(sport: str, all_available: list[str]) -> None:
+        mode = st.session_state.get(f"{K}_filter_mode", "Все")
+        sel = list(st.session_state.get(f"{K}_selected_sports", []))
+        if mode == "Все":
+            # Авто-переключение: все остаются выбранными, кроме кликнутого
+            sel = [s for s in all_available if s != sport]
+            st.session_state[f"{K}_filter_mode"] = "Выбрать"
         else:
-            # all mode — все виды учитываются
-            if all_available_sports:
-                st.markdown(
-                    f'<div style="opacity:0.5; font-size:12px; padding:6px 0;">'
-                    f'{" · ".join(all_available_sports)}'
-                    f'</div>',
-                    unsafe_allow_html=True,
-                )
-            selected_sports = list(all_available_sports)
-            st.markdown(
-                '<div style="background:#E6F1FB; color:#185FA5; padding:6px 10px; '
-                'border-radius:5px; font-size:11px; margin-top:8px;">'
-                '✓ Учитываются <b>все активности</b>'
-                '</div>',
-                unsafe_allow_html=True,
-            )
+            if sport in sel:
+                sel = [s for s in sel if s != sport]
+            else:
+                sel = sel + [sport]
+        st.session_state[f"{K}_selected_sports"] = sel
 
-    # ===== Compute period data =====
-    def _compute_period(start_d: date, end_d: date, sports: list) -> dict:
+    def _select_all_sports(all_available: list[str]) -> None:
+        st.session_state[f"{K}_selected_sports"] = list(all_available)
+
+    def _deselect_all_sports() -> None:
+        st.session_state[f"{K}_selected_sports"] = []
+
+    # ===== Data computation =====
+    def _period_view(start_d: date, end_d: date) -> pd.DataFrame:
         if df.empty:
-            return {
-                "sports": [],
-                "totals": {"hours": 0.0, "km": 0.0, "sports_count": 0},
-                "days": (end_d - start_d).days + 1,
-                "activities_count": 0,
-            }
+            return df
         mask = (df["day"] >= start_d) & (df["day"] <= end_d)
-        period_view = df[mask]
-        grp = (
-            period_view.groupby("activity_type_ru")
+        return df[mask]
+
+    def _period_groups(view: pd.DataFrame) -> pd.DataFrame:
+        if view.empty:
+            return pd.DataFrame(columns=[
+                "activity_type_ru", "hours", "km", "count",
+            ])
+        return (
+            view.groupby("activity_type_ru")
             .agg(
                 hours=("duration_h", "sum"),
                 km=("distance_km", "sum"),
@@ -403,214 +339,430 @@ def render(
             .reset_index()
             .sort_values("hours", ascending=False)
         )
-        sports_set = set(sports) if sports else set()
-        grp["excluded"] = ~grp["activity_type_ru"].isin(sports_set)
-        incl = grp[~grp["excluded"]]
+
+    p1s = st.session_state[f"{K}_p1_start"]
+    p1e = st.session_state[f"{K}_p1_end"]
+    p2s = st.session_state[f"{K}_p2_start"]
+    p2e = st.session_state[f"{K}_p2_end"]
+
+    p1_view = _period_view(p1s, p1e)
+    p2_view = _period_view(p2s, p2e)
+    p1_grp = _period_groups(p1_view)
+    p2_grp = _period_groups(p2_view)
+
+    p1_sports_all = list(p1_grp["activity_type_ru"]) if not p1_grp.empty else []
+    p2_sports_all = list(p2_grp["activity_type_ru"]) if not p2_grp.empty else []
+    all_sports = sorted(set(p1_sports_all) | set(p2_sports_all))
+
+    mode = st.session_state.get(f"{K}_filter_mode", "Все")
+    selected_sports = list(st.session_state.get(f"{K}_selected_sports", []))
+    if mode == "Все":
+        included = list(all_sports)
+    else:
+        included = [s for s in selected_sports if s in all_sports]
+
+    def _totals(grp: pd.DataFrame) -> dict:
+        if grp.empty:
+            return {"hours": 0.0, "km": 0.0, "count": 0}
+        sub = grp[grp["activity_type_ru"].isin(included)]
         return {
-            "sports": grp.to_dict("records"),
-            "totals": {
-                "hours": float(incl["hours"].sum()),
-                "km": float(incl["km"].sum()),
-                "sports_count": int(len(incl)),
-            },
-            "days": (end_d - start_d).days + 1,
-            "activities_count": int(period_view.shape[0]),
+            "hours": float(sub["hours"].sum()),
+            "km": float(sub["km"].sum()),
+            "count": int(sub["count"].sum()),
         }
 
-    p1 = _compute_period(
-        st.session_state[f"{K}_p1_start"],
-        st.session_state[f"{K}_p1_end"],
-        selected_sports,
-    )
-    p2 = _compute_period(
-        st.session_state[f"{K}_p2_start"],
-        st.session_state[f"{K}_p2_end"],
-        selected_sports,
-    )
+    p1_totals = _totals(p1_grp)
+    p2_totals = _totals(p2_grp)
 
-    # ===== Период-карточки =====
-    def _render_period_card(
-        p: dict, label: str, color: str, period_obj: dict, card_num: int,
-    ) -> None:
-        with st.container(border=True, key=f"{K}_period_card_{card_num}"):
-            st.markdown(
-                f'<div style="display:flex; align-items:center; gap:8px; '
-                f'font-size:10px; color:#5F5E5A; font-weight:500; '
-                f'text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">'
-                f'<span style="display:inline-block; width:8px; height:8px; '
-                f'border-radius:50%; background:{color};"></span>{label}'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-            st.markdown(
-                f'<div style="font-size:15px; font-weight:500; line-height:1.2;">'
-                f'{_format_period(period_obj["start"], period_obj["end"])}</div>'
-                f'<div style="font-size:11px; color:#5F5E5A; margin-bottom:10px;">'
-                f'<b>{p["days"]}</b> дней · <b>{p["activities_count"]}</b> активностей</div>',
-                unsafe_allow_html=True,
-            )
-            if not p["sports"]:
-                st.markdown(
-                    '<div style="font-size:12px; color:#5F5E5A; padding:8px 0;">'
-                    'Нет активностей в этом периоде</div>',
-                    unsafe_allow_html=True,
-                )
-            else:
-                rows_html = ""
-                for s in p["sports"]:
-                    opacity = "0.35" if s["excluded"] else "1"
-                    td_style = "text-decoration:line-through;" if s["excluded"] else ""
-                    rows_html += (
-                        f'<div style="display:grid; '
-                        f'grid-template-columns:1fr 80px 80px; '
-                        f'padding:5px 0; font-size:12px; align-items:center; '
-                        f'border-bottom:0.5px solid rgba(0,0,0,0.05); '
-                        f'opacity:{opacity}; {td_style}">'
-                        f'<span>{s["activity_type_ru"]}</span>'
-                        f'<span style="text-align:right; font-variant-numeric:tabular-nums;">'
-                        f'{s["hours"]:.1f} ч</span>'
-                        f'<span style="text-align:right; font-variant-numeric:tabular-nums;">'
-                        f'{s["km"]:.1f} км</span>'
-                        f'</div>'
-                    )
-                st.markdown(rows_html, unsafe_allow_html=True)
-            # Итого — без фона (фон #F5F4EF сливался со страничным),
-            # выделено тонким border-top + bolder text внутри белой карточки
-            st.markdown(
-                f'<div style="display:flex; justify-content:space-between; '
-                f'border-top:1px solid rgba(0,0,0,0.08); '
-                f'padding-top:10px; margin-top:10px; '
-                f'font-size:13px; font-weight:600; color:#2C2C2A;">'
-                f'<span>Итого:</span>'
-                f'<span style="font-variant-numeric:tabular-nums;">'
-                f'{p["totals"]["hours"]:.1f} ч · {p["totals"]["km"]:.1f} км'
-                f'</span></div>',
-                unsafe_allow_html=True,
-            )
-
-    p1_obj = {
-        "start": st.session_state[f"{K}_p1_start"],
-        "end": st.session_state[f"{K}_p1_end"],
-    }
-    p2_obj = {
-        "start": st.session_state[f"{K}_p2_start"],
-        "end": st.session_state[f"{K}_p2_end"],
-    }
-
-    card_cols = st.columns(2)
-    with card_cols[0]:
-        _render_period_card(p1, "Период 1 · Основной", "#185FA5", p1_obj, 1)
-    with card_cols[1]:
-        _render_period_card(p2, "Период 2 · Сравнение", "#888780", p2_obj, 2)
-
-    # ===== Result Card =====
-    with st.container(border=True, key=f"{K}_result"):
+    # ===== 1. HERO =====
+    with st.container(key=f"{K}_hero"):
+        h_abs, h_pct, h_dir = _compute_delta(p1_totals["hours"], p2_totals["hours"])
+        k_abs, k_pct, k_dir = _compute_delta(p1_totals["km"], p2_totals["km"])
+        a_abs, a_pct, a_dir = _compute_delta(p1_totals["count"], p2_totals["count"])
         st.markdown(
-            '<div style="font-size:14px; font-weight:500; margin-bottom:10px;">'
-            '📊 Результат сравнения</div>',
+            f'<div class="cmp-h-uppercase">⚡ Главный результат</div>'
+            f'<div class="cmp-hero-grid">'
+            # Hours
+            f'<div>'
+            f'  <div class="cmp-hero-name">Часов</div>'
+            f'  <div class="cmp-hero-row">'
+            f'    <span class="cmp-hero-cur">{p1_totals["hours"]:.1f}</span>'
+            f'    <span class="cmp-hero-vs">vs</span>'
+            f'    <span class="cmp-hero-prev">{p2_totals["hours"]:.1f}</span>'
+            f'  </div>'
+            f'  {_delta_badge(h_abs, h_pct, h_dir, "ч", "md")}'
+            f'</div>'
+            # Km
+            f'<div>'
+            f'  <div class="cmp-hero-name">Километров</div>'
+            f'  <div class="cmp-hero-row">'
+            f'    <span class="cmp-hero-cur">{_fmt_km(p1_totals["km"])}</span>'
+            f'    <span class="cmp-hero-vs">vs</span>'
+            f'    <span class="cmp-hero-prev">{_fmt_km(p2_totals["km"])}</span>'
+            f'  </div>'
+            f'  {_delta_badge(k_abs, k_pct, k_dir, "км", "md")}'
+            f'</div>'
+            # Activities
+            f'<div>'
+            f'  <div class="cmp-hero-name">Активностей</div>'
+            f'  <div class="cmp-hero-row">'
+            f'    <span class="cmp-hero-cur">{p1_totals["count"]}</span>'
+            f'    <span class="cmp-hero-vs">vs</span>'
+            f'    <span class="cmp-hero-prev">{p2_totals["count"]}</span>'
+            f'  </div>'
+            f'  {_delta_badge(a_abs, a_pct, a_dir, "", "md")}'
+            f'</div>'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
-        if mode_choice == "Выбрать" and not selected_sports:
-            st.info(
-                "Выберите хотя бы один вид спорта в фильтре выше, "
-                "чтобы построить сравнение."
+    # ===== 2. PERIOD CONTROLS =====
+    with st.container(key=f"{K}_controls"):
+        cols = st.columns([10, 1, 10])
+
+        with cols[0]:
+            st.markdown(
+                '<div class="cmp-period-label">'
+                '<span class="cmp-dot cmp-dot-cur"></span>'
+                'Период 1 · основной</div>',
+                unsafe_allow_html=True,
+            )
+            d_cols = st.columns([2, 1, 2])
+            with d_cols[0]:
+                st.date_input(
+                    "От", key=f"{K}_p1_start", label_visibility="collapsed",
+                )
+            with d_cols[1]:
+                st.markdown(
+                    '<div style="text-align:center; padding-top:6px; '
+                    'color:#888780;">→</div>',
+                    unsafe_allow_html=True,
+                )
+            with d_cols[2]:
+                st.date_input(
+                    "До", key=f"{K}_p1_end", label_visibility="collapsed",
+                )
+            pcols = st.columns(4)
+            with pcols[0]:
+                st.button("7д", key=f"{K}_p1_pr7",
+                          on_click=_p1_days, args=(7,),
+                          use_container_width=True)
+            with pcols[1]:
+                st.button("14д", key=f"{K}_p1_pr14",
+                          on_click=_p1_days, args=(14,),
+                          use_container_width=True)
+            with pcols[2]:
+                st.button("30д", key=f"{K}_p1_pr30",
+                          on_click=_p1_days, args=(30,),
+                          use_container_width=True)
+            with pcols[3]:
+                st.button("месяц", key=f"{K}_p1_prcm",
+                          on_click=_p1_curmonth,
+                          use_container_width=True)
+            p1_days_n = (p1e - p1s).days + 1
+            p1_act_n = int(p1_view.shape[0]) if not p1_view.empty else 0
+            st.markdown(
+                f'<div class="cmp-meta">'
+                f'<b>{p1_days_n} {_pluralize(p1_days_n, ("день","дня","дней"))}</b>'
+                f' · {p1_act_n} '
+                f'{_pluralize(p1_act_n, ("активность","активности","активностей"))}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+        with cols[1]:
+            st.markdown(
+                '<div class="cmp-vs-circle">VS</div>',
+                unsafe_allow_html=True,
+            )
+
+        with cols[2]:
+            st.markdown(
+                '<div class="cmp-period-label">'
+                '<span class="cmp-dot cmp-dot-cmp"></span>'
+                'Период 2 · сравнение</div>',
+                unsafe_allow_html=True,
+            )
+            d_cols = st.columns([2, 1, 2])
+            with d_cols[0]:
+                st.date_input(
+                    "От", key=f"{K}_p2_start", label_visibility="collapsed",
+                )
+            with d_cols[1]:
+                st.markdown(
+                    '<div style="text-align:center; padding-top:6px; '
+                    'color:#888780;">→</div>',
+                    unsafe_allow_html=True,
+                )
+            with d_cols[2]:
+                st.date_input(
+                    "До", key=f"{K}_p2_end", label_visibility="collapsed",
+                )
+            pcols = st.columns(3)
+            with pcols[0]:
+                st.button("пред. равный", key=f"{K}_p2_pr_prev",
+                          on_click=_p2_prev_period,
+                          use_container_width=True)
+            with pcols[1]:
+                st.button("год назад", key=f"{K}_p2_pr_year",
+                          on_click=_p2_year_ago,
+                          use_container_width=True)
+            with pcols[2]:
+                st.button("прошл. месяц", key=f"{K}_p2_pr_pmon",
+                          on_click=_p2_prev_month,
+                          use_container_width=True)
+            p2_days_n = (p2e - p2s).days + 1
+            p2_act_n = int(p2_view.shape[0]) if not p2_view.empty else 0
+            st.markdown(
+                f'<div class="cmp-meta">'
+                f'<b>{p2_days_n} {_pluralize(p2_days_n, ("день","дня","дней"))}</b>'
+                f' · {p2_act_n} '
+                f'{_pluralize(p2_act_n, ("активность","активности","активностей"))}'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+
+    # ===== 3. ACTIVITY FILTER =====
+    with st.container(key=f"{K}_filter"):
+        f_cols = st.columns([2, 9])
+        with f_cols[0]:
+            st.markdown(
+                '<div style="font-size:10px; font-weight:600; color:#5F5E5A; '
+                'text-transform:uppercase; letter-spacing:0.5px; padding-top:8px;">'
+                'Активности</div>',
+                unsafe_allow_html=True,
+            )
+        with f_cols[1]:
+            st.segmented_control(
+                "Режим",
+                ["Все", "Выбрать"],
+                default=st.session_state.get(f"{K}_filter_mode", "Все"),
+                selection_mode="single",
+                key=f"{K}_filter_mode",
+                label_visibility="collapsed",
+            )
+
+        # Sport chips — кликабельные через st.button с key=...
+        if all_sports:
+            st.markdown(
+                '<div style="height:6px;"></div>', unsafe_allow_html=True,
+            )
+            mode_now = st.session_state.get(f"{K}_filter_mode", "Все")
+            chip_cols = st.columns(min(len(all_sports) + 2, 12))
+            for i, sport in enumerate(all_sports):
+                with chip_cols[i % len(chip_cols)]:
+                    is_on = (
+                        mode_now == "Все" or sport in st.session_state.get(
+                            f"{K}_selected_sports", [],
+                        )
+                    )
+                    icon_html = sport_icon_html(sport, size=14)
+                    label = f"{sport}"
+                    btn_type = "primary" if (mode_now == "Выбрать" and is_on) else "secondary"
+                    st.button(
+                        label,
+                        key=f"{K}_chip_{i}_{abs(hash(sport)) % 100000}",
+                        on_click=_toggle_sport,
+                        args=(sport, all_sports),
+                        type=btn_type,
+                        use_container_width=True,
+                    )
+            # «Все / Снять все» только в режиме Выбрать
+            if mode_now == "Выбрать":
+                meta_cols = st.columns([1, 1, 6])
+                with meta_cols[0]:
+                    st.button(
+                        "✓ все",
+                        key=f"{K}_chip_all",
+                        on_click=_select_all_sports,
+                        args=(all_sports,),
+                        use_container_width=True,
+                    )
+                with meta_cols[1]:
+                    st.button(
+                        "✗ снять",
+                        key=f"{K}_chip_none",
+                        on_click=_deselect_all_sports,
+                        use_container_width=True,
+                    )
+
+    # ===== 4. BREAKDOWN =====
+    with st.container(key=f"{K}_breakdown"):
+        p1_range = _format_date_range(p1s, p1e)
+        p2_range = _format_date_range(p2s, p2e)
+
+        # Заголовок + легенда
+        st.markdown(
+            f'<div style="display:flex; align-items:center; gap:8px; '
+            f'font-size:13px; font-weight:600; margin-bottom:14px; '
+            f'flex-wrap:wrap;">'
+            f'<span>📊 Разбивка по видам спорта · часы</span>'
+            f'<div style="display:flex; gap:12px; font-size:10px; color:#5F5E5A; '
+            f'font-weight:400; margin-left:auto; align-items:center; flex-wrap:wrap;">'
+            f'<span style="display:flex; align-items:center; gap:5px;">'
+            f'<span style="display:inline-block; width:12px; height:8px; '
+            f'border-radius:2px; background:#185FA5;"></span>{p1_range}</span>'
+            f'<span style="display:flex; align-items:center; gap:5px;">'
+            f'<span style="display:inline-block; width:12px; height:8px; '
+            f'border-radius:2px; background:#B8B6AE;"></span>{p2_range}</span>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Объединённый список видов из обоих периодов с фильтром
+        rows: list[dict] = []
+        for sport in all_sports:
+            if sport not in included:
+                continue
+            r1 = p1_grp[p1_grp["activity_type_ru"] == sport]
+            r2 = p2_grp[p2_grp["activity_type_ru"] == sport]
+            h1 = float(r1["hours"].iloc[0]) if not r1.empty else 0.0
+            h2 = float(r2["hours"].iloc[0]) if not r2.empty else 0.0
+            km1 = float(r1["km"].iloc[0]) if not r1.empty else 0.0
+            km2 = float(r2["km"].iloc[0]) if not r2.empty else 0.0
+            rows.append({
+                "name": sport,
+                "h1": h1, "h2": h2,
+                "km1": km1, "km2": km2,
+                "only_in_1": (not r1.empty) and r2.empty,
+                "only_in_2": r1.empty and (not r2.empty),
+            })
+        rows.sort(key=lambda r: r["h1"] + r["h2"], reverse=True)
+
+        if not rows:
+            st.markdown(
+                '<div class="cmp-empty">⚠️ Нет данных для отображения. '
+                'Выбери хотя бы один вид спорта в фильтре.</div>',
+                unsafe_allow_html=True,
             )
         else:
-            h_abs, h_pct, h_dir = _delta(p1["totals"]["hours"], p2["totals"]["hours"])
-            k_abs, k_pct, k_dir = _delta(p1["totals"]["km"], p2["totals"]["km"])
-            s_abs, s_pct, s_dir = _delta(
-                p1["totals"]["sports_count"], p2["totals"]["sports_count"]
-            )
-
-            table_html = (
-                '<table style="width:100%; border-collapse:collapse; font-size:13px;">'
-                '<thead>'
-                '<tr style="border-bottom:0.5px solid rgba(0,0,0,0.15);">'
-                '<th style="text-align:left; padding:8px 6px; font-weight:500; '
-                'color:#5F5E5A; font-size:11px; text-transform:uppercase; '
-                'letter-spacing:0.5px;">Метрика</th>'
-                '<th style="text-align:right; padding:8px 6px; font-weight:500; '
-                'color:#5F5E5A; font-size:11px; text-transform:uppercase; '
-                'letter-spacing:0.5px;">Период 1</th>'
-                '<th style="text-align:right; padding:8px 6px; font-weight:500; '
-                'color:#5F5E5A; font-size:11px; text-transform:uppercase; '
-                'letter-spacing:0.5px;">Период 2</th>'
-                '<th style="text-align:right; padding:8px 6px; font-weight:500; '
-                'color:#5F5E5A; font-size:11px; text-transform:uppercase; '
-                'letter-spacing:0.5px;">Дельта</th>'
-                '</tr></thead><tbody>'
-                f'<tr style="border-bottom:0.5px solid rgba(0,0,0,0.08);">'
-                f'<td style="padding:8px 6px;">Учтено видов</td>'
-                f'<td style="text-align:right; padding:8px 6px; '
-                f'font-variant-numeric:tabular-nums;">{p1["totals"]["sports_count"]}</td>'
-                f'<td style="text-align:right; padding:8px 6px; '
-                f'font-variant-numeric:tabular-nums;">{p2["totals"]["sports_count"]}</td>'
-                f'<td style="text-align:right; padding:8px 6px;">'
-                f'{_delta_format(s_abs, s_pct, s_dir)}</td>'
-                f'</tr>'
-                f'<tr style="border-bottom:0.5px solid rgba(0,0,0,0.08);">'
-                f'<td style="padding:8px 6px;">Часов</td>'
-                f'<td style="text-align:right; padding:8px 6px; '
-                f'font-variant-numeric:tabular-nums;">{p1["totals"]["hours"]:.1f}</td>'
-                f'<td style="text-align:right; padding:8px 6px; '
-                f'font-variant-numeric:tabular-nums;">{p2["totals"]["hours"]:.1f}</td>'
-                f'<td style="text-align:right; padding:8px 6px;">'
-                f'{_delta_format(h_abs, h_pct, h_dir, " ч")}</td>'
-                f'</tr>'
-                f'<tr>'
-                f'<td style="padding:8px 6px;">Километров</td>'
-                f'<td style="text-align:right; padding:8px 6px; '
-                f'font-variant-numeric:tabular-nums;">{p1["totals"]["km"]:.1f}</td>'
-                f'<td style="text-align:right; padding:8px 6px; '
-                f'font-variant-numeric:tabular-nums;">{p2["totals"]["km"]:.1f}</td>'
-                f'<td style="text-align:right; padding:8px 6px;">'
-                f'{_delta_format(k_abs, k_pct, k_dir, " км")}</td>'
-                f'</tr>'
-                '</tbody></table>'
-            )
-            st.markdown(table_html, unsafe_allow_html=True)
-
-            # Inline insight
-            st.markdown('<div style="margin-top:12px;"></div>', unsafe_allow_html=True)
-            if mode_choice == "Все активности":
-                only_in_1 = sorted(p1_sports - p2_sports)
-                only_in_2 = sorted(p2_sports - p1_sports)
-                if not only_in_1 and not only_in_2:
-                    st.markdown(
-                        '<div style="background:#E6F1FB; color:#185FA5; padding:10px 12px; '
-                        'border-radius:5px; font-size:12px; line-height:1.5;">'
-                        '✓ Все виды активности присутствуют в обоих периодах. '
-                        'Сравнение полностью корректно.'
-                        '</div>',
-                        unsafe_allow_html=True,
-                    )
+            max_h = max([max(r["h1"], r["h2"]) for r in rows] + [0.001])
+            rows_html = ""
+            for r in rows:
+                w1 = (r["h1"] / max_h) * 100 if max_h > 0 else 0
+                w2 = (r["h2"] / max_h) * 100 if max_h > 0 else 0
+                color = type_color(r["name"])
+                icon = sport_icon_html(r["name"], size=18, color=color)
+                if r["only_in_1"]:
+                    badge = '<span class="cmp-tag-new">+ новый</span>'
+                elif r["only_in_2"]:
+                    badge = '<span class="cmp-tag-gone">− исчез</span>'
                 else:
-                    msg = (
-                        '⚠ В периодах есть виды спорта, '
-                        'присутствующие только в одном из них.'
+                    d_abs, d_pct, d_dir = _compute_delta(r["h1"], r["h2"])
+                    badge = _delta_badge(
+                        d_abs, d_pct, d_dir, "", "sm",
+                        show_abs=False, show_pct=True,
                     )
-                    if only_in_1:
-                        msg += f' <b>Только в П1:</b> {", ".join(only_in_1)}.'
-                    if only_in_2:
-                        msg += f' <b>Только в П2:</b> {", ".join(only_in_2)}.'
-                    msg += (
-                        ' Если нужно «честное» сравнение — переключи фильтр на '
-                        '«Выбрать» и оставь только общие виды.'
-                    )
-                    st.markdown(
-                        f'<div style="background:#FAEEDA; color:#854F0B; padding:10px 12px; '
-                        f'border-radius:5px; font-size:12px; line-height:1.5;">'
-                        f'{msg}'
-                        f'</div>',
-                        unsafe_allow_html=True,
-                    )
-            elif selected_sports:
+                v1 = f'{r["h1"]:.1f} ч' if r["h1"] > 0 else '—'
+                v2 = f'{r["h2"]:.1f} ч' if r["h2"] > 0 else '—'
+                rows_html += (
+                    f'<div class="cmp-bar-row">'
+                    f'  <div class="cmp-bar-row-name">'
+                    f'    <span style="display:inline-block; width:10px; height:10px; '
+                    f'border-radius:50%; background:{color}; flex-shrink:0;"></span>'
+                    f'    {icon}'
+                    f'    <span>{r["name"]}</span>'
+                    f'  </div>'
+                    f'  <div class="cmp-bar-pair">'
+                    f'    <div class="cmp-bar-track">'
+                    f'      <div class="cmp-bar-fill-wrap">'
+                    f'        <div class="cmp-bar-fill cmp-bar-fill-cur" '
+                    f'style="width:{w1}%;"></div>'
+                    f'      </div>'
+                    f'      <span class="cmp-bar-value cmp-bar-value-cur">{v1}</span>'
+                    f'    </div>'
+                    f'    <div class="cmp-bar-track">'
+                    f'      <div class="cmp-bar-fill-wrap">'
+                    f'        <div class="cmp-bar-fill cmp-bar-fill-prev" '
+                    f'style="width:{w2}%;"></div>'
+                    f'      </div>'
+                    f'      <span class="cmp-bar-value cmp-bar-value-prev">{v2}</span>'
+                    f'    </div>'
+                    f'  </div>'
+                    f'  <div class="cmp-bar-row-delta">{badge}</div>'
+                    f'</div>'
+                )
+
+            t_abs, t_pct, t_dir = _compute_delta(p1_totals["hours"], p2_totals["hours"])
+            total_html = (
+                f'<div class="cmp-total-row">'
+                f'  <div>Итого</div>'
+                f'  <div class="cmp-total-vals">'
+                f'    <div class="cmp-total-val cmp-total-val-cur">'
+                f'      <span>{p1_range}</span>'
+                f'      <span>{_fmt_hours(p1_totals["hours"])} ч · '
+                f'{_fmt_km(p1_totals["km"])} км</span>'
+                f'    </div>'
+                f'    <div class="cmp-total-val cmp-total-val-prev">'
+                f'      <span>{p2_range}</span>'
+                f'      <span>{_fmt_hours(p2_totals["hours"])} ч · '
+                f'{_fmt_km(p2_totals["km"])} км</span>'
+                f'    </div>'
+                f'  </div>'
+                f'  <div style="text-align:right;">'
+                f'{_delta_badge(t_abs, t_pct, t_dir, "ч", "sm", show_abs=False, show_pct=True)}'
+                f'  </div>'
+                f'</div>'
+            )
+            st.markdown(rows_html + total_html, unsafe_allow_html=True)
+
+    # ===== 5. INSIGHT =====
+    with st.container(key=f"{K}_insight"):
+        if mode == "Все":
+            keys1 = set(p1_sports_all)
+            keys2 = set(p2_sports_all)
+            only_in_1 = sorted(keys1 - keys2)
+            only_in_2 = sorted(keys2 - keys1)
+            if not only_in_1 and not only_in_2:
                 st.markdown(
-                    f'<div style="background:#E6F1FB; color:#185FA5; padding:10px 12px; '
-                    f'border-radius:5px; font-size:12px; line-height:1.5;">'
-                    f'ℹ Сравниваются только выбранные виды активности: '
-                    f'<b>{", ".join(selected_sports)}</b>.'
+                    '<div class="cmp-insight cmp-insight-info">'
+                    '<span class="cmp-insight-icon">i</span>'
+                    '<div>Все виды активности присутствуют в обоих периодах. '
+                    'Сравнение полностью корректно.</div>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                parts: list[str] = []
+                if only_in_1:
+                    parts.append(
+                        f'<b>Виды только в Период 1:</b> '
+                        f'{", ".join(only_in_1)}.'
+                    )
+                if only_in_2:
+                    parts.append(
+                        f'<b>Виды только в Период 2:</b> '
+                        f'{", ".join(only_in_2)}.'
+                    )
+                msg = " ".join(parts) + (
+                    " Это влияет на сравнение часов и километров. "
+                    "Если нужно «честное» сравнение — переключись на «Выбрать» и оставь общие виды."
+                )
+                st.markdown(
+                    f'<div class="cmp-insight cmp-insight-warn">'
+                    f'<span class="cmp-insight-icon">!</span>'
+                    f'<div>{msg}</div>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+        else:
+            if not selected_sports:
+                st.markdown(
+                    '<div class="cmp-insight cmp-insight-warn">'
+                    '<span class="cmp-insight-icon">!</span>'
+                    '<div>Не выбрано ни одной активности. '
+                    'Выбери хотя бы один вид выше.</div>'
+                    '</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                names = [s for s in selected_sports if s in all_sports]
+                st.markdown(
+                    f'<div class="cmp-insight cmp-insight-info">'
+                    f'<span class="cmp-insight-icon">i</span>'
+                    f'<div>Сравниваются только выбранные виды: '
+                    f'<b>{", ".join(names)}</b>.</div>'
                     f'</div>',
                     unsafe_allow_html=True,
                 )
