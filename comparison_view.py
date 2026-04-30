@@ -63,6 +63,18 @@ def _fmt_km(km: float) -> str:
     return f"{km:.0f}" if km >= 100 else f"{km:.1f}"
 
 
+def _slug(s: str) -> str:
+    """ascii_lower + '_' для CSS-friendly id чипа."""
+    out: list[str] = []
+    for ch in s.lower():
+        if ch.isascii() and (ch.isalnum() or ch in "-_"):
+            out.append(ch)
+        else:
+            out.append("_")
+    res = "".join(out).strip("_")
+    return res or "x"
+
+
 def _compute_delta(v1: float, v2: float) -> tuple[float, float, str]:
     abs_d = v1 - v2
     pct = (abs_d / v2 * 100) if v2 > 0 else (100.0 if v1 > 0 else 0.0)
@@ -246,6 +258,69 @@ def render(
 /* Стрелка между датами — без верхнего падинга, чтобы лежала на одной
    линии с инпутами */
 .cmp-arrow {{ text-align:center; padding-top:5px; color:#888780; font-size:14px; }}
+
+/* === Activity filter — все элементы в одну строку через flex === */
+.st-key-{K}_filter [data-testid="stVerticalBlock"] {{
+  flex-direction: row !important;
+  flex-wrap: wrap !important;
+  align-items: center !important;
+  gap: 8px !important;
+}}
+.st-key-{K}_filter [data-testid="stVerticalBlock"] > [data-testid="stElementContainer"] {{
+  width: auto !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+}}
+
+.cmp-filter-label {{ font-size:10px; font-weight:600; color:#5F5E5A;
+  text-transform:uppercase; letter-spacing:0.5px; }}
+.cmp-filter-vdiv {{ width:0.5px; height:16px; background:rgba(0,0,0,0.15); }}
+
+/* Toggle (segmented_control) внутри filter — компактный */
+.st-key-{K}_filter [data-testid="stSegmentedControl"] button {{
+  padding: 4px 10px !important;
+  font-size: 11px !important;
+  min-height: 0 !important;
+  height: auto !important;
+}}
+
+/* Chip-кнопки видов спорта (default = бежевый pill) */
+.st-key-{K}_filter [data-testid="stButton"] > button {{
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 4px 10px 4px 10px !important;
+  font-size: 11px !important;
+  font-weight: 400 !important;
+  border-radius: 12px !important;
+  background: #F5F4EF !important;
+  border: 0.5px solid transparent !important;
+  color: #2C2C2A !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+  line-height: 1.4 !important;
+}}
+.st-key-{K}_filter [data-testid="stButton"] > button:hover {{
+  background: #F1EFE8 !important;
+}}
+/* Выбранный chip (kind="primary") — тёмный фон, белый текст */
+.st-key-{K}_filter [data-testid="stButton"] > button[kind="primary"] {{
+  background: #2C2C2A !important;
+  color: #FFFFFF !important;
+  font-weight: 500 !important;
+}}
+/* «Все / снять» — link-style */
+.st-key-{K}_chip_all button, .st-key-{K}_chip_none button {{
+  padding: 4px 10px !important;
+  font-size: 10px !important;
+  background: transparent !important;
+  border: 0.5px solid rgba(0,0,0,0.15) !important;
+  color: #185FA5 !important;
+  border-radius: 12px !important;
+}}
+.st-key-{K}_chip_all button:hover, .st-key-{K}_chip_none button:hover {{
+  background: #E6F1FB !important;
+  border-color: #185FA5 !important;
+}}
 
 .cmp-bar-row {{ display:grid; grid-template-columns:160px 1fr 110px;
   align-items:center; gap:14px; padding:10px 0;
@@ -593,68 +668,76 @@ def render(
             )
 
     # ===== 3. ACTIVITY FILTER =====
-    with st.container(key=f"{K}_filter"):
-        f_cols = st.columns([2, 9])
-        with f_cols[0]:
-            st.markdown(
-                '<div style="font-size:10px; font-weight:600; color:#5F5E5A; '
-                'text-transform:uppercase; letter-spacing:0.5px; padding-top:8px;">'
-                'Активности</div>',
-                unsafe_allow_html=True,
+    # Все элементы (метка / toggle / divider / chips / actions) в одной
+    # строке через CSS-flex (см. .st-key-{K}_filter правило выше).
+    # Цветная точка для каждого chip — ::before c фоном type_color(sport),
+    # генерируется динамически ниже.
+    if all_sports:
+        chip_css_rules = []
+        for sport in all_sports:
+            slug = _slug(sport)
+            color = type_color(sport)
+            chip_css_rules.append(
+                f'.st-key-{K}_chip_{slug} button::before {{'
+                f' content:""; display:inline-block; width:8px; height:8px;'
+                f' border-radius:50%; background:{color};'
+                f' margin-right:6px; vertical-align:middle; flex-shrink:0; }}'
             )
-        with f_cols[1]:
-            st.segmented_control(
-                "Режим",
-                ["Все", "Выбрать"],
-                default=st.session_state.get(f"{K}_filter_mode", "Все"),
-                selection_mode="single",
-                key=f"{K}_filter_mode",
-                label_visibility="collapsed",
-            )
+        st.markdown(
+            "<style>" + "\n".join(chip_css_rules) + "</style>",
+            unsafe_allow_html=True,
+        )
 
-        # Sport chips — кликабельные через st.button с key=...
+    with st.container(key=f"{K}_filter"):
+        st.markdown(
+            '<div class="cmp-filter-label">Активности:</div>',
+            unsafe_allow_html=True,
+        )
+        st.segmented_control(
+            "Режим",
+            ["Все", "Выбрать"],
+            default=st.session_state.get(f"{K}_filter_mode", "Все"),
+            selection_mode="single",
+            key=f"{K}_filter_mode",
+            label_visibility="collapsed",
+        )
+        st.markdown(
+            '<div class="cmp-filter-vdiv"></div>',
+            unsafe_allow_html=True,
+        )
+
         if all_sports:
-            st.markdown(
-                '<div style="height:6px;"></div>', unsafe_allow_html=True,
-            )
             mode_now = st.session_state.get(f"{K}_filter_mode", "Все")
-            chip_cols = st.columns(min(len(all_sports) + 2, 12))
-            for i, sport in enumerate(all_sports):
-                with chip_cols[i % len(chip_cols)]:
-                    is_on = (
-                        mode_now == "Все" or sport in st.session_state.get(
-                            f"{K}_selected_sports", [],
-                        )
+            for sport in all_sports:
+                is_on = (
+                    mode_now == "Все" or sport in st.session_state.get(
+                        f"{K}_selected_sports", [],
                     )
-                    icon_html = sport_icon_html(sport, size=14)
-                    label = f"{sport}"
-                    btn_type = "primary" if (mode_now == "Выбрать" and is_on) else "secondary"
-                    st.button(
-                        label,
-                        key=f"{K}_chip_{i}_{abs(hash(sport)) % 100000}",
-                        on_click=_toggle_sport,
-                        args=(sport, all_sports),
-                        type=btn_type,
-                        use_container_width=True,
-                    )
-            # «Все / Снять все» только в режиме Выбрать
+                )
+                btn_type = (
+                    "primary" if (mode_now == "Выбрать" and is_on)
+                    else "secondary"
+                )
+                st.button(
+                    sport,
+                    key=f"{K}_chip_{_slug(sport)}",
+                    on_click=_toggle_sport,
+                    args=(sport, all_sports),
+                    type=btn_type,
+                )
+            # «Все / Снять» только в режиме Выбрать
             if mode_now == "Выбрать":
-                meta_cols = st.columns([1, 1, 6])
-                with meta_cols[0]:
-                    st.button(
-                        "✓ все",
-                        key=f"{K}_chip_all",
-                        on_click=_select_all_sports,
-                        args=(all_sports,),
-                        use_container_width=True,
-                    )
-                with meta_cols[1]:
-                    st.button(
-                        "✗ снять",
-                        key=f"{K}_chip_none",
-                        on_click=_deselect_all_sports,
-                        use_container_width=True,
-                    )
+                st.button(
+                    "✓ все",
+                    key=f"{K}_chip_all",
+                    on_click=_select_all_sports,
+                    args=(all_sports,),
+                )
+                st.button(
+                    "✗ снять",
+                    key=f"{K}_chip_none",
+                    on_click=_deselect_all_sports,
+                )
 
     # ===== 4. BREAKDOWN =====
     with st.container(key=f"{K}_breakdown"):
