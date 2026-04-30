@@ -149,35 +149,7 @@ st.markdown(
 )
 
 
-# ===== State init (URL → session_state → defaults) =====
-def _read_url_state() -> None:
-    """URL params → session_state. Бьёт дефолты, но не пересиливает уже заданное."""
-    qp = st.query_params
-    for url_key, ss_key in [
-        ("p1_start", "cmp_p1_start"),
-        ("p1_end", "cmp_p1_end"),
-        ("p2_start", "cmp_p2_start"),
-        ("p2_end", "cmp_p2_end"),
-    ]:
-        if url_key in qp and ss_key not in st.session_state:
-            try:
-                st.session_state[ss_key] = date.fromisoformat(qp[url_key])
-            except ValueError:
-                pass
-    if "filter" in qp and "cmp_filter_mode" not in st.session_state:
-        v = qp["filter"]
-        if v == "all":
-            st.session_state["cmp_filter_mode"] = "Все активности"
-        elif v == "custom":
-            st.session_state["cmp_filter_mode"] = "Выбрать"
-    if "types" in qp and "cmp_url_types" not in st.session_state:
-        # Запоминаем, чтобы при первом рендере pills проставить дефолт
-        types_raw = qp["types"]
-        st.session_state["cmp_url_types"] = [
-            t for t in types_raw.split(",") if t
-        ]
-
-
+# ===== State init (с дефолтами) =====
 def _init_state() -> None:
     today = date.today()
     if "cmp_p1_start" not in st.session_state:
@@ -191,30 +163,7 @@ def _init_state() -> None:
     if "cmp_filter_mode" not in st.session_state:
         st.session_state["cmp_filter_mode"] = "Все активности"
 
-
-_read_url_state()
 _init_state()
-
-
-def _write_url_state(mode_choice: str, selected_sports: list) -> None:
-    """session_state → URL params (для shareable links)."""
-    new_qp = {
-        "p1_start": st.session_state["cmp_p1_start"].isoformat(),
-        "p1_end": st.session_state["cmp_p1_end"].isoformat(),
-        "p2_start": st.session_state["cmp_p2_start"].isoformat(),
-        "p2_end": st.session_state["cmp_p2_end"].isoformat(),
-        "filter": "custom" if mode_choice == "Выбрать" else "all",
-    }
-    if mode_choice == "Выбрать" and selected_sports:
-        new_qp["types"] = ",".join(selected_sports)
-    # Пишем только то, что изменилось — иначе лишний rerun
-    current = dict(st.query_params)
-    # Удалить ключ types если он есть в URL, но не должен быть
-    if "types" not in new_qp and "types" in current:
-        del st.query_params["types"]
-        current = dict(st.query_params)
-    if {k: current.get(k) for k in new_qp} != new_qp:
-        st.query_params.from_dict(new_qp)
 
 
 # ===== Helpers для preset =====
@@ -366,71 +315,6 @@ with period_cols[1]:
     _render_period_input(2, "#888780")
 
 
-# ===== Валидация периодов =====
-def _validate_periods() -> tuple[list[str], list[str]]:
-    today = date.today()
-    p1s = st.session_state["cmp_p1_start"]
-    p1e = st.session_state["cmp_p1_end"]
-    p2s = st.session_state["cmp_p2_start"]
-    p2e = st.session_state["cmp_p2_end"]
-    errors: list[str] = []
-    warnings: list[str] = []
-
-    # Фатальные: end < start
-    if p1e < p1s:
-        errors.append(
-            "Период 1: дата конца раньше начала — поправь даты."
-        )
-    if p2e < p2s:
-        errors.append(
-            "Период 2: дата конца раньше начала — поправь даты."
-        )
-    # Фатальные: целиком в будущем
-    if p1s > today:
-        errors.append("Период 1 целиком в будущем — данных нет.")
-    if p2s > today:
-        errors.append("Период 2 целиком в будущем — данных нет.")
-
-    if errors:
-        return errors, warnings
-
-    # Нефатальные: > 365 дней
-    if (p1e - p1s).days + 1 > 365:
-        warnings.append(
-            "Период 1 длиннее года — расчёт может занять заметно больше."
-        )
-    if (p2e - p2s).days + 1 > 365:
-        warnings.append(
-            "Период 2 длиннее года — расчёт может занять заметно больше."
-        )
-
-    # Нефатальные: пересечение (учитываем только если обе даты валидны)
-    overlap_start = max(p1s, p2s)
-    overlap_end = min(p1e, p2e)
-    overlap_days = (overlap_end - overlap_start).days + 1
-    if overlap_days > 0:
-        warnings.append(
-            f"Периоды пересекаются на <b>{overlap_days}</b> "
-            f"{'день' if overlap_days == 1 else 'дней'} — это может искажать дельту."
-        )
-
-    return errors, warnings
-
-
-_errors, _warnings = _validate_periods()
-for _e in _errors:
-    st.error(_e)
-for _w in _warnings:
-    st.markdown(
-        f'<div style="background:#FAEEDA; color:#854F0B; padding:8px 12px; '
-        f'border-radius:5px; font-size:12px; line-height:1.5; margin:4px 0;">'
-        f'⚠ {_w}</div>',
-        unsafe_allow_html=True,
-    )
-if _errors:
-    st.stop()
-
-
 # ===== Activity Filter =====
 def _get_period_sports(start: date, end: date) -> set:
     if df.empty:
@@ -475,19 +359,6 @@ with st.container(border=True):
             st.info("Нет активностей в выбранных периодах для фильтрации.")
             selected_sports = []
         else:
-            # Default: URL types > сохранённый выбор > все доступные
-            default_sports = list(all_available_sports)
-            if "cmp_url_types" in st.session_state:
-                url_t = st.session_state.pop("cmp_url_types")
-                cand = [s for s in url_t if s in all_available_sports]
-                if cand:
-                    default_sports = cand
-            elif "cmp_selected_sports" in st.session_state:
-                prev_t = st.session_state["cmp_selected_sports"]
-                cand = [s for s in prev_t if s in all_available_sports]
-                if cand:
-                    default_sports = cand
-
             _ms_key = (
                 f"cmp_sports_pills_"
                 f"{abs(hash(tuple(all_available_sports)))}"
@@ -496,7 +367,7 @@ with st.container(border=True):
                 "Виды спорта",
                 all_available_sports,
                 selection_mode="multi",
-                default=default_sports,
+                default=all_available_sports,
                 key=_ms_key,
                 label_visibility="collapsed",
             )
@@ -520,42 +391,15 @@ with st.container(border=True):
                     unsafe_allow_html=True,
                 )
     else:
-        # all mode — пилюли приглушены, клик = переход в "Выбрать" с текущим выбором
-        if not all_available_sports:
-            selected_sports = []
-        else:
-            # CSS opacity для контейнера пилюль (через .st-key-<key>)
+        # all mode — все виды учитываются
+        if all_available_sports:
             st.markdown(
-                '<style>'
-                '.st-key-cmp_pills_dim_wrap [data-baseweb="button"]'
-                '{opacity:0.55;}'
-                '.st-key-cmp_pills_dim_wrap [data-baseweb="button"]:hover'
-                '{opacity:1;}'
-                '</style>',
+                f'<div style="opacity:0.5; font-size:12px; padding:6px 0;">'
+                f'{" · ".join(all_available_sports)}'
+                f'</div>',
                 unsafe_allow_html=True,
             )
-            with st.container(key="cmp_pills_dim_wrap"):
-                _ms_key_all = (
-                    f"cmp_sports_pills_all_"
-                    f"{abs(hash(tuple(all_available_sports)))}"
-                )
-                pills_value = st.pills(
-                    "Виды спорта (все учитываются)",
-                    all_available_sports,
-                    selection_mode="multi",
-                    default=all_available_sports,
-                    key=_ms_key_all,
-                    label_visibility="collapsed",
-                )
-            # Авто-переключение: пользователь снял какую-то пилюлю → custom
-            if pills_value is not None and set(pills_value) != set(
-                all_available_sports
-            ):
-                st.session_state["cmp_filter_mode"] = "Выбрать"
-                st.session_state["cmp_selected_sports"] = list(pills_value)
-                st.rerun()
-            selected_sports = list(all_available_sports)
-
+        selected_sports = list(all_available_sports)
         st.markdown(
             '<div style="background:#E6F1FB; color:#185FA5; padding:6px 10px; '
             'border-radius:5px; font-size:11px; margin-top:8px;">'
@@ -661,18 +505,14 @@ def _render_period_card(p: dict, label: str, color: str, period_obj: dict) -> No
                 td_style = "text-decoration:line-through;" if s["excluded"] else ""
                 rows_html += (
                     f'<div style="display:grid; '
-                    f'grid-template-columns:minmax(0,1fr) max-content max-content; '
-                    f'gap:10px; padding:5px 0; font-size:12px; '
-                    f'align-items:center; '
+                    f'grid-template-columns:1fr 80px 80px; '
+                    f'padding:5px 0; font-size:12px; align-items:center; '
                     f'border-bottom:0.5px solid rgba(0,0,0,0.05); '
                     f'opacity:{opacity}; {td_style}">'
-                    f'<span style="overflow:hidden; text-overflow:ellipsis; '
-                    f'white-space:nowrap;">{s["activity_type_ru"]}</span>'
-                    f'<span style="text-align:right; white-space:nowrap; '
-                    f'font-variant-numeric:tabular-nums;">'
+                    f'<span>{s["activity_type_ru"]}</span>'
+                    f'<span style="text-align:right; font-variant-numeric:tabular-nums;">'
                     f'{s["hours"]:.1f} ч</span>'
-                    f'<span style="text-align:right; white-space:nowrap; '
-                    f'font-variant-numeric:tabular-nums;">'
+                    f'<span style="text-align:right; font-variant-numeric:tabular-nums;">'
                     f'{s["km"]:.1f} км</span>'
                     f'</div>'
                 )
@@ -844,7 +684,3 @@ with st.container(border=True):
                 f'</div>',
                 unsafe_allow_html=True,
             )
-
-
-# ===== Sync state → URL (для shareable links) =====
-_write_url_state(mode_choice, selected_sports)
