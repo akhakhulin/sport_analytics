@@ -43,18 +43,19 @@ _inject_dashboard_css()
 
 
 # ===== Загрузка данных (минимум для этой страницы) =====
+@st.cache_resource
+def _shared_conn():
+    """Один libsql Connection на всю сессию streamlit (один sync на старте).
+    Подробнее — см. dashboard.py."""
+    return dbm.connect()
+
+
 def _read_sql(query: str, params: tuple = ()) -> pd.DataFrame:
-    conn = dbm.connect()
-    try:
-        cur = conn.execute(query, params) if params else conn.execute(query)
-        cols = [d[0] for d in cur.description] if cur.description else []
-        rows = cur.fetchall()
-        return pd.DataFrame(rows, columns=cols)
-    finally:
-        try:
-            conn.close()
-        except Exception:
-            pass
+    conn = _shared_conn()
+    cur = conn.execute(query, params) if params else conn.execute(query)
+    cols = [d[0] for d in cur.description] if cur.description else []
+    rows = cur.fetchall()
+    return pd.DataFrame(rows, columns=cols)
 
 
 # Локализация типов активности — копия из dashboard.py (минимум нужного)

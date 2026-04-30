@@ -252,17 +252,24 @@ _title_placeholder.title("🏃 Аналитика Спортсмена · заг
 # region Загрузка
 
 
+@st.cache_resource
+def _shared_conn():
+    """Один libsql Connection на всю сессию streamlit.
+    Раньше каждый _read_sql() делал отдельный connect+sync (10-15 сек/раз),
+    при первом заходе на страницу складывалось 5-10 syncs = минута пустого
+    экрана. Теперь sync только один — при первом обращении.
+    Чтобы получить свежие данные из Turso — нажать «Обновить данные»."""
+    return dbm.connect()
+
+
 def _read_sql(query: str, params: tuple = ()) -> pd.DataFrame:
     """libsql Connection совместим с DB-API, но pandas иногда ругается —
     проще сделать выборку курсором и собрать DataFrame руками."""
-    conn = dbm.connect()
-    try:
-        cur = conn.execute(query, params) if params else conn.execute(query)
-        cols = [d[0] for d in cur.description] if cur.description else []
-        rows = cur.fetchall()
-        return pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame()
-    finally:
-        conn.close()
+    conn = _shared_conn()
+    cur = conn.execute(query, params) if params else conn.execute(query)
+    cols = [d[0] for d in cur.description] if cur.description else []
+    rows = cur.fetchall()
+    return pd.DataFrame(rows, columns=cols) if cols else pd.DataFrame()
 
 
 @st.cache_data(ttl=300)
