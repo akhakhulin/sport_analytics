@@ -175,6 +175,78 @@ def render(
   margin-top:4px; }}
 .cmp-meta b {{ color:#2C2C2A; font-weight:500; }}
 
+/* === Streamlit native widgets — патчим под прототип === */
+
+/* Date-input: компактная высота, бежевый фон, без рамки, формат как
+   в прототипе. Стилизуем root + сам <input>. */
+.st-key-{K}_p1_start [data-baseweb="input"],
+.st-key-{K}_p1_end [data-baseweb="input"],
+.st-key-{K}_p2_start [data-baseweb="input"],
+.st-key-{K}_p2_end [data-baseweb="input"] {{
+  background: #F5F4EF !important;
+  border: 0.5px solid transparent !important;
+  border-radius: 4px !important;
+  min-height: 32px !important;
+}}
+.st-key-{K}_p1_start input,
+.st-key-{K}_p1_end input,
+.st-key-{K}_p2_start input,
+.st-key-{K}_p2_end input {{
+  font-size: 12px !important;
+  font-variant-numeric: tabular-nums !important;
+  padding: 6px 8px !important;
+  height: 30px !important;
+  background: transparent !important;
+}}
+.st-key-{K}_p1_start [data-baseweb="input"]:focus-within,
+.st-key-{K}_p1_end [data-baseweb="input"]:focus-within,
+.st-key-{K}_p2_start [data-baseweb="input"]:focus-within,
+.st-key-{K}_p2_end [data-baseweb="input"]:focus-within {{
+  outline: 2px solid #185FA5 !important;
+  outline-offset: -1px !important;
+}}
+/* Убираем дефолтные label-margin у date-input */
+.st-key-{K}_p1_start [data-testid="stDateInput"],
+.st-key-{K}_p1_end [data-testid="stDateInput"],
+.st-key-{K}_p2_start [data-testid="stDateInput"],
+.st-key-{K}_p2_end [data-testid="stDateInput"] {{
+  margin: 0 !important;
+}}
+
+/* Preset buttons → чипы (pill, тонкая рамка, hover info) */
+.st-key-{K}_p1_pr7 button, .st-key-{K}_p1_pr14 button,
+.st-key-{K}_p1_pr30 button, .st-key-{K}_p1_prcm button,
+.st-key-{K}_p2_pr_prev button, .st-key-{K}_p2_pr_year button,
+.st-key-{K}_p2_pr_pmon button {{
+  height: auto !important;
+  min-height: 0 !important;
+  padding: 2px 9px !important;
+  font-size: 10px !important;
+  font-weight: 500 !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  border: 0.5px solid rgba(0,0,0,0.15) !important;
+  color: #5F5E5A !important;
+  line-height: 1.6 !important;
+  white-space: nowrap !important;
+  box-shadow: none !important;
+}}
+.st-key-{K}_p1_pr7 button:hover, .st-key-{K}_p1_pr14 button:hover,
+.st-key-{K}_p1_pr30 button:hover, .st-key-{K}_p1_prcm button:hover,
+.st-key-{K}_p2_pr_prev button:hover, .st-key-{K}_p2_pr_year button:hover,
+.st-key-{K}_p2_pr_pmon button:hover {{
+  background: #E6F1FB !important;
+  border-color: #185FA5 !important;
+  color: #185FA5 !important;
+}}
+
+/* VS-кружок — центрирование по вертикали относительно периодов */
+.cmp-vs-circle {{ margin-top: 38px !important; }}
+
+/* Стрелка между датами — без верхнего падинга, чтобы лежала на одной
+   линии с инпутами */
+.cmp-arrow {{ text-align:center; padding-top:5px; color:#888780; font-size:14px; }}
+
 .cmp-bar-row {{ display:grid; grid-template-columns:160px 1fr 110px;
   align-items:center; gap:14px; padding:10px 0;
   border-bottom:0.5px solid rgba(0,0,0,0.06); }}
@@ -434,8 +506,7 @@ def render(
                 )
             with d_cols[1]:
                 st.markdown(
-                    '<div style="text-align:center; padding-top:6px; '
-                    'color:#888780;">→</div>',
+                    '<div class="cmp-arrow">→</div>',
                     unsafe_allow_html=True,
                 )
             with d_cols[2]:
@@ -463,7 +534,7 @@ def render(
             p1_act_n = int(p1_view.shape[0]) if not p1_view.empty else 0
             st.markdown(
                 f'<div class="cmp-meta">'
-                f'<b>{p1_days_n} {_pluralize(p1_days_n, ("день","дня","дней"))}</b>'
+                f'{p1_days_n} {_pluralize(p1_days_n, ("день","дня","дней"))}'
                 f' · {p1_act_n} '
                 f'{_pluralize(p1_act_n, ("активность","активности","активностей"))}'
                 f'</div>',
@@ -490,8 +561,7 @@ def render(
                 )
             with d_cols[1]:
                 st.markdown(
-                    '<div style="text-align:center; padding-top:6px; '
-                    'color:#888780;">→</div>',
+                    '<div class="cmp-arrow">→</div>',
                     unsafe_allow_html=True,
                 )
             with d_cols[2]:
@@ -515,7 +585,7 @@ def render(
             p2_act_n = int(p2_view.shape[0]) if not p2_view.empty else 0
             st.markdown(
                 f'<div class="cmp-meta">'
-                f'<b>{p2_days_n} {_pluralize(p2_days_n, ("день","дня","дней"))}</b>'
+                f'{p2_days_n} {_pluralize(p2_days_n, ("день","дня","дней"))}'
                 f' · {p2_act_n} '
                 f'{_pluralize(p2_act_n, ("активность","активности","активностей"))}'
                 f'</div>',
