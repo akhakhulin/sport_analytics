@@ -2210,4 +2210,5 @@ with tab1:
 
 
 with tab2:
-    st.info("🔬 Раздел «Сравнение данных» в разработке. Пока для сравнения периодов открой страницу «Сравнение периодов» в сайдбаре.")
+    from comparison_view import render as _render_comparison
+    _render_comparison(df, key_prefix="cmp_tab", show_title=False)
