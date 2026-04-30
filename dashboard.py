@@ -242,6 +242,13 @@ def _inject_dashboard_css() -> None:
 _inject_dashboard_css()
 
 
+# Заголовок-плейсхолдер сразу, чтобы пользователь видел жизнь страницы
+# пока идут libsql sync и БД-запросы (первый заход 10-30 сек).
+# Финальный заголовок с именем атлета подставляется ниже (region Header + KPI).
+_title_placeholder = st.empty()
+_title_placeholder.title("🏃 Аналитика Спортсмена · загружаю…")
+
+
 # region Загрузка
 
 
@@ -463,8 +470,10 @@ else:
         unsafe_allow_html=True,
     )
 
-df = load_activities(selected_athlete)
-daily = load_daily(selected_athlete)
+with st.spinner(f"Загружаю активности атлета {selected_athlete}…"):
+    df = load_activities(selected_athlete)
+with st.spinner("Загружаю daily/sleep/HRV…"):
+    daily = load_daily(selected_athlete)
 
 if df.empty:
     st.error(
@@ -832,7 +841,7 @@ if st.sidebar.button("📄 PDF-экспорт", key="pdf_export", use_container_
 
 # region Header + KPI
 
-st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
+_title_placeholder.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
 st.caption(
     f"👤 **{selected_athlete}**  ·  "
     f"📅 **{start}** → **{end}**  ·  📊 **{len(view)}** активностей  ·  "
