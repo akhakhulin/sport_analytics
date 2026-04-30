@@ -126,34 +126,44 @@ def render(
         st.session_state[f"{K}_filter_mode"] = "Все активности"
 
     # ===== Helpers для preset =====
-    def _apply_preset_p1(preset_type: str, days: int | None = None) -> None:
+    # ВАЖНО: эти callbacks вызываются ЧЕРЕЗ st.button(on_click=...) — они
+    # выполняются ДО рендера виджетов на следующем rerun, поэтому могут
+    # менять session_state[key], даже если key совпадает с key виджета
+    # date_input. Прямой вызов после st.button() приведёт к
+    # StreamlitAPIException ("cannot be modified after the widget is
+    # instantiated").
+    def _apply_preset_p1_days(days: int) -> None:
         today_local = date.today()
-        if preset_type == "days_back":
-            st.session_state[f"{K}_p1_end"] = today_local
-            st.session_state[f"{K}_p1_start"] = today_local - timedelta(days=days - 1)
-        elif preset_type == "current_month":
-            st.session_state[f"{K}_p1_start"] = today_local.replace(day=1)
-            st.session_state[f"{K}_p1_end"] = today_local
+        st.session_state[f"{K}_p1_end"] = today_local
+        st.session_state[f"{K}_p1_start"] = today_local - timedelta(days=days - 1)
 
-    def _apply_preset_p2(preset_type: str) -> None:
+    def _apply_preset_p1_curmonth() -> None:
         today_local = date.today()
+        st.session_state[f"{K}_p1_start"] = today_local.replace(day=1)
+        st.session_state[f"{K}_p1_end"] = today_local
+
+    def _apply_preset_p2_prev_period() -> None:
         p1_start = st.session_state[f"{K}_p1_start"]
         p1_end = st.session_state[f"{K}_p1_end"]
         p1_len = (p1_end - p1_start).days + 1
-        if preset_type == "previous_period":
-            end_d = p1_start - timedelta(days=1)
-            start_d = end_d - timedelta(days=p1_len - 1)
-            st.session_state[f"{K}_p2_start"] = start_d
-            st.session_state[f"{K}_p2_end"] = end_d
-        elif preset_type == "year_ago":
-            st.session_state[f"{K}_p2_start"] = p1_start - timedelta(days=365)
-            st.session_state[f"{K}_p2_end"] = p1_end - timedelta(days=365)
-        elif preset_type == "previous_month":
-            first_of_curr = today_local.replace(day=1)
-            end_d = first_of_curr - timedelta(days=1)
-            start_d = end_d.replace(day=1)
-            st.session_state[f"{K}_p2_start"] = start_d
-            st.session_state[f"{K}_p2_end"] = end_d
+        end_d = p1_start - timedelta(days=1)
+        start_d = end_d - timedelta(days=p1_len - 1)
+        st.session_state[f"{K}_p2_start"] = start_d
+        st.session_state[f"{K}_p2_end"] = end_d
+
+    def _apply_preset_p2_year_ago() -> None:
+        p1_start = st.session_state[f"{K}_p1_start"]
+        p1_end = st.session_state[f"{K}_p1_end"]
+        st.session_state[f"{K}_p2_start"] = p1_start - timedelta(days=365)
+        st.session_state[f"{K}_p2_end"] = p1_end - timedelta(days=365)
+
+    def _apply_preset_p2_prev_month() -> None:
+        today_local = date.today()
+        first_of_curr = today_local.replace(day=1)
+        end_d = first_of_curr - timedelta(days=1)
+        start_d = end_d.replace(day=1)
+        st.session_state[f"{K}_p2_start"] = start_d
+        st.session_state[f"{K}_p2_end"] = end_d
 
     # ===== Render Period Input =====
     def _render_period_input(period_num: int, color: str) -> None:
@@ -172,12 +182,17 @@ def render(
                 unsafe_allow_html=True,
             )
 
+            # ВАЖНО: один key для виджета и для логики (без value=).
+            # Preset-кнопки меняют ss[key_start] / ss[key_end] напрямую —
+            # на следующем rerun date_input подхватит новое значение.
+            # Если бы мы передавали value=, Streamlit на 2-м рендере
+            # игнорирует его и использует внутренний widget state — preset
+            # переставал бы работать.
             date_cols = st.columns([2, 1, 2])
             with date_cols[0]:
-                start_v = st.date_input(
+                st.date_input(
                     "От",
-                    value=st.session_state[key_start],
-                    key=f"{key_start}_input",
+                    key=key_start,
                     label_visibility="collapsed",
                 )
             with date_cols[1]:
@@ -186,66 +201,70 @@ def render(
                     unsafe_allow_html=True,
                 )
             with date_cols[2]:
-                end_v = st.date_input(
+                st.date_input(
                     "До",
-                    value=st.session_state[key_end],
-                    key=f"{key_end}_input",
+                    key=key_end,
                     label_visibility="collapsed",
                 )
-            if start_v != st.session_state[key_start]:
-                st.session_state[key_start] = start_v
-            if end_v != st.session_state[key_end]:
-                st.session_state[key_end] = end_v
 
-            # Presets
+            # Presets — используем on_click callbacks (см. комментарий
+            # к _apply_preset_p*_*)
             if period_num == 1:
                 preset_cols = st.columns(4)
                 with preset_cols[0]:
-                    if st.button("7 дней", key=f"{K}_p1_preset_7", use_container_width=True):
-                        _apply_preset_p1("days_back", 7)
-                        st.rerun()
+                    st.button(
+                        "7 дней",
+                        key=f"{K}_p1_preset_7",
+                        use_container_width=True,
+                        on_click=_apply_preset_p1_days,
+                        args=(7,),
+                    )
                 with preset_cols[1]:
-                    if st.button("14 дней", key=f"{K}_p1_preset_14", use_container_width=True):
-                        _apply_preset_p1("days_back", 14)
-                        st.rerun()
+                    st.button(
+                        "14 дней",
+                        key=f"{K}_p1_preset_14",
+                        use_container_width=True,
+                        on_click=_apply_preset_p1_days,
+                        args=(14,),
+                    )
                 with preset_cols[2]:
-                    if st.button("30 дней", key=f"{K}_p1_preset_30", use_container_width=True):
-                        _apply_preset_p1("days_back", 30)
-                        st.rerun()
+                    st.button(
+                        "30 дней",
+                        key=f"{K}_p1_preset_30",
+                        use_container_width=True,
+                        on_click=_apply_preset_p1_days,
+                        args=(30,),
+                    )
                 with preset_cols[3]:
-                    if st.button(
+                    st.button(
                         "Текущий месяц",
                         key=f"{K}_p1_preset_curmonth",
                         use_container_width=True,
-                    ):
-                        _apply_preset_p1("current_month")
-                        st.rerun()
+                        on_click=_apply_preset_p1_curmonth,
+                    )
             else:
                 preset_cols = st.columns(3)
                 with preset_cols[0]:
-                    if st.button(
+                    st.button(
                         "Предыдущий равный",
                         key=f"{K}_p2_preset_prev",
                         use_container_width=True,
-                    ):
-                        _apply_preset_p2("previous_period")
-                        st.rerun()
+                        on_click=_apply_preset_p2_prev_period,
+                    )
                 with preset_cols[1]:
-                    if st.button(
+                    st.button(
                         "Год назад",
                         key=f"{K}_p2_preset_year",
                         use_container_width=True,
-                    ):
-                        _apply_preset_p2("year_ago")
-                        st.rerun()
+                        on_click=_apply_preset_p2_year_ago,
+                    )
                 with preset_cols[2]:
-                    if st.button(
+                    st.button(
                         "Прошлый месяц",
                         key=f"{K}_p2_preset_prevmonth",
                         use_container_width=True,
-                    ):
-                        _apply_preset_p2("previous_month")
-                        st.rerun()
+                        on_click=_apply_preset_p2_prev_month,
+                    )
 
             # Meta
             days_count = (
