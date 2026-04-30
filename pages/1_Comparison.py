@@ -108,13 +108,31 @@ def load_activities(athlete_id: str) -> pd.DataFrame:
     return df
 
 
-# ===== Селектор атлета =====
-all_athletes_df = _read_sql(
-    "SELECT DISTINCT athlete_id FROM activities ORDER BY athlete_id"
+@st.cache_data(ttl=300)
+def _list_athletes() -> list[str]:
+    df = _read_sql(
+        "SELECT DISTINCT athlete_id FROM activities ORDER BY athlete_id"
+    )
+    return df["athlete_id"].tolist() if not df.empty else []
+
+
+# ===== Шапка + help (показываем СРАЗУ, до медленных БД-запросов) =====
+st.title("📊 Сравнение периодов")
+st.markdown(
+    '<div style="background:#E6F1FB; color:#185FA5; padding:10px 14px; '
+    'border-radius:6px; font-size:12px; line-height:1.5; margin-bottom:14px;">'
+    '<b>Как работает:</b> выбери два периода через даты или быстрые шаблоны. '
+    'По умолчанию учитываются <b>все виды</b> активности. Для «честного» '
+    'сравнения только по конкретным дисциплинам — переключи фильтр на «Выбрать» '
+    'и оставь нужные виды.'
+    '</div>',
+    unsafe_allow_html=True,
 )
-all_athletes = (
-    all_athletes_df["athlete_id"].tolist() if not all_athletes_df.empty else [MY_ATHLETE]
-)
+
+
+# ===== Селектор атлета + загрузка данных =====
+with st.spinner("Загружаю список атлетов…"):
+    all_athletes = _list_athletes() or [MY_ATHLETE]
 
 if IS_ADMIN and len(all_athletes) > 1:
     selected_athlete = st.sidebar.selectbox(
@@ -132,21 +150,8 @@ else:
         unsafe_allow_html=True,
     )
 
-df = load_activities(selected_athlete)
-
-
-# ===== Шапка + help =====
-st.title("📊 Сравнение периодов")
-st.markdown(
-    '<div style="background:#E6F1FB; color:#185FA5; padding:10px 14px; '
-    'border-radius:6px; font-size:12px; line-height:1.5; margin-bottom:14px;">'
-    '<b>Как работает:</b> выбери два периода через даты или быстрые шаблоны. '
-    'По умолчанию учитываются <b>все виды</b> активности. Для «честного» '
-    'сравнения только по конкретным дисциплинам — переключи фильтр на «Выбрать» '
-    'и оставь нужные виды.'
-    '</div>',
-    unsafe_allow_html=True,
-)
+with st.spinner(f"Загружаю активности атлета {selected_athlete}…"):
+    df = load_activities(selected_athlete)
 
 
 # ===== State init (URL → session_state → defaults) =====
