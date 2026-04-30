@@ -79,6 +79,25 @@ def render(
 
     K = key_prefix
 
+    # ===== CSS: стилизуем все контейнеры под stExpander из tab1 =====
+    # (белый фон, тонкая рамка, скругление 7px, паддинг). Селекторы
+    # .st-key-<key> — стабильны (см. memory: feedback_streamlit_css.md).
+    st.markdown(
+        f'<style>'
+        f'.st-key-{K}_period_input_1, .st-key-{K}_period_input_2,'
+        f'.st-key-{K}_filter,'
+        f'.st-key-{K}_period_card_1, .st-key-{K}_period_card_2,'
+        f'.st-key-{K}_result {{'
+        f'  background: #FFFFFF !important;'
+        f'  border-radius: 7px !important;'
+        f'  border: 0.5px solid rgba(0,0,0,0.10) !important;'
+        f'  padding: 12px 14px !important;'
+        f'  margin-bottom: 8px !important;'
+        f'}}'
+        f'</style>',
+        unsafe_allow_html=True,
+    )
+
     # ===== Шапка + help =====
     if show_title:
         st.title("📊 Сравнение периодов")
@@ -142,7 +161,7 @@ def render(
         key_start = f"{K}_p{period_num}_start"
         key_end = f"{K}_p{period_num}_end"
 
-        with st.container(border=True):
+        with st.container(border=True, key=f"{K}_period_input_{period_num}"):
             st.markdown(
                 f'<div style="display:flex; align-items:center; gap:8px; '
                 f'font-size:10px; color:#5F5E5A; font-weight:500; '
@@ -267,7 +286,7 @@ def render(
     )
     all_available_sports = sorted(p1_sports | p2_sports)
 
-    with st.container(border=True):
+    with st.container(border=True, key=f"{K}_filter"):
         filter_cols = st.columns([3, 2])
         with filter_cols[0]:
             st.markdown(
@@ -391,8 +410,10 @@ def render(
     )
 
     # ===== Период-карточки =====
-    def _render_period_card(p: dict, label: str, color: str, period_obj: dict) -> None:
-        with st.container(border=True):
+    def _render_period_card(
+        p: dict, label: str, color: str, period_obj: dict, card_num: int,
+    ) -> None:
+        with st.container(border=True, key=f"{K}_period_card_{card_num}"):
             st.markdown(
                 f'<div style="display:flex; align-items:center; gap:8px; '
                 f'font-size:10px; color:#5F5E5A; font-weight:500; '
@@ -456,12 +477,12 @@ def render(
 
     card_cols = st.columns(2)
     with card_cols[0]:
-        _render_period_card(p1, "Период 1 · Основной", "#185FA5", p1_obj)
+        _render_period_card(p1, "Период 1 · Основной", "#185FA5", p1_obj, 1)
     with card_cols[1]:
-        _render_period_card(p2, "Период 2 · Сравнение", "#888780", p2_obj)
+        _render_period_card(p2, "Период 2 · Сравнение", "#888780", p2_obj, 2)
 
     # ===== Result Card =====
-    with st.container(border=True):
+    with st.container(border=True, key=f"{K}_result"):
         st.markdown(
             '<div style="font-size:14px; font-weight:500; margin-bottom:10px;">'
             '📊 Результат сравнения</div>',
