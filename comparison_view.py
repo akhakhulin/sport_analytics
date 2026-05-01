@@ -194,8 +194,8 @@ def render(
 .st-key-{K}_p1_end [data-baseweb="input"],
 .st-key-{K}_p2_start [data-baseweb="input"],
 .st-key-{K}_p2_end [data-baseweb="input"] {{
-  background: #F5F4EF !important;
-  border: 0.5px solid transparent !important;
+  background: #FFFFFF !important;
+  border: 0.5px solid rgba(0,0,0,0.15) !important;
   border-radius: 4px !important;
   min-height: 32px !important;
 }}
@@ -278,26 +278,22 @@ def render(
 }}
 
 /* === Preset-кнопки p1/p2 в одну строку с лейблом «Быстро:» ===
-   container(border=True, key=...) даёт обёртку с .st-key-... которая
-   сама является VerticalBlockBorderWrapper. Убираем border/padding
-   и переключаем на flex-row. */
+   .st-key-{K}_p1_presets САМ ЯВЛЯЕТСЯ родителем для children
+   (stElementContainer'ов). Применяем flex прямо на нём. */
 .st-key-{K}_p1_presets,
 .st-key-{K}_p2_presets {{
   border: none !important;
   padding: 0 !important;
   background: transparent !important;
   margin-bottom: 0 !important;
-}}
-.st-key-{K}_p1_presets > div > [data-testid="stVerticalBlock"],
-.st-key-{K}_p2_presets > div > [data-testid="stVerticalBlock"] {{
   display: flex !important;
   flex-direction: row !important;
   flex-wrap: wrap !important;
   align-items: center !important;
   gap: 6px !important;
 }}
-.st-key-{K}_p1_presets [data-testid="stElementContainer"],
-.st-key-{K}_p2_presets [data-testid="stElementContainer"] {{
+.st-key-{K}_p1_presets > [data-testid="stElementContainer"],
+.st-key-{K}_p2_presets > [data-testid="stElementContainer"] {{
   width: auto !important;
   margin: 0 !important;
   flex: 0 0 auto !important;
@@ -610,6 +606,7 @@ def render(
             with d_cols[0]:
                 st.date_input(
                     "От", key=f"{K}_p1_start", label_visibility="collapsed",
+                    format="DD.MM.YYYY",
                 )
             with d_cols[1]:
                 st.markdown(
@@ -619,6 +616,7 @@ def render(
             with d_cols[2]:
                 st.date_input(
                     "До", key=f"{K}_p1_end", label_visibility="collapsed",
+                    format="DD.MM.YYYY",
                 )
             with st.container(key=f"{K}_p1_presets", border=True):
                 st.markdown(
@@ -661,6 +659,7 @@ def render(
             with d_cols[0]:
                 st.date_input(
                     "От", key=f"{K}_p2_start", label_visibility="collapsed",
+                    format="DD.MM.YYYY",
                 )
             with d_cols[1]:
                 st.markdown(
@@ -670,6 +669,7 @@ def render(
             with d_cols[2]:
                 st.date_input(
                     "До", key=f"{K}_p2_end", label_visibility="collapsed",
+                    format="DD.MM.YYYY",
                 )
             with st.container(key=f"{K}_p2_presets", border=True):
                 st.markdown(
