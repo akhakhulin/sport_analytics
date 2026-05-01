@@ -64,15 +64,14 @@ def _fmt_km(km: float) -> str:
 
 
 def _slug(s: str) -> str:
-    """ascii_lower + '_' для CSS-friendly id чипа."""
-    out: list[str] = []
-    for ch in s.lower():
-        if ch.isascii() and (ch.isalnum() or ch in "-_"):
-            out.append(ch)
-        else:
-            out.append("_")
-    res = "".join(out).strip("_")
-    return res or "x"
+    """Стабильный CSS-friendly id чипа.
+
+    Чистая транслитерация недостаточна (для всех кириллических имён даёт
+    одинаковый результат и ломает ключи виджетов), поэтому используем
+    короткий md5-хэш — детерминированный и уникальный.
+    """
+    import hashlib
+    return hashlib.md5(s.encode("utf-8")).hexdigest()[:10]
 
 
 def _compute_delta(v1: float, v2: float) -> tuple[float, float, str]:
