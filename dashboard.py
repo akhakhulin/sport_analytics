@@ -488,17 +488,25 @@ preset = st.sidebar.radio(
     index=1,  # 14 дней — рекомендованный дефолт
 )
 if preset == "Свой диапазон":
-    picked = st.sidebar.date_input(
-        "Диапазон",
-        (max_day - timedelta(days=90), max_day),
-        help="Если не выбрать конец — возьмётся сегодня",
-    )
-    if isinstance(picked, (tuple, list)):
-        start = picked[0] if len(picked) >= 1 else max_day - timedelta(days=90)
-        end = picked[1] if len(picked) >= 2 else date.today()
-    else:
-        start = picked
-        end = date.today()
+    # Два отдельных поля От / До (как в tab2 «Сравнение периодов»)
+    if "sa_custom_start" not in st.session_state:
+        st.session_state["sa_custom_start"] = max_day - timedelta(days=90)
+    if "sa_custom_end" not in st.session_state:
+        st.session_state["sa_custom_end"] = max_day
+    _dc1, _dc2 = st.sidebar.columns(2)
+    with _dc1:
+        st.date_input(
+            "От", key="sa_custom_start", format="DD.MM.YYYY",
+        )
+    with _dc2:
+        st.date_input(
+            "До", key="sa_custom_end", format="DD.MM.YYYY",
+        )
+    start = st.session_state["sa_custom_start"]
+    end = st.session_state["sa_custom_end"]
+    # Защита: если перепутаны местами — поменять
+    if end < start:
+        start, end = end, start
 else:
     end = max_day
     start = end - timedelta(days=PERIOD_DAYS[preset])
@@ -526,14 +534,18 @@ def _activity_material_icon(t: str) -> str:
     if not isinstance(t, str):
         return t
     tl = t.lower()
+    # :material/cross_country_skiing: не доступна в текущей версии
+    # Streamlit (рендерится сырой uppercase плейсхолдер CROSS_COUNTRY_SKIING).
+    # Для всех лыж/лыжероллеров используем :material/downhill_skiing:,
+    # вид (конёк/классика) различим по тексту.
     if "конёк" in tl or "конек" in tl:
-        return f":material/cross_country_skiing: {t}"
+        return f":material/downhill_skiing: {t}"
     if "классика" in tl:
         return f":material/downhill_skiing: {t}"
     if t.startswith("Лыжи"):
         return f":material/downhill_skiing: {t}"
     if t.startswith("Лыжероллеры"):
-        return f":material/cross_country_skiing: {t}"
+        return f":material/downhill_skiing: {t}"
     if t in ("Силовая",):
         return f":material/fitness_center: {t}"
     if t in ("Беговая дорожка", "Виртуальный бег"):
