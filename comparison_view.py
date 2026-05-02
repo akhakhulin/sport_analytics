@@ -821,6 +821,29 @@ def render(
             label_visibility="collapsed",
         )
 
+    # Объединённый список видов из обоих периодов с фильтром
+    rows: list[dict] = []
+    for sport in all_sports:
+        if sport not in included:
+            continue
+        r1 = p1_grp[p1_grp["activity_type_ru"] == sport]
+        r2 = p2_grp[p2_grp["activity_type_ru"] == sport]
+        h1 = float(r1["hours"].iloc[0]) if not r1.empty else 0.0
+        h2 = float(r2["hours"].iloc[0]) if not r2.empty else 0.0
+        km1 = float(r1["km"].iloc[0]) if not r1.empty else 0.0
+        km2 = float(r2["km"].iloc[0]) if not r2.empty else 0.0
+        hr1 = float(r1["avg_hr"].iloc[0]) if not r1.empty else 0.0
+        hr2 = float(r2["avg_hr"].iloc[0]) if not r2.empty else 0.0
+        rows.append({
+            "name": sport,
+            "h1": h1, "h2": h2,
+            "km1": km1, "km2": km2,
+            "hr1": hr1, "hr2": hr2,
+            "only_in_1": (not r1.empty) and r2.empty,
+            "only_in_2": r1.empty and (not r2.empty),
+        })
+    rows.sort(key=lambda r: r["h1"] + r["h2"], reverse=True)
+
     # ===== 4. BREAKDOWN — переключается по выбранной метрике =====
     metric = st.session_state.get(f"{K}_metric", "Время")
     p1_range = _format_date_range(p1s, p1e)
@@ -847,28 +870,6 @@ def render(
                 unsafe_allow_html=True,
             )
 
-            # Объединённый список видов из обоих периодов с фильтром
-            rows: list[dict] = []
-            for sport in all_sports:
-                if sport not in included:
-                    continue
-                r1 = p1_grp[p1_grp["activity_type_ru"] == sport]
-                r2 = p2_grp[p2_grp["activity_type_ru"] == sport]
-                h1 = float(r1["hours"].iloc[0]) if not r1.empty else 0.0
-                h2 = float(r2["hours"].iloc[0]) if not r2.empty else 0.0
-                km1 = float(r1["km"].iloc[0]) if not r1.empty else 0.0
-                km2 = float(r2["km"].iloc[0]) if not r2.empty else 0.0
-                hr1 = float(r1["avg_hr"].iloc[0]) if not r1.empty else 0.0
-                hr2 = float(r2["avg_hr"].iloc[0]) if not r2.empty else 0.0
-                rows.append({
-                    "name": sport,
-                    "h1": h1, "h2": h2,
-                    "km1": km1, "km2": km2,
-                    "hr1": hr1, "hr2": hr2,
-                    "only_in_1": (not r1.empty) and r2.empty,
-                    "only_in_2": r1.empty and (not r2.empty),
-                })
-            rows.sort(key=lambda r: r["h1"] + r["h2"], reverse=True)
 
             if not rows:
                 st.markdown(
