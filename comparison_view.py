@@ -518,10 +518,12 @@ def render(
     def _period_groups(view: pd.DataFrame) -> pd.DataFrame:
         if view.empty:
             return pd.DataFrame(columns=[
-                "activity_type_ru", "hours", "km", "count", "avg_hr",
+                "activity_type_ru", "hours", "km", "count",
+                "avg_hr", "hours_with_hr",
             ])
         v = view.copy()
-        # weighted avg_hr: sum(hr*hours)/sum(hours), игнорируем NaN
+        # Взвешенный avg_hr: sum(hr * dur) / sum(dur_with_hr_data).
+        # Тренировки без avg_hr (NaN) не учитываются ни в числителе, ни в знаменателе.
         v["_hr_w"] = v["avg_hr"].fillna(0) * v["duration_h"].fillna(0)
         v["_hr_h"] = v["duration_h"].where(v["avg_hr"].notna(), 0).fillna(0)
         grp = (
@@ -531,16 +533,17 @@ def render(
                 km=("distance_km", "sum"),
                 count=("activity_id", "count"),
                 _hr_w_sum=("_hr_w", "sum"),
-                _hr_h_sum=("_hr_h", "sum"),
+                hours_with_hr=("_hr_h", "sum"),
             )
             .reset_index()
             .sort_values("hours", ascending=False)
         )
         grp["avg_hr"] = grp.apply(
-            lambda r: (r["_hr_w_sum"] / r["_hr_h_sum"]) if r["_hr_h_sum"] > 0 else 0.0,
+            lambda r: (r["_hr_w_sum"] / r["hours_with_hr"])
+            if r["hours_with_hr"] > 0 else 0.0,
             axis=1,
         )
-        return grp.drop(columns=["_hr_w_sum", "_hr_h_sum"])
+        return grp.drop(columns=["_hr_w_sum"])
 
     p1s = st.session_state[f"{K}_p1_start"]
     p1e = st.session_state[f"{K}_p1_end"]
@@ -567,11 +570,16 @@ def render(
         if grp.empty:
             return {"hours": 0.0, "km": 0.0, "count": 0, "avg_hr": 0.0}
         sub = grp[grp["activity_type_ru"].isin(included)]
-        # Weighted avg_hr: sum(avg_hr * hours) / sum(hours_with_hr)
-        sub_hr = sub[sub["avg_hr"] > 0]
-        if not sub_hr.empty and sub_hr["hours"].sum() > 0:
-            avg_hr = float(
-                (sub_hr["avg_hr"] * sub_hr["hours"]).sum() / sub_hr["hours"].sum()
+        # Средний ЧСС взвешенный по часам с HR-данными:
+        # sum(avg_hr_v × hours_with_hr_v) / sum(hours_with_hr_v).
+        # Используем hours_with_hr (а не hours) — у вида может быть часть
+        # тренировок без HR (avg_hr=NaN), их веса не должны завышать.
+        sub_hr = sub[(sub["avg_hr"] > 0) & (sub["hours_with_hr"] > 0)]
+        if not sub_hr.empty:
+            total_hr_hours = float(sub_hr["hours_with_hr"].sum())
+            avg_hr = (
+                float((sub_hr["avg_hr"] * sub_hr["hours_with_hr"]).sum() / total_hr_hours)
+                if total_hr_hours > 0 else 0.0
             )
         else:
             avg_hr = 0.0
@@ -814,7 +822,7 @@ def render(
         )
         st.segmented_control(
             "Метрика",
-            ["Время", "Расстояние", "ЧСС"],
+            ["Время", "Расстояние", "Средний ЧСС"],
             default=st.session_state.get(f"{K}_metric", "Время"),
             selection_mode="single",
             key=f"{K}_metric",
@@ -1052,14 +1060,14 @@ def render(
                 )
                 st.markdown(rows_html_km + total_html_km, unsafe_allow_html=True)
 
-    if metric == "ЧСС":
+    if metric == "Средний ЧСС":
         with st.container(key=f"{K}_breakdown_hr"):
             # Заголовок + легенда
             st.markdown(
                 f'<div style="display:flex; align-items:center; gap:8px; '
                 f'font-size:13px; font-weight:600; margin-bottom:14px; '
                 f'flex-wrap:wrap;">'
-                f'<span>📊 Разбивка по видам спорта · ЧСС (средний)</span>'
+                f'<span>📊 Разбивка по видам спорта · Средний ЧСС</span>'
                 f'<div style="display:flex; gap:12px; font-size:10px; color:#5F5E5A; '
                 f'font-weight:400; margin-left:auto; align-items:center; flex-wrap:wrap;">'
                 f'<span style="display:flex; align-items:center; gap:5px;">'
