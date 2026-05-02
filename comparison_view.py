@@ -259,6 +259,18 @@ def render(
    линии с инпутами */
 .cmp-arrow {{ text-align:center; padding-top:5px; color:#888780; font-size:14px; }}
 
+/* === Подплитки Period 1 / Period 2 внутри controls — бежевые ===
+   Внешняя карточка controls остаётся белой; каждый период оборачивается
+   в свою бежевую плитку через st.container(border=True, key=...). */
+.st-key-{K}_p1_box,
+.st-key-{K}_p2_box {{
+  background: #F5F4EF !important;
+  border: none !important;
+  border-radius: 8px !important;
+  padding: 14px !important;
+  margin-bottom: 0 !important;
+}}
+
 /* === Activity filter — все элементы в одну строку через flex ===
    ВАЖНО: .st-key-{K}_filter САМ ЯВЛЯЕТСЯ stVerticalBlock,
    поэтому селектор без descendant. */
@@ -597,51 +609,52 @@ def render(
         cols = st.columns([10, 1, 10])
 
         with cols[0]:
-            st.markdown(
-                '<div class="cmp-period-label">'
-                '<span class="cmp-dot cmp-dot-cur"></span>'
-                'Период 1 · основной</div>',
-                unsafe_allow_html=True,
-            )
-            d_cols = st.columns([2, 1, 2])
-            with d_cols[0]:
-                st.date_input(
-                    "От", key=f"{K}_p1_start", label_visibility="collapsed",
-                    format="DD.MM.YYYY",
-                )
-            with d_cols[1]:
+            with st.container(key=f"{K}_p1_box", border=True):
                 st.markdown(
-                    '<div class="cmp-arrow">→</div>',
+                    '<div class="cmp-period-label">'
+                    '<span class="cmp-dot cmp-dot-cur"></span>'
+                    'Период 1 · основной</div>',
                     unsafe_allow_html=True,
                 )
-            with d_cols[2]:
-                st.date_input(
-                    "До", key=f"{K}_p1_end", label_visibility="collapsed",
-                    format="DD.MM.YYYY",
-                )
-            with st.container(key=f"{K}_p1_presets", border=True):
+                d_cols = st.columns([2, 1, 2])
+                with d_cols[0]:
+                    st.date_input(
+                        "От", key=f"{K}_p1_start", label_visibility="collapsed",
+                        format="DD.MM.YYYY",
+                    )
+                with d_cols[1]:
+                    st.markdown(
+                        '<div class="cmp-arrow">→</div>',
+                        unsafe_allow_html=True,
+                    )
+                with d_cols[2]:
+                    st.date_input(
+                        "До", key=f"{K}_p1_end", label_visibility="collapsed",
+                        format="DD.MM.YYYY",
+                    )
+                with st.container(key=f"{K}_p1_presets", border=True):
+                    st.markdown(
+                        '<div class="cmp-quick-label">Быстро:</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.button("последние 7д", key=f"{K}_p1_pr7",
+                              on_click=_p1_days, args=(7,))
+                    st.button("14д", key=f"{K}_p1_pr14",
+                              on_click=_p1_days, args=(14,))
+                    st.button("30д", key=f"{K}_p1_pr30",
+                              on_click=_p1_days, args=(30,))
+                    st.button("текущ. месяц", key=f"{K}_p1_prcm",
+                              on_click=_p1_curmonth)
+                p1_days_n = (p1e - p1s).days + 1
+                p1_types_n = int(p1_grp.shape[0]) if not p1_grp.empty else 0
                 st.markdown(
-                    '<div class="cmp-quick-label">Быстро:</div>',
+                    f'<div class="cmp-meta">'
+                    f'{p1_days_n} {_pluralize(p1_days_n, ("день","дня","дней"))}'
+                    f' · <b>{p1_types_n} '
+                    f'{_pluralize(p1_types_n, ("вид","вида","видов"))} спорта</b>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
-                st.button("последние 7д", key=f"{K}_p1_pr7",
-                          on_click=_p1_days, args=(7,))
-                st.button("14д", key=f"{K}_p1_pr14",
-                          on_click=_p1_days, args=(14,))
-                st.button("30д", key=f"{K}_p1_pr30",
-                          on_click=_p1_days, args=(30,))
-                st.button("текущ. месяц", key=f"{K}_p1_prcm",
-                          on_click=_p1_curmonth)
-            p1_days_n = (p1e - p1s).days + 1
-            p1_types_n = int(p1_grp.shape[0]) if not p1_grp.empty else 0
-            st.markdown(
-                f'<div class="cmp-meta">'
-                f'{p1_days_n} {_pluralize(p1_days_n, ("день","дня","дней"))}'
-                f' · <b>{p1_types_n} '
-                f'{_pluralize(p1_types_n, ("вид","вида","видов"))} спорта</b>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
 
         with cols[1]:
             st.markdown(
@@ -650,49 +663,50 @@ def render(
             )
 
         with cols[2]:
-            st.markdown(
-                '<div class="cmp-period-label">'
-                '<span class="cmp-dot cmp-dot-cmp"></span>'
-                'Период 2 · сравнение</div>',
-                unsafe_allow_html=True,
-            )
-            d_cols = st.columns([2, 1, 2])
-            with d_cols[0]:
-                st.date_input(
-                    "От", key=f"{K}_p2_start", label_visibility="collapsed",
-                    format="DD.MM.YYYY",
-                )
-            with d_cols[1]:
+            with st.container(key=f"{K}_p2_box", border=True):
                 st.markdown(
-                    '<div class="cmp-arrow">→</div>',
+                    '<div class="cmp-period-label">'
+                    '<span class="cmp-dot cmp-dot-cmp"></span>'
+                    'Период 2 · сравнение</div>',
                     unsafe_allow_html=True,
                 )
-            with d_cols[2]:
-                st.date_input(
-                    "До", key=f"{K}_p2_end", label_visibility="collapsed",
-                    format="DD.MM.YYYY",
-                )
-            with st.container(key=f"{K}_p2_presets", border=True):
+                d_cols = st.columns([2, 1, 2])
+                with d_cols[0]:
+                    st.date_input(
+                        "От", key=f"{K}_p2_start", label_visibility="collapsed",
+                        format="DD.MM.YYYY",
+                    )
+                with d_cols[1]:
+                    st.markdown(
+                        '<div class="cmp-arrow">→</div>',
+                        unsafe_allow_html=True,
+                    )
+                with d_cols[2]:
+                    st.date_input(
+                        "До", key=f"{K}_p2_end", label_visibility="collapsed",
+                        format="DD.MM.YYYY",
+                    )
+                with st.container(key=f"{K}_p2_presets", border=True):
+                    st.markdown(
+                        '<div class="cmp-quick-label">Быстро:</div>',
+                        unsafe_allow_html=True,
+                    )
+                    st.button("предыдущий равный", key=f"{K}_p2_pr_prev",
+                              on_click=_p2_prev_period)
+                    st.button("год назад", key=f"{K}_p2_pr_year",
+                              on_click=_p2_year_ago)
+                    st.button("прошл. месяц", key=f"{K}_p2_pr_pmon",
+                              on_click=_p2_prev_month)
+                p2_days_n = (p2e - p2s).days + 1
+                p2_types_n = int(p2_grp.shape[0]) if not p2_grp.empty else 0
                 st.markdown(
-                    '<div class="cmp-quick-label">Быстро:</div>',
+                    f'<div class="cmp-meta">'
+                    f'{p2_days_n} {_pluralize(p2_days_n, ("день","дня","дней"))}'
+                    f' · <b>{p2_types_n} '
+                    f'{_pluralize(p2_types_n, ("вид","вида","видов"))} спорта</b>'
+                    f'</div>',
                     unsafe_allow_html=True,
                 )
-                st.button("предыдущий равный", key=f"{K}_p2_pr_prev",
-                          on_click=_p2_prev_period)
-                st.button("год назад", key=f"{K}_p2_pr_year",
-                          on_click=_p2_year_ago)
-                st.button("прошл. месяц", key=f"{K}_p2_pr_pmon",
-                          on_click=_p2_prev_month)
-            p2_days_n = (p2e - p2s).days + 1
-            p2_types_n = int(p2_grp.shape[0]) if not p2_grp.empty else 0
-            st.markdown(
-                f'<div class="cmp-meta">'
-                f'{p2_days_n} {_pluralize(p2_days_n, ("день","дня","дней"))}'
-                f' · <b>{p2_types_n} '
-                f'{_pluralize(p2_types_n, ("вид","вида","видов"))} спорта</b>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
 
     # ===== 3. ACTIVITY FILTER =====
     # Все элементы (метка / toggle / divider / chips / actions) в одной
