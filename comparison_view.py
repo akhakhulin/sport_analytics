@@ -205,9 +205,10 @@ def render(
 .st-key-{K}_p2_end input {{
   font-size: 14px !important;
   font-variant-numeric: tabular-nums !important;
-  padding: 6px 8px !important;
+  padding: 6px 30px 6px 8px !important;
   height: 30px !important;
-  background: transparent !important;
+  background: transparent url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235F5E5A' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'><rect x='3' y='5' width='18' height='16' rx='2'/><path d='M3 10h18'/><path d='M8 3v4'/><path d='M16 3v4'/></svg>") no-repeat right 8px center !important;
+  background-size: 16px 16px !important;
 }}
 .st-key-{K}_p1_start [data-baseweb="input"]:focus-within,
 .st-key-{K}_p1_end [data-baseweb="input"]:focus-within,
