@@ -146,7 +146,7 @@ def render(
         f"""<style>
 .st-key-{K}_hero, .st-key-{K}_controls,
 .st-key-{K}_filter, .st-key-{K}_breakdown,
-.st-key-{K}_insight {{
+.st-key-{K}_breakdown_km, .st-key-{K}_insight {{
   background: #FFFFFF !important;
   border-radius: 10px !important;
   border: 0.5px solid rgba(0,0,0,0.08) !important;
@@ -900,6 +900,109 @@ def render(
                 f'</div>'
             )
             st.markdown(rows_html + total_html, unsafe_allow_html=True)
+
+    # ===== 4b. BREAKDOWN — KM =====
+    with st.container(key=f"{K}_breakdown_km"):
+        # Заголовок + легенда
+        st.markdown(
+            f'<div style="display:flex; align-items:center; gap:8px; '
+            f'font-size:13px; font-weight:600; margin-bottom:14px; '
+            f'flex-wrap:wrap;">'
+            f'<span>📊 Разбивка по видам спорта · расстояние</span>'
+            f'<div style="display:flex; gap:12px; font-size:10px; color:#5F5E5A; '
+            f'font-weight:400; margin-left:auto; align-items:center; flex-wrap:wrap;">'
+            f'<span style="display:flex; align-items:center; gap:5px;">'
+            f'<span style="display:inline-block; width:12px; height:8px; '
+            f'border-radius:2px; background:#185FA5;"></span>{p1_range}</span>'
+            f'<span style="display:flex; align-items:center; gap:5px;">'
+            f'<span style="display:inline-block; width:12px; height:8px; '
+            f'border-radius:2px; background:#B8B6AE;"></span>{p2_range}</span>'
+            f'</div>'
+            f'</div>',
+            unsafe_allow_html=True,
+        )
+
+        # Берём те же rows что в breakdown по часам, но фильтруем
+        # виды у которых km=0 в обоих периодах (силовая, йога, …)
+        rows_km = [r for r in rows if (r["km1"] > 0 or r["km2"] > 0)]
+        rows_km.sort(key=lambda r: r["km1"] + r["km2"], reverse=True)
+
+        if not rows_km:
+            st.markdown(
+                '<div class="cmp-empty">⚠️ Нет видов спорта с расстоянием '
+                'в выбранных периодах.</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            max_km = max([max(r["km1"], r["km2"]) for r in rows_km] + [0.001])
+            rows_html_km = ""
+            for r in rows_km:
+                w1 = (r["km1"] / max_km) * 100 if max_km > 0 else 0
+                w2 = (r["km2"] / max_km) * 100 if max_km > 0 else 0
+                color = type_color(r["name"])
+                icon = sport_icon_html(r["name"], size=18, color=color)
+                if r["only_in_1"]:
+                    badge = '<span class="cmp-tag-new">+ новый</span>'
+                elif r["only_in_2"]:
+                    badge = '<span class="cmp-tag-gone">− исчез</span>'
+                else:
+                    d_abs, d_pct, d_dir = _compute_delta(r["km1"], r["km2"])
+                    badge = _delta_badge(
+                        d_abs, d_pct, d_dir, "", "sm",
+                        show_abs=False, show_pct=True,
+                    )
+                v1 = f'{_fmt_km(r["km1"])} км' if r["km1"] > 0 else '—'
+                v2 = f'{_fmt_km(r["km2"])} км' if r["km2"] > 0 else '—'
+                rows_html_km += (
+                    f'<div class="cmp-bar-row">'
+                    f'  <div class="cmp-bar-row-name">'
+                    f'    <span style="display:inline-block; width:10px; height:10px; '
+                    f'border-radius:50%; background:{color}; flex-shrink:0;"></span>'
+                    f'    {icon}'
+                    f'    <span>{r["name"]}</span>'
+                    f'  </div>'
+                    f'  <div class="cmp-bar-pair">'
+                    f'    <div class="cmp-bar-track">'
+                    f'      <div class="cmp-bar-fill-wrap">'
+                    f'        <div class="cmp-bar-fill cmp-bar-fill-cur" '
+                    f'style="width:{w1}%;"></div>'
+                    f'      </div>'
+                    f'      <span class="cmp-bar-value cmp-bar-value-cur">{v1}</span>'
+                    f'    </div>'
+                    f'    <div class="cmp-bar-track">'
+                    f'      <div class="cmp-bar-fill-wrap">'
+                    f'        <div class="cmp-bar-fill cmp-bar-fill-prev" '
+                    f'style="width:{w2}%;"></div>'
+                    f'      </div>'
+                    f'      <span class="cmp-bar-value cmp-bar-value-prev">{v2}</span>'
+                    f'    </div>'
+                    f'  </div>'
+                    f'  <div class="cmp-bar-row-delta">{badge}</div>'
+                    f'</div>'
+                )
+
+            t_abs, t_pct, t_dir = _compute_delta(
+                p1_totals["km"], p2_totals["km"],
+            )
+            total_html_km = (
+                f'<div class="cmp-total-row">'
+                f'  <div>Итого</div>'
+                f'  <div class="cmp-total-vals">'
+                f'    <div class="cmp-total-val cmp-total-val-cur">'
+                f'      <span>{p1_range}</span>'
+                f'      <span>{_fmt_km(p1_totals["km"])} км</span>'
+                f'    </div>'
+                f'    <div class="cmp-total-val cmp-total-val-prev">'
+                f'      <span>{p2_range}</span>'
+                f'      <span>{_fmt_km(p2_totals["km"])} км</span>'
+                f'    </div>'
+                f'  </div>'
+                f'  <div style="text-align:right;">'
+                f'{_delta_badge(t_abs, t_pct, t_dir, "км", "sm", show_abs=False, show_pct=True)}'
+                f'  </div>'
+                f'</div>'
+            )
+            st.markdown(rows_html_km + total_html_km, unsafe_allow_html=True)
 
     # ===== 5. INSIGHT =====
     with st.container(key=f"{K}_insight"):
