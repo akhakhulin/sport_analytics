@@ -10,6 +10,12 @@ on:
 permissions:
   contents: read
 
+# Опт-ин на Node.js 24 для JS-actions (actions/checkout, setup-python).
+# Иначе runner показывает deprecation warning про Node.js 20 (исчезнет
+# принудительно 2026-09-16). Можно убрать когда v5/v6 actions выйдут с Node 24.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
 jobs:
   sync:
     runs-on: ubuntu-latest
