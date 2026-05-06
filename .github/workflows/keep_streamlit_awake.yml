@@ -1,0 +1,56 @@
+name: Keep Streamlit Awake
+
+# Пингаем Streamlit Community Cloud каждые 8 часов, чтобы приложение
+# не уходило в "Zzzz" из-за бездействия (free tier усыпляет после ~12ч).
+#
+# Если Streamlit задетектит бот-трафик и всё равно усыпит — переходим
+# на самохостинг VPS (см. план).
+
+on:
+  schedule:
+    - cron: '0 */8 * * *'   # 00:00, 08:00, 16:00 UTC (≈ 03/11/19 МСК)
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  APP_URL: 'https://sport-analytics.streamlit.app/'
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ping app health endpoint
+        run: |
+          # Streamlit health endpoint — самый "честный" способ проверки,
+          # без рендера UI. Если приложение спит — health возвращает 503,
+          # запрос разбудит. Просыпание занимает ~30-60 сек.
+          set -eux
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 GarminAnalyticsKeepAwakeBot/1.0"
+          HEALTH="${APP_URL%/}/_stcore/health"
+
+          # Первый пинг: разбудить если спит. Допускаем не-200 (503 при пробуждении OK).
+          curl -fsSL --max-time 60 -A "$UA" "$HEALTH" -o /dev/null \
+            && echo "✅ Health OK first try" \
+            || echo "⚠️ Health не вернул 200 с первой попытки (возможно спит, будим)"
+
+          # Подождать пробуждения
+          sleep 30
+
+          # Второй пинг: должен быть OK после wake-up
+          if curl -fsSL --max-time 90 -A "$UA" "$HEALTH" -o /dev/null; then
+            echo "✅ Health OK after wake-up at $(date -u)"
+          else
+            echo "❌ Health НЕ ответил даже после ожидания. Проверь Streamlit Cloud UI."
+            exit 1
+          fi
+
+      - name: Hit main page (для счётчика активности)
+        run: |
+          set -eux
+          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 GarminAnalyticsKeepAwakeBot/1.0"
+          curl -fsSL --max-time 60 -A "$UA" "$APP_URL" -o /dev/null
+          echo "✅ Main page hit at $(date -u)"
