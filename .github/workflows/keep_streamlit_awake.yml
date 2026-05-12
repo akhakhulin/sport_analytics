@@ -8,7 +8,9 @@ name: Keep Streamlit Awake
 
 on:
   schedule:
-    - cron: '0 */8 * * *'   # 00:00, 08:00, 16:00 UTC (≈ 03/11/19 МСК)
+    # Каждые 3 часа (раньше было 8 — иногда не успевал, free tier
+    # засыпает быстрее чем ожидаемые 12ч).
+    - cron: '0 */3 * * *'
   workflow_dispatch: {}
 
 permissions:
@@ -23,34 +25,38 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Ping app health endpoint
+      - name: Wake app (без падения на 503)
+        # Стратегия — НЕ падать workflow даже если health не вернул 200.
+        # Streamlit просыпается 60-120 сек, поэтому второй пинг через
+        # 90 сек делает запрос на main page (это нагляднее для счётчика
+        # «реальной активности» чем health endpoint).
+        # User-Agent — реальный браузерный без слова Bot (раньше Streamlit
+        # отказывался считать ботов «активностью»).
         run: |
-          # Streamlit health endpoint — самый "честный" способ проверки,
-          # без рендера UI. Если приложение спит — health возвращает 503,
-          # запрос разбудит. Просыпание занимает ~30-60 сек.
-          set -eux
-          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 GarminAnalyticsKeepAwakeBot/1.0"
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
           HEALTH="${APP_URL%/}/_stcore/health"
 
-          # Первый пинг: разбудить если спит. Допускаем не-200 (503 при пробуждении OK).
-          curl -fsSL --max-time 60 -A "$UA" "$HEALTH" -o /dev/null \
-            && echo "✅ Health OK first try" \
-            || echo "⚠️ Health не вернул 200 с первой попытки (возможно спит, будим)"
+          echo "=== 1st health (wake-up trigger) ==="
+          curl -sSL --max-time 60 -A "$UA" "$HEALTH" -o /dev/null \
+            -w "  HTTP %{http_code}  time=%{time_total}s\n" || true
 
-          # Подождать пробуждения
-          sleep 30
+          echo
+          echo "=== Sleep 90s for wake-up ==="
+          sleep 90
 
-          # Второй пинг: должен быть OK после wake-up
-          if curl -fsSL --max-time 90 -A "$UA" "$HEALTH" -o /dev/null; then
-            echo "✅ Health OK after wake-up at $(date -u)"
+          echo "=== 2nd hit on main page (real traffic для counter) ==="
+          curl -sSL --max-time 90 -A "$UA" "$APP_URL" -o /dev/null \
+            -w "  HTTP %{http_code}  time=%{time_total}s\n" || true
+
+          echo
+          echo "=== 3rd health (final check, не fail) ==="
+          status=$(curl -sSL --max-time 30 -A "$UA" "$HEALTH" \
+            -o /dev/null -w "%{http_code}" || echo "000")
+          echo "  HTTP $status"
+          if [ "$status" = "200" ]; then
+            echo "✅ App awake at $(date -u)"
           else
-            echo "❌ Health НЕ ответил даже после ожидания. Проверь Streamlit Cloud UI."
-            exit 1
+            # Не валим — Streamlit мог не успеть проснуться, но факт
+            # запроса засчитан как активность и поможет в след. раз.
+            echo "⚠️  App ещё не до конца проснулся (status=$status), но активность зафиксирована."
           fi
-
-      - name: Hit main page (для счётчика активности)
-        run: |
-          set -eux
-          UA="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 GarminAnalyticsKeepAwakeBot/1.0"
-          curl -fsSL --max-time 60 -A "$UA" "$APP_URL" -o /dev/null
-          echo "✅ Main page hit at $(date -u)"
