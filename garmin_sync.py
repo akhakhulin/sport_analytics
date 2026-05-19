@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import sys
 import json
+import time
 import logging
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -72,7 +73,10 @@ CREATE TABLE IF NOT EXISTS activities (
     training_effect_aer REAL,
     training_effect_ana REAL,
     vo2_max             REAL,
-    raw_json            TEXT
+    raw_json            TEXT,
+    temp_c              REAL,
+    humidity_pct        REAL,
+    wind_speed_kmh      REAL
 );
 
 CREATE TABLE IF NOT EXISTS daily_stats (
@@ -162,7 +166,21 @@ def db_connect():
     for stmt in filter(None, (s.strip() for s in SCHEMA.split(";"))):
         conn.execute(stmt)
     conn.commit()
+    _ensure_weather_columns(conn)
     return conn
+
+
+def _ensure_weather_columns(conn) -> None:
+    """Добавляет колонки погоды в activities, если их ещё нет (миграция старых БД)."""
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(activities)").fetchall()}
+    for col, sql_type in (
+        ("temp_c", "REAL"),
+        ("humidity_pct", "REAL"),
+        ("wind_speed_kmh", "REAL"),
+    ):
+        if col not in cols:
+            conn.execute(f"ALTER TABLE activities ADD COLUMN {col} {sql_type}")
+    conn.commit()
 
 
 def last_activity_date(conn, athlete_id: str) -> date | None:
@@ -460,6 +478,89 @@ def sync_hr_zones(client: Garmin, conn, athlete_id: str) -> int:
     return saved
 
 
+def sync_weather(
+    client: Garmin, conn, athlete_id: str, max_per_run: int | None = 100
+) -> int:
+    """Тянет температуру / влажность / скорость ветра для уличных активностей.
+
+    Garmin возвращает погоду по ближайшей метеостанции (Imperial: °F, mph).
+    Конвертируем в °C и км/ч. Тянем только то, что:
+      - имеет GPS (startLatitude is not null) — комнатные тренировки пропускаем;
+      - ещё не имеет сохранённой температуры.
+    Чтобы не упереться в rate limit, лимитируем пакет.
+    """
+    rows = conn.execute(
+        """SELECT activity_id, raw_json
+             FROM activities
+            WHERE athlete_id = ?
+              AND temp_c IS NULL
+              AND raw_json IS NOT NULL
+            ORDER BY start_time_local DESC""",
+        (athlete_id,),
+    ).fetchall()
+
+    todo: list[int] = []
+    for activity_id, raw_json in rows:
+        try:
+            data = json.loads(raw_json) if isinstance(raw_json, str) else raw_json
+        except Exception:  # noqa: BLE001
+            continue
+        if not isinstance(data, dict):
+            continue
+        if data.get("startLatitude") is None:
+            continue  # нет GPS → погоды нет
+        todo.append(int(activity_id))
+
+    if max_per_run is not None:
+        todo = todo[:max_per_run]
+    if not todo:
+        return 0
+
+    fetched = 0
+    for aid in tqdm(todo, desc=f"weather/{athlete_id}"):
+        try:
+            w = client.get_activity_weather(aid)
+        except GarminConnectTooManyRequestsError:
+            log.warning("[%s] weather: rate limit, останавливаемся", athlete_id)
+            break
+        except Exception as exc:  # noqa: BLE001
+            log.warning("get_activity_weather(%s): %s", aid, exc)
+            continue
+        if not isinstance(w, dict):
+            continue
+
+        temp_f = w.get("temp")
+        wind_mph = w.get("windSpeed")
+        humidity = w.get("relativeHumidity")
+
+        temp_c = (
+            round((temp_f - 32) * 5 / 9, 1)
+            if isinstance(temp_f, (int, float)) else None
+        )
+        wind_kmh = (
+            round(wind_mph * 1.609344, 1)
+            if isinstance(wind_mph, (int, float)) else None
+        )
+
+        # Если станция вернула совсем пусто — не пишем (повторим в след. прогоне).
+        if temp_c is None and humidity is None and wind_kmh is None:
+            continue
+
+        conn.execute(
+            """UPDATE activities
+                  SET temp_c = ?, humidity_pct = ?, wind_speed_kmh = ?
+                WHERE activity_id = ?""",
+            (temp_c, humidity, wind_kmh, aid),
+        )
+        fetched += 1
+        if fetched % 20 == 0:
+            conn.commit()
+        time.sleep(0.3)  # вежливо к Garmin
+    conn.commit()
+    log.info("[%s] Погоды добавлено: %d", athlete_id, fetched)
+    return fetched
+
+
 def sync_hrv(client: Garmin, conn, athlete_id: str, days: int) -> int:
     existing = {
         r[0] for r in conn.execute(
@@ -536,10 +637,12 @@ def run_for(
         else 30
     )
 
+    weather_max = int(os.getenv("WEATHER_MAX_PER_RUN", "100"))
+
     result = {
         "athlete_id": athlete_id,
         "activities": 0, "daily": 0, "sleep": 0, "hrv": 0,
-        "profile": 0, "hr_zones": 0,
+        "profile": 0, "hr_zones": 0, "weather": 0,
         "tokens_str": None,
     }
 
@@ -550,6 +653,7 @@ def run_for(
         result["hrv"]        = sync_hrv(client, conn, athlete_id, days_window)
         result["profile"]    = sync_user_profile(client, conn, athlete_id)
         result["hr_zones"]   = sync_hr_zones(client, conn, athlete_id)
+        result["weather"]    = sync_weather(client, conn, athlete_id, weather_max)
     except GarminConnectTooManyRequestsError:
         log.error("[%s] Rate limit от Garmin — попробуй позже", athlete_id)
     except GarminConnectConnectionError as exc:
