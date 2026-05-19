@@ -146,6 +146,19 @@ def _sync_one(conn, row) -> tuple[bool, str | None]:
 
 
 def run_all() -> int:
+    """Прогон всех активных атлетов.
+
+    Возвращает 0 если **хотя бы один** атлет успешно синканулся ИЛИ
+    если активных атлетов нет вообще. Возвращает 1 только если **все**
+    провалились — это сигнал что проблема общая (Garmin API down, сеть,
+    переменные окружения и т.п.), а не у конкретного атлета.
+
+    Логика: индивидуальные провалы (протухшие токены, отсутствие новых
+    данных, временные сетевые проблемы) — это нормальная часть работы
+    мульти-атлет воркера, не должны валить весь workflow в красное.
+    Сами ошибки сохраняются в cloud_athletes.last_error и sync_runs.error
+    — отлавливаются админом по факту.
+    """
     conn = _open_conn()
     rows = _fetch_athletes(conn)
     if not rows:
@@ -155,19 +168,32 @@ def run_all() -> int:
 
     log.info("Синкаю %d атлетов", len(rows))
     failed = 0
+    failed_ids: list[str] = []
     for row in rows:
         ok, _ = _sync_one(conn, row)
         if not ok:
             failed += 1
+            failed_ids.append(row[0])
 
     dbm.sync(conn)
     conn.close()
 
-    if failed:
-        log.warning("Завершено с ошибками: %d из %d", failed, len(rows))
-        return 1
-    log.info("Все %d атлетов синканы успешно.", len(rows))
-    return 0
+    succeeded = len(rows) - failed
+    if failed == 0:
+        log.info("Все %d атлетов синканы успешно.", len(rows))
+        return 0
+    if succeeded > 0:
+        log.warning(
+            "Частичный успех: %d синканы, %d провалены (%s). "
+            "Подробности в cloud_athletes.last_error.",
+            succeeded, failed, ", ".join(failed_ids),
+        )
+        return 0  # workflow зелёный — частичный успех = норма
+    log.error(
+        "ВСЕ %d атлетов провалены — вероятно общая проблема (Garmin API / сеть / секреты).",
+        failed,
+    )
+    return 1  # workflow красный — общая проблема
 
 
 def run_one(athlete_id: str) -> int:
