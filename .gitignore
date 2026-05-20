@@ -36,3 +36,12 @@ tmp/
 
 # Raw text extraction (промежуточные, восстанавливается из source)
 analysis_temp/
+
+# Локальные настройки Claude Code (permissions)
+.claude/
+
+# Junction к external knowledge (на машине пользователя)
+knowledge/external/
+
+# Whisper-транскрипты и промежуточные audio/frames (восстановимо)
+video_analysis/

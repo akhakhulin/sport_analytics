@@ -272,6 +272,8 @@ knowledge/
 - [`articles/vertyshev/tema3_planirovanie.md`](articles/vertyshev/tema3_planirovanie.md) — Вертышев 2019 Тема 3: годовое планирование, лимит 10 адр./2 нед, скорости адаптации
 - [`articles/youtube/interval_training_framework.md`](articles/youtube/interval_training_framework.md) — интервальные тренировки: объём в зоне как главная метрика, отдых 30-40 сек на МПК
 - [`articles/youtube/tikhonov_supercompensation.md`](articles/youtube/tikhonov_supercompensation.md) — Тихонов (МСМК СССР): суперкомпенсация через «посадку вниз», бежать на своём уровне, фартлек-сороковник, риск гипертрофии миокарда
+- [`articles/youtube/marit_bjorgen_training.md`](articles/youtube/marit_bjorgen_training.md) — Marit Bjørgen 17-летний анализ (2010-2015 пик): полиризованная 92/3/5, объём 522→940ч/год за счёт LIT, переход с HIT-блоков на LIT-доминанту = 5 лучших сезонов, 42-дневная подводка с пиком объёма за -28→-15 дней
+- [`articles/youtube/norwegian_juniors_to_seniors.md`](articles/youtube/norwegian_juniors_to_seniors.md) — 17 норвежских лыжников КМ юниор→взрослый (38 ОИ медалей, 2837 ч): объём +200ч/год за счёт LIT и двухразовых дней (14-24→197/год), HIT не растёт, MIT-интервалы становятся длиннее (6×10' до ПАНО — главный формат); конкретные недельные планы подгот. и соревн. периодов
 - [`articles/core_exercises.md`](articles/core_exercises.md) — кор-комплекс 16 мин: 13 упражнений с защитой поясницы
 
 #### Triskirun — полные выжимки (2026-05-20)
