@@ -274,6 +274,13 @@ knowledge/
 - [`articles/youtube/tikhonov_supercompensation.md`](articles/youtube/tikhonov_supercompensation.md) — Тихонов (МСМК СССР): суперкомпенсация через «посадку вниз», бежать на своём уровне, фартлек-сороковник, риск гипертрофии миокарда
 - [`articles/core_exercises.md`](articles/core_exercises.md) — кор-комплекс 16 мин: 13 упражнений с защитой поясницы
 
+#### Triskirun — полные выжимки (2026-05-20)
+- [`articles/triskirun/planning_xc_skiers.md`](articles/triskirun/planning_xc_skiers.md) — Шишкина 2007: планирование СФП лыжников (лимитирующий фактор = мышцы, не ССС; 4-фазная блочная схема; антигликолитический принцип <4 ммоль/л)
+- [`articles/triskirun/combining_aerobic_strength.md`](articles/triskirun/combining_aerobic_strength.md) — Вертышев 2011: совмещение аэробной и силовой по типу нагрузки (8 типов аэробной × 4 типа силовой, статодинамика — особый случай для ММВ)
+- [`articles/triskirun/muscle_function_cyclic.md`](articles/triskirun/muscle_function_cyclic.md) — Мякинченко: типы МВ и правило Хеннемана, СТ ОМВ для ММВ, календарь силовой по видам спорта, минимум контроля ЛВ
+- [`articles/triskirun/short_intervals.md`](articles/triskirun/short_intervals.md) — Монахов/Ткачук: сверхкороткие 20-40 сек на >ПАНО (7×30/30, лимит лактата 80 мг%, темповый мост 3000м для переноса)
+- [`articles/triskirun/short_program_aerobic_anaerobic.md`](articles/triskirun/short_program_aerobic_anaerobic.md) — Rodas et al 2000 (Барселона): 2-нед all-out велопротокол +11% МПК, +106% PFK, +60% HADH; не подходит pre-race
+
 ### coach_notes
 *(пусто — жду чат тренера от атлета)*
 
