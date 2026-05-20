@@ -489,6 +489,7 @@ def sync_weather(
       - ещё не имеет сохранённой температуры.
     Чтобы не упереться в rate limit, лимитируем пакет.
     """
+    _ensure_weather_columns(conn)
     rows = conn.execute(
         """SELECT activity_id, raw_json
              FROM activities
