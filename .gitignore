@@ -2,6 +2,10 @@
 .env.bak
 .env.*
 .garminconnect/
+
+# Папка с garmin_tokens.json — auth-секрет
+garminconnect/
+
 data/
 __pycache__/
 *.pyc
@@ -25,3 +29,10 @@ snap_*.py
 snap5.py
 diag_card.py
 check_styles.py
+
+# Логи и рабочие временные данные
+logs/
+tmp/
+
+# Raw text extraction (промежуточные, восстанавливается из source)
+analysis_temp/
