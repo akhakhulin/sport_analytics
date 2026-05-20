@@ -1109,17 +1109,23 @@ with tab1:
 
     def _render_activities_table(_view: pd.DataFrame) -> None:
         """Таблица активностей — для drilldown «Тренировок»."""
+        def _fmt_hhmmss(h: float) -> str:
+            if pd.isna(h):
+                return ""
+            total_sec = int(round(h * 3600))
+            return f"{total_sec // 3600:02d}:{(total_sec % 3600) // 60:02d}:{total_sec % 60:02d}"
+
         show = _view[
             ["start_time_local", "activity_type_ru", "activity_name", "distance_km",
              "duration_h", "avg_hr", "max_hr", "training_effect_aer",
              "training_effect_ana", "calories"]
         ].copy()
-        show["duration_h"] = show["duration_h"].round(2)
+        show["duration_h"] = show["duration_h"].apply(_fmt_hhmmss)
         show["distance_km"] = show["distance_km"].round(2)
         show = show.sort_values("start_time_local", ascending=False)
         show = show.rename(columns={
             "start_time_local": "Старт", "activity_type_ru": "Тип",
-            "activity_name": "Название", "distance_km": "км", "duration_h": "ч",
+            "activity_name": "Название", "distance_km": "км", "duration_h": "Время",
             "avg_hr": "ср.HR", "max_hr": "макс.HR",
             "training_effect_aer": "TE аэр.", "training_effect_ana": "TE анаэр.",
             "calories": "кал",
