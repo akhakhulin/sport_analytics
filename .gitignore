@@ -45,3 +45,27 @@ knowledge/external/
 
 # Whisper-транскрипты и промежуточные audio/frames (восстановимо)
 video_analysis/
+
+# === BeatMetrics infra (prod 2026-05) ===
+
+# TLS-сертификаты — приватный ключ НИКОГДА не должен попасть в git
+beatmetrics/certs/
+
+# nginx — коммитим только conf/ и start_nginx.bat (см. !-исключения ниже).
+# Бинарник nginx.exe и дистрибутив (docs/contrib/modules) ставятся локально.
+beatmetrics/nginx/*
+!beatmetrics/nginx/conf/
+!beatmetrics/nginx/start_nginx.bat
+
+# Бинарники third-party (большие, ставятся локально на каждой машине)
+tools/cloudflared.exe
+tools/winacme/
+tools/nginx/
+
+# Бэкапы перед миграциями (snapshot, не для репо)
+*.bak
+*.bak-*
+*-pre-brand-*
+
+# Скриншоты онбординга/аудита — рабочие артефакты разработки
+docs/screenshots/

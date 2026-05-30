@@ -222,10 +222,18 @@ def ru_activity_seasonal(activity_type: str | None, start_dt) -> str:
     return ru_activity(activity_type)
 
 st.set_page_config(
-    page_title="Sportsmen Analytics",
+    page_title="BeatMetrics",
     layout="wide",
-    page_icon="🏃",
+    page_icon="docs/Beatmetrics_logo/favicon.svg",
     initial_sidebar_state="expanded",
+)
+
+# Brand-logo в шапку сайдбара (горизонтальный знак + текст).
+# При свёрнутом сайдбаре показывается компактный favicon.
+st.logo(
+    image="docs/Beatmetrics_logo/horizontal-light.svg",
+    icon_image="docs/Beatmetrics_logo/favicon.svg",
+    size="large",
 )
 
 

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Создать аккаунт · BeatMetrics{% endblock %}
+{% block body %}
+<main class="auth-shell">
+  <div class="auth-card">
+    <div class="logo-wrap">{% include "_logo.html" %}</div>
+    <div class="tagline">тренируйся осознанно</div>
+
+    {% if not current_user %}
+      <div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
+        <span class="dot active"></span>
+        <span class="line"></span>
+        <span class="dot"></span>
+        <span class="line"></span>
+        <span class="dot"></span>
+        <span class="label">Шаг 1 из 3 · аккаунт</span>
+      </div>
+    {% endif %}
+
+    {% if current_user %}
+      <div class="already-logged-banner">
+        Уже вошли как <strong>{{ current_user.email }}</strong>{% if current_user.name %} ({{ current_user.name }}){% endif %}.<br>
+        Чтобы зарегистрировать новый аккаунт — сначала выйди:
+        <form method="post" action="/logout" style="display:inline;margin:0">
+          <button type="submit" class="link-btn">Выйти</button>
+        </form>
+        или <a href="/done">перейти на свой dashboard</a>.
+      </div>
+    {% endif %}
+
+    <form method="post" action="/signup" class="form" autocomplete="on" novalidate>
+      {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
+
+      {% if invitation %}
+        <div class="invite-banner">
+          <div class="invite-icon">★</div>
+          <div>
+            <div class="invite-head">Тебя пригласил тренер</div>
+            <div class="invite-name">
+              <strong>{{ invitation.coach_name or invitation.coach_email }}</strong>
+            </div>
+            <div class="invite-sub">
+              После регистрации тренер будет видеть твои тренировки,
+              чтобы помогать с планом.
+            </div>
+          </div>
+        </div>
+        <input type="hidden" name="invite_token" value="{{ invite_token }}">
+        <input type="hidden" name="role" value="athlete">
+      {% else %}
+        <div class="role-chooser">
+          <label class="role-option {% if selected_role != 'coach' %}selected{% endif %}">
+            <input type="radio" name="role" value="athlete"
+                   {% if selected_role != 'coach' %}checked{% endif %}>
+            <div>
+              <div class="role-title">🏃 Я атлет</div>
+              <div class="role-meta">анализирую свои тренировки</div>
+            </div>
+          </label>
+          <label class="role-option {% if selected_role == 'coach' %}selected{% endif %}">
+            <input type="radio" name="role" value="coach"
+                   {% if selected_role == 'coach' %}checked{% endif %}>
+            <div>
+              <div class="role-title">👔 Я тренер</div>
+              <div class="role-meta">смотрю данные атлетов</div>
+            </div>
+          </label>
+        </div>
+      {% endif %}
+
+      <div class="field">
+        <label for="email">Email</label>
+        <input id="email" name="email" type="email" required
+               autocomplete="email" placeholder="ivan@example.com"
+               value="{{ email_value or '' }}"
+               {% if invitation and invitation.invited_email %}readonly{% endif %}>
+      </div>
+
+      <div class="field">
+        <label for="password">Пароль</label>
+        <input id="password" name="password" type="password" required
+               autocomplete="new-password" minlength="8"
+               placeholder="минимум 8 символов">
+      </div>
+
+      <div class="field">
+        <label for="name">Имя <span style="color:var(--color-mute);text-transform:none;letter-spacing:0;font-weight:400">(необязательно)</span></label>
+        <input id="name" name="name" type="text" autocomplete="given-name"
+               placeholder="как к тебе обращаться"
+               value="{{ name_value or '' }}">
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:4px">Создать аккаунт →</button>
+
+      <div class="form-bottom">
+        Уже есть аккаунт? <a href="/login">Войти</a>
+      </div>
+    </form>
+  </div>
+</main>
+
+<script>
+// Подсветка выбранной role-card
+(function () {
+  document.querySelectorAll('.role-option input[type="radio"]').forEach(function (r) {
+    r.addEventListener('change', function () {
+      document.querySelectorAll('.role-option').forEach(function (l) {
+        l.classList.toggle('selected', l.querySelector('input').checked);
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}

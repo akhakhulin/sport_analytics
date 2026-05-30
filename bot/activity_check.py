@@ -202,6 +202,15 @@ async def check_and_report(bot, chat_id: int, since_date_iso: str,
         if db.is_activity_assessed(act["activity_id"]):
             continue
 
+        # Атомарный claim: гарантирует, что отчёт по активности отправит
+        # ровно один инстанс — даже если параллельно работают двое или
+        # бот перезапустился между send_message и save_assessment.
+        if not db.claim_activity_for_report(act["activity_id"]):
+            log.info(
+                f"activity {act['activity_id']} уже зареcервирована — skip"
+            )
+            continue
+
         plan = match_plan_session(act)
         if garmin_client:
             assessment = analyzer.assess_activity(

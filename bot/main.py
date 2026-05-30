@@ -21,78 +21,102 @@ from telegram.request import HTTPXRequest
 from . import config, db, garmin_client, handlers, scheduler
 
 LOCK_FILE = config.PROJECT_ROOT / "logs" / "bot.lock"
+_LOCK_FH = None  # держим хэндл открытым на всё время жизни процесса
 
 
 def acquire_single_instance_lock() -> None:
-    """Атомарная защита от двух экземпляров.
+    """Защита от двух экземпляров через kernel-level file lock.
 
-    Использует O_CREAT|O_EXCL чтобы операция «создать lock если его нет»
-    была атомарной — два процесса не могут одновременно «успеть» захватить.
-    Если файл уже есть — проверяем PID, если мёртв — стираем и пробуем снова.
+    Windows — msvcrt.locking(LK_NBLCK), POSIX — fcntl.flock(LOCK_EX|LOCK_NB).
+    Это эксклюзивный лок на уровне ОС: при одновременном старте двух
+    процессов ровно один получит лок, второй немедленно получит ошибку.
+    При смерти процесса (даже kill -9) ОС автоматически снимет лок —
+    «мёртвых лок-файлов» не бывает.
     """
+    global _LOCK_FH
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
-    pid_str = str(os.getpid()).encode("utf-8")
 
-    for attempt in range(2):
-        try:
-            # Атомарно создать новый файл; если существует — будет FileExistsError
-            fd = os.open(str(LOCK_FILE), os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    fh = open(LOCK_FILE, "a+", encoding="utf-8")
+    try:
+        if os.name == "nt":
+            import msvcrt
+            # Если файл пустой, locking может упасть — гарантируем 1 байт
+            fh.seek(0, os.SEEK_END)
+            if fh.tell() == 0:
+                fh.write(" ")
+                fh.flush()
+            fh.seek(0)
             try:
-                os.write(fd, pid_str)
-            finally:
-                os.close(fd)
-            atexit.register(_release_lock)
-            return
-        except FileExistsError:
-            # Lock есть — проверим живой ли владелец
-            try:
-                old_pid = int(LOCK_FILE.read_text(encoding="utf-8").strip())
-            except Exception:
-                old_pid = None
-            if old_pid and _pid_alive(old_pid):
+                msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
+            except OSError:
+                fh.seek(0)
+                old = fh.read().strip() or "?"
+                fh.close()
                 print(
-                    f"❌ Бот уже запущен (PID={old_pid}). "
-                    f"Чтобы остановить: taskkill /PID {old_pid} /F",
+                    f"❌ Бот уже запущен (PID={old}). "
+                    f"Чтобы остановить: taskkill /PID {old} /F",
                     file=sys.stderr,
                 )
                 sys.exit(1)
-            # Мёртвый lock — удалить и попробовать ещё раз
+        else:
+            import fcntl
             try:
-                LOCK_FILE.unlink()
-            except FileNotFoundError:
-                pass
-    # Не получилось за 2 попытки — выходим тихо, Task Scheduler перезапустит
-    print("❌ Не удалось получить lock после 2 попыток", file=sys.stderr)
-    sys.exit(1)
+                fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                fh.seek(0)
+                old = fh.read().strip() or "?"
+                fh.close()
+                print(f"❌ Бот уже запущен (PID={old}).", file=sys.stderr)
+                sys.exit(1)
+
+        # Лок наш — пишем актуальный PID для информативности
+        fh.seek(0)
+        fh.truncate()
+        fh.write(str(os.getpid()))
+        fh.flush()
+        _LOCK_FH = fh
+        atexit.register(_release_lock)
+    except SystemExit:
+        raise
+    except Exception as e:
+        try:
+            fh.close()
+        except Exception:
+            pass
+        print(f"❌ Не удалось получить lock: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def _release_lock() -> None:
-    try:
-        if LOCK_FILE.exists():
-            pid_in_file = LOCK_FILE.read_text(encoding="utf-8").strip()
-            if pid_in_file == str(os.getpid()):
-                LOCK_FILE.unlink()
-    except Exception:
-        pass
-
-
-def _pid_alive(pid: int) -> bool:
-    """Проверка что процесс с таким PID существует (Windows-совместимо)."""
-    if pid <= 0:
-        return False
+    global _LOCK_FH
+    if _LOCK_FH is None:
+        return
+    fh = _LOCK_FH
+    _LOCK_FH = None
     try:
         if os.name == "nt":
-            import subprocess
-            r = subprocess.run(
-                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
-                capture_output=True, text=True, timeout=5,
-            )
-            return str(pid) in r.stdout
-        # POSIX
-        os.kill(pid, 0)
-        return True
-    except Exception:
-        return False
+            import msvcrt
+            try:
+                fh.seek(0)
+                msvcrt.locking(fh.fileno(), msvcrt.LK_UNLCK, 1)
+            except Exception:
+                pass
+        else:
+            import fcntl
+            try:
+                fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+            except Exception:
+                pass
+    finally:
+        try:
+            fh.close()
+        except Exception:
+            pass
+        try:
+            if LOCK_FILE.exists():
+                LOCK_FILE.unlink()
+        except Exception:
+            pass
 
 
 async def on_application_error(update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -239,6 +263,8 @@ def main() -> None:
     application.add_handler(CommandHandler("bads", handlers.cmd_supps))  # alias на русском
     application.add_handler(CommandHandler("feel", handlers.cmd_feel))
     application.add_handler(CommandHandler("digest", handlers.cmd_digest))
+    application.add_handler(CommandHandler("jarvis_reset", handlers.cmd_jarvis_reset))
+    application.add_handler(CommandHandler("jarvis_spend", handlers.cmd_jarvis_spend))
 
     # Subjective feedback: тапы по кнопкам 🔥/👍/😴
     application.add_handler(

@@ -8,6 +8,23 @@ from telegram import Update
 from telegram.ext import ContextTypes
 
 from . import activity_check, briefs, config, db, morning, plan_reader, weekly_digest
+from . import jarvis_routing
+
+# Lazy-import JarvisAgent — отсутствие anthropic API ключа не должно ломать
+# импорт handlers (старые команды работают без него)
+_jarvis_agent = None
+
+
+def _get_jarvis():
+    global _jarvis_agent
+    if _jarvis_agent is None:
+        from . import jarvis_agent as _ja
+        _jarvis_agent = _ja.JarvisAgent()
+    return _jarvis_agent
+
+
+# Telegram limit per message — 4096; режем с запасом
+_TG_CHUNK = 3800
 
 log = logging.getLogger("bot.handlers")
 
@@ -629,13 +646,12 @@ async def on_feedback_callback(update: Update, context: ContextTypes.DEFAULT_TYP
 
 
 async def on_text_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Любой не-командный текст: если есть pending фидбек — пишем в notes.
+    """Роутер свободного текста.
 
-    Срабатывает только когда:
-      - сообщение от авторизованного chat_id
-      - в bot_state есть pending_text_feedback и не истекло
-      - это либо явный reply на сообщение бота, либо просто следующий текст в окне TTL
-    Иначе — молчим (бот не «эхо», лишние сообщения не комментируем).
+    Если есть pending feedback (после /feel или inline-кнопки) — пишем в notes.
+    Иначе применяем эвристику D (jarvis_routing):
+      - короткий feel-like текст → молчим (как раньше)
+      - вопрос / длинный / содержит триггер → JarvisAgent (Claude API)
     """
     if not update.message or not update.message.text:
         return
@@ -646,16 +662,87 @@ async def on_text_feedback(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     pending = db.get_pending_text_feedback()
-    if not pending:
+    if pending:
+        activity_id = pending["activity_id"]
+        db.save_feedback(activity_id, feeling="manual_text", notes=text)
+        db.clear_pending_text_feedback()
+        await update.message.reply_text(
+            "📝 Записал в заметки тренировки. Учту при следующем анализе и в воскресном дайджесте."
+        )
         return
 
-    activity_id = pending["activity_id"]
+    # Нет pending — применяем D-эвристику
+    if not jarvis_routing.is_jarvis_query(text):
+        # Короткий feel-like без триггера и без pending feedback —
+        # не понимаем что с ним делать, молчим (старое поведение).
+        return
 
-    db.save_feedback(activity_id, feeling="manual_text", notes=text)
-    db.clear_pending_text_feedback()
-    await update.message.reply_text(
-        "📝 Записал в заметки тренировки. Учту при следующем анализе и в воскресном дайджесте."
-    )
+    await _handle_jarvis_query(update, context, text)
+
+
+async def _handle_jarvis_query(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, text: str
+) -> None:
+    """Передаём вопрос в JarvisAgent, отправляем ответ кусками."""
+    chat_id = update.effective_chat.id
+    try:
+        await context.bot.send_chat_action(chat_id=chat_id, action="typing")
+    except Exception:
+        pass
+
+    try:
+        agent = _get_jarvis()
+    except Exception as exc:
+        log.exception("Jarvis init failed: %s", exc)
+        await update.message.reply_text(f"⚠️ Jarvis не запускается: {exc}")
+        return
+
+    try:
+        answer = await agent.query_async(chat_id, text)
+    except Exception as exc:
+        log.exception("Jarvis query failed: %s", exc)
+        await update.message.reply_text(f"⚠️ Ошибка Jarvis: {exc}")
+        return
+
+    if not answer:
+        await update.message.reply_text("(пустой ответ)")
+        return
+
+    # Режем длинный ответ на куски
+    for i in range(0, len(answer), _TG_CHUNK):
+        chunk = answer[i : i + _TG_CHUNK]
+        try:
+            await update.message.reply_text(chunk)
+        except Exception as exc:
+            log.warning("send chunk failed: %s", exc)
+
+
+async def cmd_jarvis_reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Очистить thread с Jarvis (новая беседа с чистого листа)."""
+    if not _is_authorized(update):
+        return
+    try:
+        agent = _get_jarvis()
+        agent.reset_thread(update.effective_chat.id)
+        await update.message.reply_text("🔄 Контекст Jarvis сброшен. Начинаем заново.")
+    except Exception as exc:
+        await update.message.reply_text(f"⚠️ {exc}")
+
+
+async def cmd_jarvis_spend(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Сколько потрачено на Anthropic API сегодня."""
+    if not _is_authorized(update):
+        return
+    try:
+        from . import jarvis_agent as _ja
+        spend = _ja.today_spend_usd()
+        limit = _ja.MAX_DAILY_USD
+        await update.message.reply_text(
+            f"💰 Anthropic API сегодня: ${spend:.4f} / лимит ${limit:.2f}\n"
+            f"Модель: {_ja.MODEL}"
+        )
+    except Exception as exc:
+        await update.message.reply_text(f"⚠️ {exc}")
 
 
 async def cmd_digest(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:

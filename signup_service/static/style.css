@@ -1,0 +1,714 @@
+/* === BeatMetrics brand tokens (из docs/Beatmetrics_logo/brand-guide.md) === */
+:root {
+  --color-brand:       #3c3489;
+  --color-brand-light: #7f77dd;
+  --color-brand-soft:  #ebe9f7;
+  --color-ink:         #1a1a18;
+  --color-paper:       #fdfdfc;
+  --color-mute:        #6b6a64;
+  --color-line:        #e8e7e1;
+
+  --color-success:     #3B6D11;
+  --color-warning:     #854F0B;
+  --color-warning-bg:  #FAEEDA;
+  --color-danger:      #A32D2D;
+  --color-danger-bg:   #FCEBEB;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  --fs-xs: 10px;  --fs-sm: 11px;  --fs-md: 13px;
+  --fs-lg: 15px;  --fs-xl: 18px;  --fs-2xl: 26px;
+  --sp-1: 4px;    --sp-2: 8px;    --sp-3: 12px;   --sp-4: 16px;
+  --r-sm: 4px;    --r-md: 6px;    --r-lg: 8px;    --r-xl: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--color-paper); font-family: var(--font-sans);
+  color: var(--color-ink); font-size: 14px;
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+/* === Auth-страница (signup/login) — карточка поверх фото === */
+.auth-shell {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  position: relative;
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(rgba(253,253,252,0.30), rgba(253,253,252,0.55)),
+    url('/static/auth-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+.auth-card {
+  width: 100%; max-width: 400px;
+  position: relative; z-index: 1;
+}
+@media (max-width: 768px) {
+  .auth-shell {
+    background-attachment: scroll;
+    background-image:
+      linear-gradient(rgba(253,253,252,0.60), rgba(253,253,252,0.82)),
+      url('/static/auth-bg.jpg');
+  }
+}
+.logo-wrap { display: flex; justify-content: center; margin: 16px 0 8px; }
+.tagline {
+  text-align: center; color: var(--color-brand);
+  font-size: var(--fs-md); margin-bottom: 28px;
+  font-weight: 500;
+}
+
+/* === Stepper «Шаг X из N» === */
+.steps {
+  display: flex; align-items: center; gap: 6px;
+  margin: 0 0 18px;
+  font-size: var(--fs-xs); color: var(--color-mute);
+  text-transform: uppercase; letter-spacing: 0.5px;
+  padding: 8px 12px;
+  background: rgba(255,255,255,0.72);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--r-md);
+}
+.steps .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--color-line); display: inline-block;
+}
+.steps .dot.active { background: var(--color-brand); }
+.steps .dot.done { background: var(--color-success); }
+.steps .line { flex: 0 0 18px; height: 1px; background: var(--color-line); }
+.steps .label { margin-left: 8px; }
+
+.form {
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--r-xl);
+  padding: 28px 28px 24px;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+}
+
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: 11px;
+  color: var(--color-mute); margin-bottom: 4px;
+  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+}
+.field input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid #d8d6cd; border-radius: var(--r-md);
+  background: var(--color-paper);
+  font-family: inherit; font-size: 14px; color: var(--color-ink);
+  height: 42px;
+  transition: border-color .12s ease;
+}
+.field input:focus {
+  outline: 2px solid var(--color-brand);
+  outline-offset: -1px; border-color: transparent;
+}
+
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 10px 16px;
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  background: #fff; color: var(--color-ink);
+  font-family: inherit; font-size: 14px; font-weight: 500;
+  height: 42px; cursor: pointer;
+  transition: background .12s ease, border-color .12s ease;
+  text-decoration: none;
+}
+.btn:hover { background: #faf9f5; border-color: #d8d6cd; }
+.btn-primary {
+  background: var(--color-brand); color: #fff; border-color: var(--color-brand);
+}
+.btn-primary:hover { background: #2f2a73; border-color: #2f2a73; }
+
+.form-bottom {
+  text-align: center; margin-top: 16px;
+  font-size: var(--fs-md); color: var(--color-mute);
+}
+.form-bottom a {
+  color: var(--color-brand); text-decoration: none; font-weight: 500;
+}
+.form-bottom a:hover { text-decoration: underline; }
+
+/* Баннер «уже вошёл как X» на /signup при активной сессии */
+.already-logged-banner {
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  border: 1px solid var(--color-line);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--r-md);
+  padding: 12px 16px;
+  margin-bottom: 12px;
+  font-size: var(--fs-md);
+  color: var(--color-ink);
+  line-height: 1.5;
+  text-align: left;
+}
+.already-logged-banner .link-btn {
+  background: none; border: none; padding: 0;
+  color: var(--color-brand); font-weight: 500;
+  cursor: pointer; font-family: inherit;
+  font-size: inherit; text-decoration: underline;
+}
+.already-logged-banner .link-btn:hover { color: #2f2a73; }
+.already-logged-banner a {
+  color: var(--color-brand); font-weight: 500;
+  text-decoration: underline;
+}
+
+.alert-error {
+  background: var(--color-danger-bg);
+  border-left: 3px solid var(--color-danger);
+  padding: 10px 14px; border-radius: var(--r-md);
+  font-size: var(--fs-md); color: var(--color-ink);
+  margin-bottom: 14px;
+}
+.alert-success {
+  background: #EAF3DE; border-left: 3px solid var(--color-success);
+  padding: 10px 14px; border-radius: var(--r-md);
+  font-size: var(--fs-md); color: var(--color-ink);
+  margin-bottom: 14px; text-align: left;
+}
+
+/* === Onboarding/Settings широкие карточки (для connect, preview, settings) === */
+.onb-shell {
+  min-height: 100vh;
+  padding: 24px;
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(rgba(253,253,252,0.30), rgba(253,253,252,0.55)),
+    url('/static/auth-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  display: flex; align-items: flex-start; justify-content: center;
+}
+@media (max-width: 768px) {
+  .onb-shell {
+    background-attachment: scroll;
+    background-image:
+      linear-gradient(rgba(253,253,252,0.60), rgba(253,253,252,0.82)),
+      url('/static/auth-bg.jpg');
+  }
+}
+.onb-card {
+  width: 100%; max-width: 520px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--r-xl);
+  padding: 28px;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.onb-card.onb-card-wide { max-width: 680px; }
+
+.section-title {
+  font-size: var(--fs-xl); font-weight: 500;
+  letter-spacing: -0.01em; margin-bottom: 4px; color: var(--color-ink);
+}
+.section-sub {
+  color: var(--color-mute); font-size: var(--fs-md);
+  margin-bottom: 20px; line-height: 1.5;
+}
+.section-divider {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+  margin: 20px 0 8px;
+}
+.back {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-bottom: 16px; text-decoration: none; display: inline-block;
+}
+.back:hover { color: var(--color-brand); }
+
+/* === Device cards === */
+.device-card {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  transition: border-color .12s ease, background .12s ease;
+}
+.device-card.device-card-primary {
+  border: 1.5px solid var(--color-brand);
+  background: linear-gradient(180deg, #fff 0%, var(--color-brand-soft) 100%);
+  padding: 18px;
+}
+.device-card.device-card-disabled { opacity: 0.55; }
+.device-card .top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 8px;
+}
+.device-card .name { font-size: var(--fs-lg); font-weight: 500; color: var(--color-ink); }
+.device-card .sub  { font-size: var(--fs-sm); color: var(--color-mute); margin-top: 1px; }
+.device-card .scope {
+  color: var(--color-mute); font-size: var(--fs-sm);
+  margin-bottom: 12px; line-height: 1.4;
+}
+.device-card .btn { margin-top: 4px; }
+.device-card .meta-pill {
+  display: inline-block; padding: 2px 8px;
+  background: var(--color-line); color: var(--color-mute);
+  border-radius: 4px; font-size: var(--fs-xs);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.secondary-row { display: grid; gap: 8px; margin-bottom: 4px; }
+.secondary-row.cols-4 { grid-template-columns: repeat(4, 1fr); }
+.secondary-row.cols-3 { grid-template-columns: repeat(3, 1fr); }
+.secondary-row.cols-2 { grid-template-columns: repeat(2, 1fr); }
+.secondary-row .device-card {
+  padding: 12px 8px; text-align: center; margin: 0;
+}
+.secondary-row .device-card .top {
+  flex-direction: column; gap: 6px; margin: 0; align-items: center;
+}
+.secondary-row .device-card .name { font-size: var(--fs-sm); font-weight: 500; }
+.secondary-row .device-card .platform-meta {
+  font-size: var(--fs-xs); color: var(--color-mute); margin-top: 2px;
+}
+@media (max-width: 540px) {
+  .secondary-row.cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .secondary-row.cols-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+.skip { text-align: center; margin-top: 16px; }
+.skip a {
+  color: var(--color-mute); text-decoration: none;
+  font-size: var(--fs-sm);
+  border-bottom: 1px dashed currentColor; padding-bottom: 1px;
+}
+.skip a:hover { color: var(--color-brand); border-color: var(--color-brand); }
+
+/* === Strava-bridge card === */
+.bridge-card {
+  background: #FC4C02;
+  color: #fff;
+  border: 1px solid #FC4C02;
+  border-radius: var(--r-lg);
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex; align-items: center; gap: 12px;
+  text-decoration: none;
+  transition: filter .12s ease;
+}
+.bridge-card:hover { filter: brightness(1.08); }
+.bridge-card .name { color: #fff; font-size: var(--fs-lg); font-weight: 500; }
+.bridge-card .sub { color: rgba(255,255,255,0.85); font-size: var(--fs-sm); }
+.bridge-card .arrow { margin-left: auto; font-size: 18px; }
+
+/* === OAuth pre-screen === */
+.list-check { list-style: none; padding: 0; margin: 8px 0 16px; }
+.list-check li {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 4px 0; font-size: var(--fs-md);
+}
+.list-check li::before {
+  content: '\2713'; color: var(--color-success);
+  font-weight: 600; flex-shrink: 0;
+}
+.list-x li::before { content: '\2717'; color: var(--color-mute); }
+.coach-block {
+  background: var(--color-brand-soft);
+  border-radius: var(--r-md);
+  padding: 12px 14px; margin: 16px 0;
+  font-size: var(--fs-sm); color: var(--color-ink); line-height: 1.5;
+}
+.legal {
+  text-align: center; font-size: var(--fs-xs);
+  color: var(--color-mute); margin-top: 14px;
+}
+.legal a { color: inherit; }
+
+/* === Settings → Connections === */
+.crumb {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-bottom: 12px;
+}
+.conn-card {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--r-lg);
+  padding: 16px 18px; margin-bottom: 10px;
+}
+.conn-card .top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 12px;
+}
+.conn-card .top .name { font-size: var(--fs-lg); font-weight: 500; }
+.conn-card .top .badge {
+  margin-left: auto; font-size: var(--fs-sm);
+  display: flex; align-items: center; gap: 6px;
+}
+.badge-ok   { color: var(--color-success); }
+.badge-warn { color: var(--color-warning); }
+.badge-ok::before  { content: '\25CF'; color: var(--color-success); }
+.badge-warn::before{ content: '\26A0'; }
+.conn-card .grid {
+  display: grid; grid-template-columns: 130px 1fr; gap: 6px 16px;
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-bottom: 12px;
+}
+.conn-card .grid b { color: var(--color-ink); font-weight: 500; }
+.conn-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.conn-actions form { display: inline; margin: 0; }
+.conn-actions .btn {
+  flex: 0 0 auto; width: auto; padding: 8px 14px; font-size: var(--fs-sm);
+  height: auto;
+}
+.btn-danger-text { color: var(--color-danger); }
+.btn-danger-text:hover { background: var(--color-danger-bg); border-color: var(--color-danger); }
+
+/* === Provider list на /done для атлета === */
+.provider-list { margin: 16px 0; text-align: left; }
+.provider-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 14px 16px;
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--r-md);
+  margin-bottom: 8px;
+}
+.provider-card.provider-primary {
+  border: 1.5px solid var(--color-brand);
+  background: linear-gradient(180deg, #fff 0%, var(--color-brand-soft) 100%);
+}
+.provider-card.provider-disabled { opacity: 0.55; }
+.provider-info { flex: 1; min-width: 0; }
+.provider-name { font-size: var(--fs-lg); font-weight: 500; color: var(--color-ink); }
+.provider-meta { font-size: var(--fs-sm); color: var(--color-mute); margin-top: 2px; }
+.provider-card .btn {
+  width: auto; padding: 8px 16px; height: 38px;
+  font-size: var(--fs-sm); white-space: nowrap;
+  text-decoration: none;
+}
+.provider-soon {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  padding: 8px 14px;
+  background: var(--color-line); border-radius: var(--r-md);
+  font-weight: 500;
+}
+
+/* === Role chooser — выбор athlete/coach при signup === */
+.role-chooser {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+  margin-bottom: 16px;
+}
+.role-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px; cursor: pointer;
+  background: var(--color-paper);
+  border: 1.5px solid var(--color-line);
+  border-radius: var(--r-md);
+  transition: border-color .12s ease, background .12s ease;
+}
+.role-option:hover { background: #fff; }
+.role-option.selected {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+}
+.role-option input[type="radio"] {
+  appearance: none; -webkit-appearance: none;
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 1.5px solid var(--color-line);
+  background: #fff;
+  flex-shrink: 0; cursor: pointer; margin: 0;
+  position: relative;
+}
+.role-option.selected input[type="radio"] {
+  border-color: var(--color-brand);
+}
+.role-option.selected input[type="radio"]::after {
+  content: ''; position: absolute; top: 3px; left: 3px;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--color-brand);
+}
+.role-option .role-title {
+  font-size: var(--fs-md); font-weight: 500; color: var(--color-ink);
+}
+.role-option .role-meta {
+  font-size: var(--fs-sm); color: var(--color-mute); margin-top: 1px;
+}
+
+/* === Invite banner — показывается атлету, который пришёл по ссылке тренера === */
+.invite-banner {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px;
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--r-md);
+  margin-bottom: 16px;
+}
+.invite-icon {
+  font-size: 20px; color: var(--color-brand);
+  flex-shrink: 0; line-height: 1;
+}
+.invite-head {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.invite-name {
+  font-size: var(--fs-lg); color: var(--color-ink); margin: 2px 0 6px;
+}
+.invite-sub {
+  font-size: var(--fs-sm); color: var(--color-mute); line-height: 1.4;
+}
+
+/* === Coach done-page — широкая карточка для генератора + списков === */
+.done-card-wide { max-width: 640px; text-align: left; }
+.done-card-wide .logo-wrap,
+.done-card-wide .done-check,
+.done-card-wide .done-title,
+.done-card-wide .done-sub { text-align: center; }
+.done-card-wide .done-sub { margin-bottom: 20px; }
+
+.invite-gen {
+  background: var(--color-brand-soft);
+  border-radius: var(--r-md); padding: 18px;
+  margin: 16px 0;
+}
+.invite-gen-title {
+  font-size: var(--fs-sm); color: var(--color-brand);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  margin-bottom: 12px;
+}
+.invite-form .field { margin-bottom: 10px; }
+.invite-form .btn { margin-top: 6px; }
+
+.invite-list { margin: 16px 0; }
+.invite-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 12px 14px; background: var(--color-paper);
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.invite-row-meta { flex: 1 1 200px; min-width: 0; }
+.invite-row-status {
+  display: flex; gap: 8px; align-items: center;
+  font-size: var(--fs-md);
+}
+.badge-ok {
+  display: inline-block; padding: 2px 8px;
+  background: var(--color-success); color: #fff;
+  border-radius: 4px; font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.badge-pending {
+  display: inline-block; padding: 2px 8px;
+  background: var(--color-warning); color: #fff;
+  border-radius: 4px; font-size: var(--fs-xs);
+  font-weight: 500;
+}
+.invite-row-detail {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-top: 2px;
+}
+.invite-row-link {
+  flex: 1 1 100%; display: flex; gap: 6px; margin-top: 6px;
+}
+.invite-link-input {
+  flex: 1; padding: 6px 10px;
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  background: #fff; font-family: monospace; font-size: var(--fs-sm);
+  color: var(--color-ink); min-width: 0;
+}
+.btn-tiny {
+  padding: 6px 12px; height: auto;
+  font-size: var(--fs-sm); width: auto; white-space: nowrap;
+}
+
+/* === Done-страница (тот же триптих-фон что и auth) === */
+.done-shell {
+  min-height: 100vh;
+  display: flex; align-items: center; justify-content: center;
+  padding: 24px;
+  background-color: var(--color-paper);
+  background-image:
+    linear-gradient(rgba(253,253,252,0.30), rgba(253,253,252,0.55)),
+    url('/static/auth-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+@media (max-width: 768px) {
+  .done-shell {
+    background-attachment: scroll;
+    background-image:
+      linear-gradient(rgba(253,253,252,0.60), rgba(253,253,252,0.82)),
+      url('/static/auth-bg.jpg');
+  }
+}
+.done-card {
+  width: 100%; max-width: 480px;
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--r-xl);
+  padding: 32px;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  text-align: center;
+}
+.done-check {
+  width: 64px; height: 64px; border-radius: 50%;
+  background: var(--color-brand-soft);
+  display: inline-flex; align-items: center; justify-content: center;
+  margin-bottom: 16px;
+  color: var(--color-brand); font-size: 32px;
+}
+.done-title {
+  font-size: var(--fs-2xl); font-weight: 500;
+  letter-spacing: -0.02em; margin-bottom: 6px;
+}
+.done-sub {
+  color: var(--color-mute); font-size: var(--fs-md);
+  margin-bottom: 24px; line-height: 1.5;
+}
+.done-actions {
+  display: flex; flex-direction: column; gap: 8px;
+}
+
+/* === Cookie consent (нижняя полоса на всю ширину, Strava-style, в бренде) === */
+.cookie-backdrop { display: none; }  /* без backdrop — bar не блокирует фон */
+.cookie-banner {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  background: var(--color-brand);
+  color: #fff;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
+}
+.cookie-inner {
+  max-width: 1400px; margin: 0 auto;
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px; align-items: center;
+}
+.cookie-brand {
+  width: 56px; height: 56px;
+  background: #fff; border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cookie-brand svg { width: 38px; height: 38px; }
+.cookie-text-block { min-width: 0; }
+.cookie-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.cookie-head strong {
+  font-size: var(--fs-lg); font-weight: 500; color: #fff;
+}
+.cookie-close {
+  background: none; border: none; font-size: 22px;
+  color: rgba(255,255,255,0.7); cursor: pointer; padding: 0 4px;
+  margin-left: auto;
+}
+.cookie-close:hover { color: #fff; }
+.cookie-banner p {
+  font-size: var(--fs-md); line-height: 1.5;
+  margin: 0; color: rgba(255,255,255,0.92);
+}
+.cookie-toggle-details {
+  color: #fff; cursor: pointer; font-weight: 500;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.cookie-toggle-details:hover { text-decoration: none; }
+
+.cookie-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  min-width: 220px;
+}
+.cookie-btn {
+  padding: 10px 18px;
+  border-radius: var(--r-md); font-family: inherit;
+  font-size: var(--fs-md); font-weight: 500; cursor: pointer;
+  border: 1px solid; width: 100%;
+  text-align: center; white-space: nowrap;
+  transition: background .12s ease;
+}
+.cookie-btn.primary {
+  background: #fff; border-color: #fff; color: var(--color-brand);
+}
+.cookie-btn.primary:hover { background: var(--color-brand-soft); }
+.cookie-btn.ghost {
+  background: transparent; border-color: rgba(255,255,255,0.5); color: #fff;
+}
+.cookie-btn.ghost:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: #fff;
+}
+
+/* Details — раскрываются над основным контентом баннера */
+.cookie-details {
+  grid-column: 1 / -1;
+  background: rgba(255,255,255,0.08);
+  border-radius: var(--r-md);
+  padding: 4px 16px; margin-top: 12px;
+}
+.cookie-cat {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+.cookie-cat:last-child { border-bottom: none; }
+.cookie-cat strong { font-size: var(--fs-md); font-weight: 500; display: block; color: #fff; }
+.cookie-cat small {
+  color: rgba(255,255,255,0.7); font-size: var(--fs-sm);
+  display: block; margin-top: 2px;
+}
+.cookie-cat input[type="checkbox"] {
+  width: 36px; height: 20px; appearance: none; -webkit-appearance: none;
+  background: rgba(255,255,255,0.25); border-radius: 999px; position: relative;
+  cursor: pointer; transition: background .15s ease; flex-shrink: 0; margin: 0;
+}
+.cookie-cat input[type="checkbox"]:checked { background: #fff; }
+.cookie-cat input[type="checkbox"]::before {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; background: var(--color-brand); border-radius: 50%;
+  transition: transform .15s ease;
+}
+.cookie-cat input[type="checkbox"]:not(:checked)::before { background: #fff; }
+.cookie-cat input[type="checkbox"]:checked::before { transform: translateX(16px); }
+.cookie-cat input[type="checkbox"]:disabled { opacity: 0.4; cursor: not-allowed; }
+.cookie-cat .locked-switch {
+  width: 36px; height: 20px; background: #fff;
+  border-radius: 999px; position: relative; opacity: 0.85; flex-shrink: 0;
+}
+.cookie-cat .locked-switch::before {
+  content: ''; position: absolute; top: 2px; left: 18px;
+  width: 16px; height: 16px; background: var(--color-brand); border-radius: 50%;
+}
+
+@media (max-width: 900px) {
+  .cookie-inner {
+    grid-template-columns: 1fr;
+    gap: 16px; padding: 20px 20px;
+  }
+  .cookie-actions {
+    flex-direction: row; min-width: 0;
+  }
+  .cookie-btn { flex: 1 1 auto; padding: 10px 12px; font-size: var(--fs-sm); }
+  .cookie-brand { display: none; }
+}
+@media (max-width: 520px) {
+  .cookie-actions { flex-direction: column; }
+  .cookie-btn { width: 100%; }
+}

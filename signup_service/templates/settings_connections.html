@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Settings · Connections · BeatMetrics{% endblock %}
+{% block body %}
+<main class="onb-shell">
+  <div class="onb-card onb-card-wide">
+    <div class="crumb">Settings ▸ Connections</div>
+    <div class="section-title" style="margin-bottom: 20px;">Подключённые устройства</div>
+
+    {% if request.query_params.get('disconnected') %}
+      <div class="alert-success">
+        <strong>{{ request.query_params.get('disconnected') | upper }}</strong> отключён.
+      </div>
+    {% endif %}
+
+    {% if not accounts %}
+      <div class="alert-error" style="background:var(--color-warning-bg);border-left-color:var(--color-warning)">
+        Пока ничего не подключено. <a href="/onboarding/connect" style="color:var(--color-brand);font-weight:500">Подключить →</a>
+      </div>
+    {% endif %}
+
+    {% for acc in accounts %}
+      <div class="conn-card">
+        <div class="top">
+          <div class="name">{{ provider_labels.get(acc.provider, acc.provider | capitalize) }}</div>
+          <div class="badge {{ 'badge-warn' if acc.token_expired else 'badge-ok' }}">
+            {{ 'Reconnect needed' if acc.token_expired else 'Connected' }}
+          </div>
+        </div>
+        <div class="grid">
+          <div>Подключено</div><div><b>{{ acc.connected_at_human }}</b></div>
+          {% if acc.last_refresh_human %}
+            <div>Последний синк</div><div><b>{{ acc.last_refresh_human }}</b></div>
+          {% endif %}
+          {% if acc.expires_at_human %}
+            <div>Токен до</div>
+            <div>
+              {% if acc.token_expired %}
+                <span style="color:var(--color-warning)">истёк {{ acc.expires_at_human }}</span>
+              {% else %}
+                <b>{{ acc.expires_at_human }}</b>
+              {% endif %}
+            </div>
+          {% endif %}
+          {% if acc.external_user_id %}
+            <div>ID в провайдере</div><div><b>{{ acc.external_user_id }}</b></div>
+          {% endif %}
+        </div>
+        <div class="conn-actions">
+          <a href="/oauth/{{ acc.provider }}/preview" class="btn{% if acc.token_expired %} btn-primary{% endif %}">
+            {{ 'Переподключить →' if acc.token_expired else 'Переподключить' }}
+          </a>
+          <form method="post" action="/settings/connections/{{ acc.provider }}/disconnect"
+                onsubmit="return confirm('Отключить {{ acc.provider | capitalize }}? Уже загруженные тренировки останутся, новые синки прекратятся.');">
+            <button type="submit" class="btn btn-danger-text">Отключить</button>
+          </form>
+        </div>
+      </div>
+    {% endfor %}
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+      <a href="/onboarding/connect" class="btn">+ Подключить ещё одни часы</a>
+      <a href="/done" class="btn">К дашборду →</a>
+    </div>
+
+    <form method="post" action="/logout" style="margin-top:14px">
+      <button type="submit" class="btn">Выйти</button>
+    </form>
+  </div>
+</main>
+{% endblock %}

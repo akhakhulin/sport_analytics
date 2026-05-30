@@ -134,6 +134,27 @@ def is_activity_assessed(activity_id: int) -> bool:
         return row is not None
 
 
+def claim_activity_for_report(activity_id: int) -> bool:
+    """Атомарно резервирует активность для отправки отчёта.
+
+    Возвращает True, если claim получен этим инстансом (запись только что
+    создана); False — если запись уже была (другой инстанс или предыдущий
+    запуск уже отправил отчёт).
+
+    Защита от дубля при двух одновременно работающих инстансах и при
+    падении между send_message и save_assessment. Финальная save_assessment
+    перезапишет плейсхолдер настоящими данными через INSERT OR REPLACE.
+    """
+    with get_conn() as conn:
+        cur = conn.execute(
+            "INSERT OR IGNORE INTO training_assessment "
+            "(activity_id, assessed_at) VALUES (?, ?)",
+            (activity_id, datetime.utcnow().isoformat()),
+        )
+        conn.commit()
+        return cur.rowcount > 0
+
+
 def save_assessment(activity_id: int, plan_text: Optional[str],
                     plan_zone: Optional[str], actual_pct: Optional[float],
                     matches: Optional[int], raw_json: str) -> None:

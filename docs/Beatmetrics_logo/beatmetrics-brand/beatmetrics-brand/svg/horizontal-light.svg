@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 64" width="320" height="64">
+  <title>BeatMetrics horizontal</title>
+  <!-- знак -->
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#3c3489"/>
+  <path d="M 14 12 L 14 52" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- текст -->
+  <text x="80" y="42" font-family="-apple-system, 'Segoe UI', system-ui, sans-serif" font-size="32" font-weight="500" fill="#1a1a18" letter-spacing="-0.02em">Beat<tspan font-weight="500">Metrics</tspan></text>
+</svg>

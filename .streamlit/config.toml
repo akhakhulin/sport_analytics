@@ -9,6 +9,10 @@ showErrorDetails = false
 [browser]
 gatherUsageStats = false
 
+# Включаем раздачу /app/static/* для CSS bg-фото на login-странице
+[server]
+enableStaticServing = true
+
 # Тема под прототип Sportsmen Analytics
 [theme]
 primaryColor = "#185FA5"

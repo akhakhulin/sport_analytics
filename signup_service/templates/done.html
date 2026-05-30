@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+{% block title %}Готово · BeatMetrics{% endblock %}
+{% block body %}
+<main class="done-shell">
+  <div class="done-card {% if role == 'coach' %}done-card-wide{% endif %}">
+    <div class="logo-wrap">{% include "_logo.html" %}</div>
+
+    {% if role == 'coach' %}
+      {# === ТРЕНЕР === #}
+      <div class="done-check">👔</div>
+      <div class="done-title">
+        {% if user and user.name %}Привет, {{ user.name }}!{% else %}Аккаунт тренера создан{% endif %}
+      </div>
+      <div class="done-sub">
+        {% if user %}{{ user.email }}<br>{% endif %}
+        Пригласи атлетов — они зарегаются по твоей ссылке, и ты сразу увидишь их данные.
+      </div>
+
+      <!-- Генерация новой ссылки -->
+      <div class="invite-gen" id="invites">
+        <div class="invite-gen-title">Создать новое приглашение</div>
+        <form method="post" action="/coach/invite" class="invite-form">
+          <div class="field">
+            <label for="invited_email">Email атлета <span style="color:var(--color-mute);text-transform:none;font-weight:400">(необязательно)</span></label>
+            <input id="invited_email" name="invited_email" type="email"
+                   placeholder="petya@example.com">
+          </div>
+          <div class="field">
+            <label for="note">Заметка для себя</label>
+            <input id="note" name="note" type="text"
+                   placeholder="например: Петя, 5к 17:30">
+          </div>
+          <button type="submit" class="btn btn-primary">Создать ссылку →</button>
+        </form>
+      </div>
+
+      <!-- Существующие приглашения -->
+      {% if invitations %}
+      <div class="invite-list">
+        <div class="invite-gen-title">Мои приглашения ({{ invitations|length }})</div>
+        {% for inv in invitations %}
+          <div class="invite-row">
+            <div class="invite-row-meta">
+              <div class="invite-row-status">
+                {% if inv.used_by_user_id %}
+                  <span class="badge-ok">✓ принято</span>
+                  <strong>{{ inv.used_by_name or inv.used_by_email }}</strong>
+                {% else %}
+                  <span class="badge-pending">○ ожидает</span>
+                {% endif %}
+              </div>
+              {% if inv.invited_email %}
+                <div class="invite-row-detail">для {{ inv.invited_email }}</div>
+              {% endif %}
+              {% if inv.note %}
+                <div class="invite-row-detail">«{{ inv.note }}»</div>
+              {% endif %}
+            </div>
+            {% if not inv.used_by_user_id %}
+              <div class="invite-row-link">
+                <input type="text" readonly class="invite-link-input"
+                       value="{{ invite_url_base }}{{ inv.invitation_token }}"
+                       onclick="this.select()">
+                <button type="button" class="btn btn-tiny copy-btn"
+                        data-link="{{ invite_url_base }}{{ inv.invitation_token }}">Копировать</button>
+              </div>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <!-- Атлеты тренера -->
+      {% if athletes %}
+      <div class="invite-list">
+        <div class="invite-gen-title">Мои атлеты ({{ athletes|length }})</div>
+        {% for a in athletes %}
+          <div class="invite-row">
+            <div class="invite-row-meta">
+              <div><strong>{{ a.name or a.email }}</strong></div>
+              {% if a.name %}<div class="invite-row-detail">{{ a.email }}</div>{% endif %}
+              <div class="invite-row-detail">подключился: {{ a.created_at[:10] }}</div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <form method="post" action="/logout" style="margin: 12px 0 0">
+        <button type="submit" class="btn">Выйти</button>
+      </form>
+
+    {% else %}
+      {# === АТЛЕТ === #}
+      <div class="done-check">✓</div>
+      <div class="done-title">
+        {% if user and user.name %}Привет, {{ user.name }}!{% else %}Аккаунт создан{% endif %}
+      </div>
+      <div class="done-sub">
+        {% if user %}{{ user.email }}<br>{% endif %}
+        Подключи источник данных, чтобы видеть аналитику тренировок.
+      </div>
+
+      {% if request.query_params.get('connected') %}
+        <div class="alert-success">
+          ✓ <strong>{{ request.query_params.get('connected') | upper }}</strong> подключён —
+          мы начнём забирать твои тренировки в ближайшие минуты.
+        </div>
+      {% endif %}
+      {% if request.query_params.get('oauth_error') %}
+        <div class="alert-error">
+          Ошибка OAuth: {{ request.query_params.get('oauth_error') }}.
+          Попробуй ещё раз или подключи другого провайдера.
+        </div>
+      {% endif %}
+
+      <div class="provider-list">
+        {% for p in providers %}
+          <div class="provider-card {% if p.primary %}provider-primary{% endif %} {% if not p.configured %}provider-disabled{% endif %}">
+            <div class="provider-info">
+              <div class="provider-name">{{ p.label }}</div>
+              <div class="provider-meta">{{ p.meta }}</div>
+            </div>
+            {% if p.configured %}
+              <a href="/oauth/{{ p.key }}/connect" class="btn {% if p.primary %}btn-primary{% endif %}">
+                Подключить →
+              </a>
+            {% else %}
+              <span class="provider-soon">скоро</span>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+
+      <form method="post" action="/logout" style="margin: 16px 0 0">
+        <button type="submit" class="btn">Выйти</button>
+      </form>
+    {% endif %}
+  </div>
+</main>
+
+<script>
+// Кнопка "Копировать" для invitation-ссылок
+(function () {
+  document.querySelectorAll('.copy-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var link = b.dataset.link;
+      navigator.clipboard.writeText(link).then(function () {
+        var orig = b.textContent;
+        b.textContent = '✓ Скопировано';
+        setTimeout(function () { b.textContent = orig; }, 1500);
+      });
+    });
+  });
+})();
+</script>
+{% endblock %}

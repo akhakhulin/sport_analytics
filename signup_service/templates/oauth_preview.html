@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Подключение {{ provider_label }} · BeatMetrics{% endblock %}
+{% block body %}
+<main class="onb-shell">
+  <div class="onb-card">
+    <a href="/onboarding/connect" class="back">← к выбору устройств</a>
+
+    <div class="section-title">Сейчас откроется {{ provider_label }}</div>
+    <div class="section-sub">войди и нажми «Allow» — мы получим доступ только на чтение</div>
+
+    <div style="font-size: var(--fs-md); font-weight: 500; margin: 16px 0 4px; color: var(--color-ink);">
+      Что мы прочитаем:
+    </div>
+    <ul class="list-check">
+      {% for item in scope_read %}
+        <li>{{ item }}</li>
+      {% endfor %}
+    </ul>
+
+    <div style="font-size: var(--fs-md); font-weight: 500; margin: 8px 0 4px; color: var(--color-ink);">
+      Что мы НЕ делаем:
+    </div>
+    <ul class="list-check list-x">
+      <li>Не меняем твои данные в {{ provider_label }}</li>
+      <li>Не публикуем активности</li>
+      <li>Не пишем в твой аккаунт</li>
+    </ul>
+
+    {% if coach_name %}
+      <div class="coach-block">
+        Тренер увидит твои данные: <b>{{ coach_name }}</b><br>
+        <span style="color: var(--color-mute);">Отозвать доступ можно в Settings → Connections в любой момент.</span>
+      </div>
+    {% endif %}
+
+    <a href="/oauth/{{ provider }}/connect" class="btn btn-primary">Открыть {{ provider_label }} →</a>
+
+    <div class="legal">
+      <a href="#">Privacy policy</a> · <a href="#">Условия</a>
+    </div>
+  </div>
+</main>
+{% endblock %}

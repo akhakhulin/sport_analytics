@@ -29,10 +29,23 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
+import json
 import os
+import time
 from typing import NamedTuple
 
 import streamlit as st
+
+try:
+    import extra_streamlit_components as stx
+    _HAS_COOKIES = True
+except ImportError:
+    _HAS_COOKIES = False
+
+_COOKIE_NAME = "beatmetrics_auth"
+_COOKIE_TTL_SECONDS = 30 * 24 * 3600  # 30 дней
 
 
 class AuthUser(NamedTuple):
@@ -56,6 +69,60 @@ def _users_cfg():
     return auth
 
 
+def _cookie_secret(users_cfg) -> str:
+    """Секрет для HMAC-подписи cookie. Берём из [auth].cookie_secret или
+    вычисляем стабильный fallback из хэшей паролей (меняется при смене пароля
+    — старые куки автоматически инвалидируются, что нам и нужно)."""
+    explicit = (users_cfg.get("cookie_secret") or "").strip()
+    if explicit:
+        return explicit
+    parts = []
+    for u in sorted(users_cfg.get("users", {}).keys()):
+        parts.append(str(users_cfg["users"][u].get("password", "")))
+    return hashlib.sha256("|".join(parts).encode()).hexdigest()
+
+
+def _sign(value: str, secret: str) -> str:
+    return hmac.new(secret.encode(), value.encode(), hashlib.sha256).hexdigest()
+
+
+def _serialize_user(user: "AuthUser", secret: str) -> str:
+    payload = {
+        "u": user.username, "n": user.name, "r": user.role,
+        "a": user.athlete_id,
+        "v": list(user.visible_athletes) if user.visible_athletes else None,
+        "exp": int(time.time()) + _COOKIE_TTL_SECONDS,
+    }
+    raw = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    return raw + "::" + _sign(raw, secret)
+
+
+def _deserialize_user(token: str, secret: str) -> "AuthUser | None":
+    try:
+        raw, sig = token.rsplit("::", 1)
+        if not hmac.compare_digest(_sign(raw, secret), sig):
+            return None
+        data = json.loads(raw)
+        if int(data.get("exp", 0)) < int(time.time()):
+            return None
+        visible = tuple(data["v"]) if data.get("v") else None
+        return AuthUser(
+            username=data["u"], name=data["n"], role=data["r"],
+            athlete_id=data["a"], is_local=False, visible_athletes=visible,
+        )
+    except Exception:
+        return None
+
+
+def _get_cookie_manager():
+    if not _HAS_COOKIES:
+        return None
+    # Кэшируем менеджер в session_state, чтобы не пересоздавать на каждом rerun
+    if "_auth_cookie_mgr" not in st.session_state:
+        st.session_state["_auth_cookie_mgr"] = stx.CookieManager(key="auth_cookie_manager")
+    return st.session_state["_auth_cookie_mgr"]
+
+
 def _check_password(plain: str, stored: str) -> bool:
     if not stored:
         return False
@@ -69,27 +136,182 @@ def _check_password(plain: str, stored: str) -> bool:
     return plain == stored
 
 
+_LOGIN_CSS = """
+<style>
+/* На login-форме скрываем сайдбар целиком — он показывает пункты меню
+   незалогиненным пользователям, не нужно. */
+[data-testid="stSidebar"], [data-testid="stSidebarCollapseButton"],
+[data-testid="stSidebarCollapsedControl"], [data-testid="stLogo"] {
+    display: none !important;
+}
+[data-testid="stAppViewContainer"] > section:first-child {
+    display: none !important;
+}
+/* Фоновое фото лыжника поверх кремового фона дашборда (только на login).
+   Перебиваем сразу все возможные Streamlit-контейнеры. */
+html, body,
+[data-testid="stApp"],
+[data-testid="stAppViewContainer"],
+[data-testid="stMain"],
+.stApp {
+    background-color: #F5F4EF !important;
+    background-image:
+        linear-gradient(rgba(245,244,239,0.20), rgba(245,244,239,0.50)),
+        url('/app/static/auth-bg-skier.jpg') !important;
+    background-size: cover !important;
+    background-position: center center !important;
+    background-attachment: fixed !important;
+    background-repeat: no-repeat !important;
+}
+/* Прозрачный main-блок чтобы bg просвечивал через него */
+[data-testid="stMain"] .block-container,
+[data-testid="stMain"] section {
+    background: transparent !important;
+}
+/* Карточка формы — frosted glass поверх фото лыжника */
+[data-testid="stMain"] [data-testid="stForm"] {
+    max-width: 380px;
+    margin: 16px auto;
+    padding: 28px 28px 24px;
+    background: rgba(255,255,255,0.82) !important;
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.55) !important;
+    border-radius: 14px;
+    box-shadow:
+        0 8px 32px rgba(0,0,0,0.10),
+        inset 0 1px 0 rgba(255,255,255,0.6) !important;
+}
+/* Видимая рамка — только на wrapper, input внутри прозрачный */
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] [data-baseweb="input"],
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] [data-baseweb="base-input"] {
+    background: #fdfdfc !important;
+    border: 1px solid #d8d6cd !important;
+    border-radius: 6px !important;
+    padding: 0 !important;
+    height: 42px !important;
+}
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] [data-baseweb="input"] input,
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] [data-baseweb="base-input"] input {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 12px !important;
+    height: 100% !important;
+    font-size: 14px !important;
+    color: #1a1a18 !important;
+}
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] [data-baseweb="input"]:focus-within,
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] [data-baseweb="base-input"]:focus-within {
+    outline: 2px solid #3c3489 !important;
+    outline-offset: -1px;
+    border-color: transparent !important;
+}
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stTextInput"] label {
+    font-size: 11px !important;
+    color: #6b6a64 !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+    margin-bottom: 4px !important;
+}
+/* Submit-кнопка «Войти» — primary, фиолетовый */
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stFormSubmitButton"] button {
+    background: #3c3489 !important;
+    color: #ffffff !important;
+    border: 1px solid #3c3489 !important;
+    border-radius: 6px !important;
+    padding: 0 20px !important;
+    font-weight: 500 !important;
+    font-size: 14px !important;
+    height: 42px !important;
+    width: 100% !important;
+    margin: 0 !important;
+    transition: background .12s ease;
+}
+[data-testid="stMain"] [data-testid="stForm"] [data-testid="stFormSubmitButton"] button:hover {
+    background: #2f2a73 !important;
+    border-color: #2f2a73 !important;
+}
+/* «Регистрация» — ghost-кнопка справа от «Войти», через markdown-ссылку */
+.bm-register-btn {
+    display: flex; align-items: center; justify-content: center;
+    height: 42px; width: 100%;
+    background: #ffffff;
+    color: #3c3489 !important;
+    border: 1px solid #3c3489;
+    border-radius: 6px;
+    text-decoration: none !important;
+    font-weight: 500; font-size: 14px;
+    transition: background .12s ease;
+}
+.bm-register-btn:hover { background: #ebe9f7; }
+.bm-login-logo { text-align: center; margin: 32px 0 4px; }
+.bm-login-sub { text-align: center; color: #3c3489; font-size: 13px;
+    margin-bottom: 4px; font-weight: 500; }
+</style>
+"""
+
+_LOGIN_LOGO_SVG = """
+<div class="bm-login-logo">
+<svg viewBox="0 0 320 64" width="220" height="44" aria-label="BeatMetrics">
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#3c3489"/>
+  <path d="M 14 12 L 14 52" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="80" y="42" font-family="-apple-system, 'Segoe UI', system-ui, sans-serif" font-size="32" font-weight="500" fill="#1a1a18" letter-spacing="-0.02em">BeatMetrics</text>
+</svg>
+</div>
+<div class="bm-login-sub">тренируйся осознанно</div>
+"""
+
+
 def _login_form(users_cfg) -> AuthUser:
+    # 1) Уже в session_state — возвращаем сразу
     if "auth_user" in st.session_state:
         return st.session_state["auth_user"]
 
-    st.markdown("## Sportsmen Analytics")
+    secret = _cookie_secret(users_cfg)
+    cm = _get_cookie_manager()
+
+    # 2) Пробуем восстановить из cookie
+    if cm is not None:
+        token = cm.get(_COOKIE_NAME)
+        if token:
+            restored = _deserialize_user(str(token), secret)
+            if restored is not None:
+                st.session_state["auth_user"] = restored
+                return restored
+
+    # 3) Рисуем форму
+    st.markdown(_LOGIN_CSS, unsafe_allow_html=True)
+    st.markdown(_LOGIN_LOGO_SVG, unsafe_allow_html=True)
 
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input("Логин", autocomplete="username")
-        password = st.text_input("Пароль", type="password",
-                                 autocomplete="current-password")
-        submitted = st.form_submit_button("Войти")
+        password = st.text_input(
+            "Пароль", type="password", autocomplete="current-password",
+        )
+        _col_l, _col_r = st.columns(2)
+        with _col_l:
+            submitted = st.form_submit_button("Войти", use_container_width=True)
+        with _col_r:
+            # «Регистрация» — ссылка-кнопка на отдельный signup-сервис
+            # app.beatmetrics.ru. target="_self" — открыть в той же вкладке.
+            # Стрелочка ↗ намекает, что это другой адрес, не та же страница.
+            st.markdown(
+                '<a href="https://app.beatmetrics.ru/signup" target="_self" '
+                'class="bm-register-btn">Регистрация&nbsp;↗</a>',
+                unsafe_allow_html=True,
+            )
 
     if submitted:
         users = users_cfg["users"]
         record = users.get(username.strip())
         if record and _check_password(password, record.get("password", "")):
             visible_raw = record.get("visible_athletes")
-            if visible_raw:
-                visible = tuple(str(a).strip() for a in visible_raw if str(a).strip())
-            else:
-                visible = None
+            visible = (tuple(str(a).strip() for a in visible_raw if str(a).strip())
+                       if visible_raw else None)
             user = AuthUser(
                 username=username.strip(),
                 name=record.get("name", username.strip()),
@@ -99,6 +321,10 @@ def _login_form(users_cfg) -> AuthUser:
                 visible_athletes=visible,
             )
             st.session_state["auth_user"] = user
+            # Сохраняем подписанный токен в cookie (30 дней)
+            if cm is not None:
+                token = _serialize_user(user, secret)
+                cm.set(_COOKIE_NAME, token, max_age=_COOKIE_TTL_SECONDS)
             st.rerun()
         else:
             st.error("Неверный логин или пароль.")
@@ -130,6 +356,12 @@ def logout_button(label: str = "Выйти") -> None:
         return
     if st.sidebar.button(label, use_container_width=True, key="auth_logout"):
         st.session_state.pop("auth_user", None)
+        cm = _get_cookie_manager()
+        if cm is not None:
+            try:
+                cm.delete(_COOKIE_NAME)
+            except Exception:
+                pass
         st.rerun()
 
 

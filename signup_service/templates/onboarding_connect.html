@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Подключи часы · BeatMetrics{% endblock %}
+{% block body %}
+<main class="onb-shell">
+  <div class="onb-card">
+    <div class="logo-wrap">{% include "_logo.html" %}</div>
+
+    <div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="2">
+      <span class="dot done"></span>
+      <span class="line"></span>
+      <span class="dot active"></span>
+      <span class="line"></span>
+      <span class="dot"></span>
+      <span class="label">Шаг 2 из 3 · подключи часы</span>
+    </div>
+
+    <div class="section-title">Подключи источник данных</div>
+    <div class="section-sub">без этого мы не увидим твои тренировки</div>
+
+    {% if request.query_params.get('connected') %}
+      <div class="alert-success">
+        ✓ <strong>{{ request.query_params.get('connected') | upper }}</strong> подключён.
+        Можешь подключить ещё или перейти в дашборд.
+      </div>
+    {% endif %}
+    {% if request.query_params.get('disconnected') %}
+      <div class="alert-success">
+        <strong>{{ request.query_params.get('disconnected') | upper }}</strong> отключён.
+      </div>
+    {% endif %}
+    {% if request.query_params.get('oauth_error') %}
+      <div class="alert-error">
+        Ошибка OAuth: {{ request.query_params.get('oauth_error') }}.
+      </div>
+    {% endif %}
+
+    {# Garmin — основной для нашей аудитории, пока в ожидании аппрува #}
+    {% set garmin_connected = 'garmin' in connected_providers %}
+    <div class="device-card device-card-primary {% if not providers.garmin.configured %}device-card-disabled{% endif %}">
+      <div class="top">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <rect x="6" y="2" width="12" height="20" rx="3" stroke="#3c3489" stroke-width="1.6"/>
+          <circle cx="12" cy="12" r="4" stroke="#3c3489" stroke-width="1.6"/>
+          <path d="M12 10v2.5l1.5 1" stroke="#3c3489" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+        <div>
+          <div class="name">Garmin Connect</div>
+          <div class="sub">основной выбор лыжников / бегунов</div>
+        </div>
+      </div>
+      <div class="scope">активности · HR · сон · recovery · HRV · Body Battery</div>
+      {% if garmin_connected %}
+        <span class="meta-pill" style="background:var(--color-success);color:#fff">Подключён ✓</span>
+      {% elif providers.garmin.configured %}
+        <a href="/oauth/garmin/preview" class="btn btn-primary">Подключить →</a>
+      {% else %}
+        <span class="meta-pill">{{ providers.garmin.meta }}</span>
+      {% endif %}
+    </div>
+
+    <div class="section-divider">Другие часы</div>
+    <div class="secondary-row cols-4">
+      {% for key in ['polar', 'suunto', 'coros', 'apple'] %}
+        {% set p = providers.get(key) %}
+        {% set is_connected = key in connected_providers %}
+        {% if p %}
+          <div class="device-card {% if not p.configured %}device-card-disabled{% endif %}">
+            <div class="top">
+              {{ p.icon|safe if p.icon else '' }}
+              <div class="name">{{ p.label }}</div>
+              {% if is_connected %}
+                <span class="platform-meta" style="color:var(--color-success);font-weight:500">Подключён ✓</span>
+              {% elif p.configured %}
+                <a href="/oauth/{{ key }}/preview" class="platform-meta" style="color:var(--color-brand);font-weight:500;text-decoration:none">Подключить →</a>
+              {% else %}
+                <span class="platform-meta">{{ p.meta }}</span>
+              {% endif %}
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    <div class="section-divider">Тренировочные платформы</div>
+    <div class="secondary-row cols-3">
+      {% for key in ['trainingpeaks', 'decathlon', 'finalsurge'] %}
+        {% set p = providers.get(key) %}
+        {% if p %}
+          <div class="device-card device-card-disabled">
+            <div class="top">
+              <div class="name">{{ p.label }}</div>
+              <span class="platform-meta">{{ p.meta }}</span>
+            </div>
+          </div>
+        {% endif %}
+      {% endfor %}
+    </div>
+
+    {% if providers.strava and providers.strava.configured %}
+      <div class="section-divider">Или подключи через</div>
+      {% if 'strava' in connected_providers %}
+        <div class="bridge-card" style="background:#777;border-color:#777">
+          <div>
+            <div class="name">Strava подключён ✓</div>
+            <div class="sub">тренировки прилетают через мост</div>
+          </div>
+          <span class="arrow">✓</span>
+        </div>
+      {% else %}
+        <a href="/oauth/strava/preview" class="bridge-card">
+          <div>
+            <div class="name">Strava</div>
+            <div class="sub">покрывает Apple Watch и большинство Garmin</div>
+          </div>
+          <span class="arrow">→</span>
+        </a>
+      {% endif %}
+    {% endif %}
+
+    <div class="skip">
+      {% if connected_providers %}
+        <a href="/done">Перейти в дашборд →</a>
+      {% else %}
+        <a href="/done">Пропустить, добавлю позже</a>
+      {% endif %}
+    </div>
+
+    <form method="post" action="/logout" style="margin-top:14px">
+      <button type="submit" class="btn">Выйти</button>
+    </form>
+  </div>
+</main>
+{% endblock %}

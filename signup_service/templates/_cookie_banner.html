@@ -1,0 +1,116 @@
+<!-- Cookie consent — нижняя полоса на всю ширину (Strava-style, в брендовой палитре) -->
+<div id="cookie-backdrop" class="cookie-backdrop" hidden></div>
+<div id="cookie-banner" class="cookie-banner" hidden role="dialog" aria-labelledby="cookieTitle">
+  <div class="cookie-inner">
+
+    <div class="cookie-brand" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="38" height="38">
+        <rect width="64" height="64" rx="14" fill="#3c3489"/>
+        <path d="M 14 12 L 14 52" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+        <path d="M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="cookie-text-block">
+      <div class="cookie-head">
+        <strong id="cookieTitle">Этот сайт использует cookies</strong>
+        <button class="cookie-close" type="button" aria-label="Отказаться">×</button>
+      </div>
+      <p>
+        Мы используем обязательные cookies для авторизации и сессии. Дополнительные —
+        для запоминания настроек и анонимной аналитики. Маркетинговые cookies мы не
+        используем и третьим сторонам данные не передаём.
+        <a class="cookie-toggle-details" tabindex="0">Показать сведения ↓</a>
+      </p>
+    </div>
+
+    <div class="cookie-actions">
+      <button class="cookie-btn primary" type="button" data-action="allow-all">Принять всё</button>
+      <button class="cookie-btn ghost"   type="button" data-action="selection">Только выбранное</button>
+      <button class="cookie-btn ghost"   type="button" data-action="decline">Отклонить необязательные</button>
+    </div>
+
+    <div class="cookie-details" hidden>
+      <div class="cookie-cat">
+        <div>
+          <strong>Необходимые</strong>
+          <small>Авторизация и сессия. Без них вход не работает.</small>
+        </div>
+        <span class="locked-switch" title="Всегда включены"></span>
+      </div>
+      <div class="cookie-cat">
+        <label style="flex:1;cursor:pointer;display:block">
+          <strong>Настройки</strong>
+          <small>Тема, последние фильтры, выбор атлета.</small>
+        </label>
+        <input type="checkbox" data-cat="preferences" checked>
+      </div>
+      <div class="cookie-cat">
+        <label style="flex:1;cursor:pointer;display:block">
+          <strong>Статистика</strong>
+          <small>Plausible — анонимная метрика страниц, без личных данных.</small>
+        </label>
+        <input type="checkbox" data-cat="statistics">
+      </div>
+      <div class="cookie-cat">
+        <label style="flex:1;cursor:pointer;display:block">
+          <strong>Маркетинг</strong>
+          <small>Не используем. Третьим сторонам данные не передаём.</small>
+        </label>
+        <input type="checkbox" data-cat="marketing" disabled>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function () {
+  var KEY = 'beatmetrics_cookie_consent';
+  var banner = document.getElementById('cookie-banner');
+  if (!banner) return;
+  var details = banner.querySelector('.cookie-details');
+  var toggle = banner.querySelector('.cookie-toggle-details');
+
+  function setOpen(open) {
+    banner.hidden = !open;
+    // bottom-bar НЕ блокирует фон — body overflow не трогаем
+  }
+  function setDetailsOpen(open) {
+    details.hidden = !open;
+    toggle.textContent = open ? 'Свернуть ↑' : 'Показать сведения ↓';
+  }
+  if (!localStorage.getItem(KEY)) setOpen(true);
+
+  toggle.addEventListener('click', function (e) {
+    e.preventDefault();
+    setDetailsOpen(details.hidden);
+  });
+
+  function save(c) {
+    localStorage.setItem(KEY, JSON.stringify({
+      necessary: true, preferences: !!c.preferences,
+      statistics: !!c.statistics, marketing: false,
+      ts: Date.now(), version: 1
+    }));
+    setOpen(false); setDetailsOpen(false);
+  }
+  function readChecks() {
+    var o = {};
+    banner.querySelectorAll('input[data-cat]').forEach(function (c) {
+      o[c.dataset.cat] = c.checked && !c.disabled;
+    });
+    return o;
+  }
+  banner.querySelectorAll('.cookie-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var a = b.dataset.action;
+      if (a === 'decline') save({});
+      else if (a === 'allow-all') save({ preferences: true, statistics: true });
+      else if (a === 'selection') save(readChecks());
+    });
+  });
+  banner.querySelector('.cookie-close').addEventListener('click', function () { save({}); });
+})();
+</script>

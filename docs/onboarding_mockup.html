@@ -1,0 +1,1092 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BeatMetrics — онбординг (мокап)</title>
+<style>
+/* === Brand tokens (из docs/Beatmetrics_logo/brand-guide.md) === */
+:root {
+  --color-brand:       #3c3489;
+  --color-brand-light: #7f77dd;
+  --color-ink:         #1a1a18;
+  --color-paper:       #fdfdfc;
+  --color-mute:        #6b6a64;
+  --color-line:        #e8e7e1;
+  --color-brand-soft:  #ebe9f7;  /* для info-блоков, выведено из brand при 0.12 opacity */
+
+  /* Semantic — оставлены из dashboard.css (тёплые, не яркие) */
+  --color-success:     #3B6D11;
+  --color-success-bg:  #EAF3DE;
+  --color-warning:     #854F0B;
+  --color-warning-bg:  #FAEEDA;
+  --color-danger:      #A32D2D;
+  --color-danger-bg:   #FCEBEB;
+
+  /* Sport viz tokens — пригодятся в будущих экранах */
+  --color-run:  #97C459;
+  --color-bike: #378ADD;
+  --color-swim: #1D9E75;
+
+  /* Typography — из brand-guide */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  --fs-xs: 10px;  --fs-sm: 11px;  --fs-md: 13px;
+  --fs-lg: 15px;  --fs-xl: 18px;  --fs-2xl: 26px;
+  --sp-1: 4px;    --sp-2: 8px;    --sp-3: 12px;   --sp-4: 16px;
+  --r-sm: 4px;    --r-md: 6px;    --r-lg: 8px;    --r-xl: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--color-paper); font-family: var(--font-sans);
+  color: var(--color-ink); font-size: var(--fs-md);
+  -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Галерея-обёртка --- */
+.gallery { padding: 32px; }
+.gallery h1 {
+  font-size: var(--fs-2xl); font-weight: 500; margin-bottom: 4px;
+  letter-spacing: -0.02em;
+}
+.gallery .sub { color: var(--color-mute); margin-bottom: 32px; font-size: var(--fs-md); }
+.row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 32px; margin-bottom: 32px;
+}
+.frame {
+  background: var(--color-paper);
+  border: 1px solid var(--color-line);
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.frame .label {
+  background: #fff;
+  border-bottom: 1px solid var(--color-line);
+  padding: 8px 16px;
+  font-size: var(--fs-sm);
+  color: var(--color-mute);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+.screen { padding: 24px 20px; min-height: 640px; }
+
+/* --- Логотип --- */
+.logo-wrap { display: flex; justify-content: center; margin: 24px 0 8px; }
+.tagline {
+  text-align: center; color: var(--color-mute);
+  font-size: var(--fs-md); margin-bottom: 28px;
+}
+
+/* --- Кнопки --- */
+.btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; padding: 12px 16px;
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  background: #fff; color: var(--color-ink);
+  font-family: inherit; font-size: var(--fs-md); font-weight: 500;
+  cursor: pointer; transition: background .12s ease, border-color .12s ease;
+}
+.btn:hover { background: #faf9f5; border-color: #d8d6cd; }
+.btn-primary {
+  background: var(--color-brand); color: #fff; border-color: var(--color-brand);
+}
+.btn-primary:hover { background: #2f2a73; border-color: #2f2a73; }
+
+/* --- Поля --- */
+.field { margin-bottom: 14px; }
+.field label {
+  display: block; font-size: var(--fs-sm);
+  color: var(--color-mute); margin-bottom: 4px;
+}
+.field input {
+  width: 100%; padding: 10px 12px;
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  background: #fff; font-family: inherit;
+  font-size: var(--fs-md); color: var(--color-ink);
+}
+.field input:focus {
+  outline: 2px solid var(--color-brand); outline-offset: -1px;
+  border-color: transparent;
+}
+
+.divider {
+  display: flex; align-items: center; gap: 8px; margin: 20px 0;
+  color: var(--color-mute); font-size: var(--fs-sm);
+}
+.divider::before, .divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--color-line);
+}
+
+/* --- Stepper --- */
+.steps {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 20px;
+  font-size: var(--fs-xs); color: var(--color-mute);
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.steps .dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--color-line); display: inline-block;
+}
+.steps .dot.active { background: var(--color-brand); }
+.steps .dot.done { background: var(--color-success); }
+.steps .line { flex: 0 0 24px; height: 1px; background: var(--color-line); }
+
+/* --- Карточки устройств --- */
+.section-title {
+  font-size: var(--fs-xl); font-weight: 500;
+  letter-spacing: -0.01em; margin-bottom: 4px;
+}
+.section-sub { color: var(--color-mute); font-size: var(--fs-md); margin-bottom: 20px; }
+
+.device-card {
+  background: #fff;
+  border: 1px solid var(--color-line);
+  border-radius: var(--r-lg);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.device-card-primary {
+  border: 1.5px solid var(--color-brand);
+  background: linear-gradient(180deg, #fff 0%, var(--color-brand-soft) 100%);
+  padding: 18px;
+}
+.device-card .top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 10px;
+}
+.device-card .name { font-size: var(--fs-lg); font-weight: 500; }
+.device-card .scope {
+  color: var(--color-mute); font-size: var(--fs-sm);
+  margin-bottom: 14px; line-height: 1.45;
+}
+
+.secondary-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.secondary-row.four-cols { grid-template-columns: 1fr 1fr 1fr 1fr; }
+.secondary-row.two-cols  { grid-template-columns: 1fr 1fr; }
+.secondary-row.three-cols { grid-template-columns: 1fr 1fr 1fr; }
+.secondary-row.two-cols .device-card {
+  padding: 14px 12px; text-align: left;
+}
+.secondary-row.two-cols .device-card .top {
+  flex-direction: row; gap: 10px; align-items: center;
+}
+.secondary-row.two-cols .device-card .name { font-size: var(--fs-md); }
+/* Три карточки в ряд — компактнее, в column-layout как у часов */
+.secondary-row.three-cols .device-card {
+  padding: 12px 8px; text-align: center;
+}
+.secondary-row.three-cols .device-card .top {
+  flex-direction: column; gap: 8px; align-items: center; margin-bottom: 0;
+}
+.secondary-row.three-cols .device-card .name {
+  font-size: var(--fs-sm); font-weight: 500;
+}
+.secondary-row.three-cols .platform-meta {
+  font-size: var(--fs-xs); line-height: 1.35;
+  margin-top: 2px; color: var(--color-mute);
+}
+.platform-meta {
+  font-size: var(--fs-xs); color: var(--color-mute);
+  margin-top: 2px; line-height: 1.3;
+}
+.secondary-row .device-card {
+  padding: 12px 8px; text-align: center; margin: 0;
+}
+.secondary-row .device-card .top {
+  flex-direction: column; gap: 6px; margin: 0; align-items: center;
+}
+.secondary-row .device-card .name { font-size: var(--fs-sm); font-weight: 500; }
+
+.section-divider {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
+  margin: 20px 0 8px;
+}
+
+.skip { text-align: center; margin-top: 20px; }
+.skip a {
+  color: var(--color-mute); text-decoration: none;
+  font-size: var(--fs-sm);
+  border-bottom: 1px dashed currentColor; padding-bottom: 1px;
+}
+
+/* --- Apple Watch модалка --- */
+.alert {
+  display: flex; gap: 10px; padding: 12px 14px;
+  background: var(--color-warning-bg);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--r-md); font-size: var(--fs-sm);
+  color: var(--color-ink); line-height: 1.5; margin-bottom: 16px;
+}
+.bridge-option {
+  padding: 14px; background: #fff;
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  margin-bottom: 10px;
+}
+.bridge-option.recommended {
+  border-color: var(--color-brand); background: var(--color-brand-soft);
+}
+.bridge-option .head {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-md); font-weight: 500; margin-bottom: 4px;
+}
+.bridge-option .price {
+  color: var(--color-mute); font-size: var(--fs-sm); font-weight: 400;
+}
+.bridge-option .star { color: var(--color-brand); }
+.bridge-option .desc {
+  color: var(--color-mute); font-size: var(--fs-sm);
+  margin-bottom: 12px; line-height: 1.45;
+}
+
+/* --- OAuth pre-screen --- */
+.back {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-bottom: 16px; cursor: pointer;
+}
+.list-check { list-style: none; padding: 0; margin: 8px 0 16px; }
+.list-check li {
+  display: flex; gap: 8px; align-items: flex-start;
+  padding: 4px 0; font-size: var(--fs-md);
+}
+.list-check li::before {
+  content: '✓'; color: var(--color-success);
+  font-weight: 600; flex-shrink: 0;
+}
+.list-x li::before { content: '✗'; color: var(--color-mute); }
+.coach-block {
+  background: var(--color-brand-soft); border-radius: var(--r-md);
+  padding: 12px 14px; margin: 16px 0;
+  font-size: var(--fs-sm); color: var(--color-ink); line-height: 1.5;
+}
+
+.legal {
+  text-align: center; font-size: var(--fs-xs);
+  color: var(--color-mute); margin-top: 16px;
+}
+.legal a { color: inherit; }
+
+/* --- Sync progress --- */
+.greet {
+  font-size: var(--fs-xl); font-weight: 500;
+  letter-spacing: -0.01em; margin-bottom: 4px;
+}
+.greet-sub { color: var(--color-mute); margin-bottom: 16px; }
+.status-line {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-md); margin-bottom: 8px;
+}
+.status-line .dot-green {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--color-success); display: inline-block;
+}
+.progress-wrap { margin: 16px 0; }
+.progress-bar {
+  background: var(--color-line); border-radius: 999px;
+  height: 6px; overflow: hidden;
+}
+.progress-bar .fill {
+  background: var(--color-brand); height: 100%; width: 47%;
+  border-radius: 999px;
+}
+.progress-text {
+  display: flex; justify-content: space-between;
+  margin-top: 6px; font-size: var(--fs-sm); color: var(--color-mute);
+}
+
+.tile {
+  display: flex; align-items: center; gap: 12px; padding: 14px;
+  background: #fff; border: 1px solid var(--color-line);
+  border-radius: var(--r-md); margin-bottom: 10px; cursor: pointer;
+}
+.tile:hover { background: #faf9f5; }
+.tile .icon {
+  width: 32px; height: 32px; border-radius: var(--r-sm);
+  background: var(--color-brand-soft);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: var(--color-brand); font-size: 16px;
+}
+.tile .body { flex: 1; }
+.tile .title { font-size: var(--fs-md); font-weight: 500; }
+.tile .meta { font-size: var(--fs-sm); color: var(--color-mute); }
+.tile .chev { color: var(--color-mute); }
+
+/* --- Settings/Connections (desktop) --- */
+.frame.desktop .screen { padding: 32px 40px; }
+.crumb {
+  font-size: var(--fs-sm); color: var(--color-mute); margin-bottom: 12px;
+}
+.conn-card {
+  background: #fff; border: 1px solid var(--color-line);
+  border-radius: var(--r-lg); padding: 18px 20px; margin-bottom: 12px;
+}
+.conn-card .top {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 14px;
+}
+.conn-card .top .badge {
+  margin-left: auto; font-size: var(--fs-sm);
+  display: flex; align-items: center; gap: 6px;
+}
+.badge-ok { color: var(--color-success); }
+.badge-warn { color: var(--color-warning); }
+.conn-card .name { font-size: var(--fs-lg); font-weight: 500; }
+.conn-card .grid {
+  display: grid; grid-template-columns: 180px 1fr; gap: 8px 24px;
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-bottom: 16px;
+}
+.conn-card .grid b { color: var(--color-ink); font-weight: 500; }
+.conn-actions { display: flex; gap: 8px; }
+.conn-actions .btn {
+  flex: 0 0 auto; width: auto; padding: 8px 14px; font-size: var(--fs-sm);
+}
+.btn-danger-text { color: var(--color-danger); border-color: var(--color-line); }
+
+/* --- Выбор периода: слайдер --- */
+.period-display {
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--r-md);
+  padding: 18px 16px 16px;
+  margin-bottom: 18px;
+  text-align: center;
+}
+.period-display .value {
+  font-size: 28px; font-weight: 500; color: var(--color-brand);
+  letter-spacing: -0.02em; line-height: 1.1;
+}
+.period-display .eta {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-top: 4px;
+}
+.period-display .hint {
+  font-size: var(--fs-sm); color: var(--color-ink);
+  margin-top: 8px; line-height: 1.4;
+}
+.period-slider-wrap { margin: 12px 0 18px; }
+.period-slider-wrap input[type="range"] {
+  width: 100%;
+  -webkit-appearance: none; appearance: none;
+  height: 6px; background: var(--color-line);
+  border-radius: 999px; outline: none; cursor: pointer;
+  margin: 0;
+}
+.period-slider-wrap input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--color-brand); cursor: pointer;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(60,52,137,0.3);
+}
+.period-slider-wrap input[type="range"]::-moz-range-thumb {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--color-brand); cursor: pointer;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(60,52,137,0.3);
+}
+.period-marks {
+  display: flex; justify-content: space-between;
+  font-size: var(--fs-xs); color: var(--color-mute);
+  margin-top: 8px;
+  padding: 0 6px;
+}
+.period-marks span { text-align: center; flex: 1 1 0; }
+
+/* === Cookie consent (Strava-style bottom-bar в брендовой палитре) === */
+.cookie-backdrop { display: none; }
+.cookie-banner {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+  background: var(--color-brand);
+  color: #fff;
+  box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
+  font-family: var(--font-sans);
+}
+.cookie-inner {
+  max-width: 1400px; margin: 0 auto;
+  padding: 24px 32px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 24px; align-items: center;
+}
+.cookie-brand {
+  width: 56px; height: 56px;
+  background: #fff; border-radius: var(--r-md);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.cookie-brand svg { width: 38px; height: 38px; }
+.cookie-text-block { min-width: 0; }
+.cookie-head {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 6px;
+}
+.cookie-head strong {
+  font-size: var(--fs-lg); font-weight: 500; color: #fff;
+}
+.cookie-close {
+  background: none; border: none; font-size: 22px;
+  color: rgba(255,255,255,0.7); cursor: pointer; padding: 0 4px;
+  margin-left: auto;
+}
+.cookie-close:hover { color: #fff; }
+.cookie-banner p {
+  font-size: var(--fs-md); line-height: 1.5;
+  margin: 0; color: rgba(255,255,255,0.92);
+}
+.cookie-toggle-details {
+  color: #fff; cursor: pointer; font-weight: 500;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.cookie-toggle-details:hover { text-decoration: none; }
+
+.cookie-actions {
+  display: flex; flex-direction: column; gap: 8px;
+  min-width: 220px;
+}
+.cookie-btn {
+  padding: 10px 18px;
+  border-radius: var(--r-md); font-family: inherit;
+  font-size: var(--fs-md); font-weight: 500; cursor: pointer;
+  border: 1px solid; width: 100%;
+  text-align: center; white-space: nowrap;
+  transition: background .12s ease;
+}
+.cookie-btn.primary {
+  background: #fff; border-color: #fff; color: var(--color-brand);
+}
+.cookie-btn.primary:hover { background: var(--color-brand-soft); }
+.cookie-btn.ghost {
+  background: transparent; border-color: rgba(255,255,255,0.5); color: #fff;
+}
+.cookie-btn.ghost:hover {
+  background: rgba(255,255,255,0.1);
+  border-color: #fff;
+}
+
+.cookie-details {
+  grid-column: 1 / -1;
+  background: rgba(255,255,255,0.08);
+  border-radius: var(--r-md);
+  padding: 4px 16px; margin-top: 12px;
+}
+.cookie-cat {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 16px; padding: 12px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+.cookie-cat:last-child { border-bottom: none; }
+.cookie-cat strong { font-size: var(--fs-md); font-weight: 500; display: block; color: #fff; }
+.cookie-cat small {
+  color: rgba(255,255,255,0.7); font-size: var(--fs-sm);
+  display: block; margin-top: 2px;
+}
+.cookie-cat input[type="checkbox"] {
+  width: 36px; height: 20px; appearance: none; -webkit-appearance: none;
+  background: rgba(255,255,255,0.25); border-radius: 999px; position: relative;
+  cursor: pointer; transition: background .15s ease; flex-shrink: 0; margin: 0;
+}
+.cookie-cat input[type="checkbox"]:checked { background: #fff; }
+.cookie-cat input[type="checkbox"]::before {
+  content: ''; position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; background: #fff; border-radius: 50%;
+  transition: transform .15s ease;
+}
+.cookie-cat input[type="checkbox"]:checked::before { background: var(--color-brand); transform: translateX(16px); }
+.cookie-cat input[type="checkbox"]:disabled { opacity: 0.4; cursor: not-allowed; }
+.cookie-cat .locked-switch {
+  width: 36px; height: 20px; background: #fff;
+  border-radius: 999px; position: relative; opacity: 0.85; flex-shrink: 0;
+}
+.cookie-cat .locked-switch::before {
+  content: ''; position: absolute; top: 2px; left: 18px;
+  width: 16px; height: 16px; background: var(--color-brand); border-radius: 50%;
+}
+
+/* Сброс-ссылка в галерее для теста */
+#cookie-reset {
+  display: inline-block; margin: 0 0 24px;
+  padding: 6px 12px; background: #fff;
+  border: 1px solid var(--color-line); border-radius: var(--r-md);
+  color: var(--color-mute); font-size: var(--fs-sm); text-decoration: none;
+  cursor: pointer;
+}
+#cookie-reset:hover { background: var(--color-brand-soft); color: var(--color-brand); }
+
+@media (max-width: 900px) {
+  .cookie-inner {
+    grid-template-columns: 1fr;
+    gap: 16px; padding: 20px;
+  }
+  .cookie-actions { flex-direction: row; min-width: 0; }
+  .cookie-btn { flex: 1 1 auto; padding: 10px 12px; font-size: var(--fs-sm); }
+  .cookie-brand { display: none; }
+}
+@media (max-width: 520px) {
+  .cookie-actions { flex-direction: column; }
+  .cookie-btn { width: 100%; }
+}
+</style>
+</head>
+<body>
+
+<div class="gallery">
+  <h1>BeatMetrics — онбординг</h1>
+  <p class="sub">мокап в брендовой палитре · <code>#3c3489</code> / <code>#fdfdfc</code> · логотип из <code>docs/Beatmetrics_logo/</code></p>
+  <a href="#" id="cookie-reset" title="Очистить сохранённый выбор и снова показать плашку">↻ Сбросить cookie-согласие (для теста)</a>
+
+  <div class="row">
+
+  <!-- ============= ЭКРАН 1: SIGNUP ============= -->
+  <div class="frame">
+    <div class="label">1 · Регистрация</div>
+    <div class="screen">
+      <div class="logo-wrap">
+        <!-- horizontal-light.svg, реальный знак + текст -->
+        <svg viewBox="0 0 320 64" width="220" height="44" aria-label="BeatMetrics">
+          <rect x="0" y="0" width="64" height="64" rx="14" fill="#3c3489"/>
+          <path d="M 14 12 L 14 52" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+          <path d="M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+          <text x="80" y="42" font-family="-apple-system, 'Segoe UI', system-ui, sans-serif" font-size="32" font-weight="500" fill="#1a1a18" letter-spacing="-0.02em">BeatMetrics</text>
+        </svg>
+      </div>
+      <div class="tagline">тренируйся осознанно</div>
+
+      <button class="btn" style="margin-bottom: 8px;">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Продолжить с Google
+      </button>
+      <button class="btn">
+        <svg width="14" height="16" viewBox="0 0 24 24" fill="#1a1a18"><path d="M17.05 20.28c-.98.95-2.05.94-3.08.49-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.49C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
+        Продолжить с Apple
+      </button>
+
+      <div class="divider">или</div>
+
+      <div class="field">
+        <label>Email</label>
+        <input type="email" placeholder="ivan@example.com">
+      </div>
+      <div class="field">
+        <label>Пароль</label>
+        <input type="password" value="••••••••••">
+      </div>
+
+      <button class="btn btn-primary" style="margin-top: 8px;">Создать аккаунт →</button>
+
+      <div style="text-align: center; margin-top: 20px; font-size: var(--fs-sm); color: var(--color-mute);">
+        Уже есть аккаунт? <a href="#" style="color: var(--color-brand); text-decoration: none; font-weight: 500;">Войти</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= ЭКРАН 2: CONNECT DEVICE ============= -->
+  <div class="frame">
+    <div class="label">2 · Подключи часы</div>
+    <div class="screen">
+      <div class="steps">
+        <span class="dot done"></span>
+        <span class="line"></span>
+        <span class="dot active"></span>
+        <span class="line"></span>
+        <span class="dot"></span>
+        <span style="margin-left: 8px;">Шаг 2 из 3</span>
+      </div>
+
+      <div class="section-title">Подключи часы</div>
+      <div class="section-sub">без этого мы не увидим твои тренировки</div>
+
+      <div class="device-card device-card-primary">
+        <div class="top">
+          <svg width="44" height="44" viewBox="0 0 24 24" fill="none">
+            <rect x="6" y="2" width="12" height="20" rx="3" stroke="#3c3489" stroke-width="1.6"/>
+            <circle cx="12" cy="12" r="4" stroke="#3c3489" stroke-width="1.6"/>
+            <path d="M12 10v2.5l1.5 1" stroke="#3c3489" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <div>
+            <div class="name">Garmin Connect</div>
+            <div style="font-size: var(--fs-sm); color: var(--color-mute);">основной выбор лыжников/бегунов</div>
+          </div>
+        </div>
+        <div class="scope">активности · HR · сон · recovery · HRV · Body Battery</div>
+        <button class="btn btn-primary">Подключить →</button>
+      </div>
+
+      <div class="section-divider">Другие часы</div>
+      <div class="secondary-row four-cols">
+        <div class="device-card">
+          <div class="top">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#A32D2D" stroke-width="1.6"/><path d="M12 6v6l4 2" stroke="#A32D2D" stroke-width="1.6" stroke-linecap="round"/></svg>
+            <div class="name">Polar</div>
+          </div>
+        </div>
+        <div class="device-card">
+          <div class="top">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="4" y="4" width="16" height="16" rx="3" stroke="#1a1a18" stroke-width="1.6"/><circle cx="12" cy="12" r="3" stroke="#1a1a18" stroke-width="1.6"/></svg>
+            <div class="name">Suunto</div>
+          </div>
+        </div>
+        <div class="device-card">
+          <div class="top">
+            <svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1a1a18"/><text x="12" y="16" font-family="-apple-system,system-ui,sans-serif" font-size="11" font-weight="700" fill="#fff" text-anchor="middle">C</text></svg>
+            <div class="name">COROS</div>
+          </div>
+        </div>
+        <div class="device-card">
+          <div class="top">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="7" y="3" width="10" height="18" rx="2" stroke="#1a1a18" stroke-width="1.6"/><circle cx="12" cy="12" r="2" fill="#1a1a18"/></svg>
+            <div class="name">Apple ⌄</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider">Тренировочные платформы</div>
+      <div class="secondary-row three-cols">
+        <div class="device-card">
+          <div class="top">
+            <svg width="28" height="28" viewBox="0 0 24 24"><path d="M4 20 L12 5 L20 20 Z" fill="#E1262C"/><path d="M9 20 L12 14 L15 20 Z" fill="#fff"/></svg>
+            <div>
+              <div class="name">TrainingPeaks</div>
+              <div class="platform-meta">планы от тренера</div>
+            </div>
+          </div>
+        </div>
+        <div class="device-card">
+          <div class="top">
+            <svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#0082C3"/><text x="12" y="17" font-family="-apple-system,system-ui,sans-serif" font-size="13" font-weight="700" fill="#fff" text-anchor="middle">D</text></svg>
+            <div>
+              <div class="name">Decathlon Coach</div>
+              <div class="platform-meta">бег · HR · вело</div>
+            </div>
+          </div>
+        </div>
+        <div class="device-card">
+          <div class="top">
+            <svg width="28" height="28" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="#1B4D8C"/><text x="12" y="16" font-family="-apple-system,system-ui,sans-serif" font-size="9" font-weight="700" fill="#fff" text-anchor="middle">FS</text></svg>
+            <div>
+              <div class="name">Final Surge</div>
+              <div class="platform-meta">коуч-логи и планы</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider">Или подключи через</div>
+      <div class="device-card" style="background: #FC4C02; border-color: #FC4C02; color: #fff;">
+        <div class="top" style="margin-bottom: 6px;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="#fff"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+          <div>
+            <div class="name" style="color:#fff;">Strava</div>
+            <div style="font-size: var(--fs-sm); color: rgba(255,255,255,0.85);">покрывает Apple Watch и большинство Garmin</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="skip"><a href="#">Пропустить, добавлю позже</a></div>
+    </div>
+  </div>
+
+  <!-- ============= ЭКРАН 3: APPLE WATCH BRIDGE ============= -->
+  <div class="frame">
+    <div class="label">3 · Apple Watch — мост</div>
+    <div class="screen">
+      <div class="back">← Назад к выбору устройств</div>
+      <div class="section-title">Apple Watch — выбери мост</div>
+
+      <div class="alert" style="margin-top: 16px;">
+        <span>⚠</span>
+        <div>У Apple Watch нет серверного API. Нужен посредник, который будет передавать тренировки нам.</div>
+      </div>
+
+      <div class="bridge-option recommended">
+        <div class="head">
+          <span class="star">★</span> Через Strava
+          <span class="price" style="margin-left: auto;">бесплатно</span>
+        </div>
+        <div class="desc">Watch → iPhone → Strava → мы. Работает из коробки, рекомендуем.</div>
+        <button class="btn btn-primary">Подключить Strava →</button>
+      </div>
+
+      <div class="bridge-option">
+        <div class="head">
+          HealthFit
+          <span class="price" style="margin-left: auto;">$2.99</span>
+        </div>
+        <div class="desc">Силовая, плавание, всё что в Apple Health. Лучший выбор для не-runners.</div>
+        <button class="btn">Открыть в App Store</button>
+      </div>
+
+      <div class="bridge-option">
+        <div class="head">
+          RunGap
+          <span class="price" style="margin-left: auto;">бесплатно</span>
+        </div>
+        <div class="desc">Бесплатный вариант. Чуть менее удобный, но работает.</div>
+        <button class="btn">Открыть в App Store</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= ЭКРАН 4: OAUTH PRE-SCREEN ============= -->
+  <div class="frame">
+    <div class="label">4 · Перед редиректом в Garmin</div>
+    <div class="screen">
+      <div class="back">← Garmin Connect</div>
+
+      <div class="section-title">Сейчас откроется Garmin</div>
+      <div class="section-sub">войди и нажми «Allow»</div>
+
+      <div style="font-size: var(--fs-md); font-weight: 500; margin: 16px 0 4px;">Что мы прочитаем:</div>
+      <ul class="list-check">
+        <li>Активности (бег, вело, плавание, силовая)</li>
+        <li>Пульс и зоны</li>
+        <li>Сон и HRV</li>
+        <li>Body Battery, recovery</li>
+      </ul>
+
+      <div style="font-size: var(--fs-md); font-weight: 500; margin: 8px 0 4px;">Что мы НЕ делаем:</div>
+      <ul class="list-check list-x">
+        <li>Не меняем твои данные в Garmin</li>
+        <li>Не публикуем активности</li>
+        <li>Не пишем в твой Connect</li>
+      </ul>
+
+      <div class="coach-block">
+        Тренер увидит твои данные: <b>Артём Хахулин</b><br>
+        <span style="color: var(--color-mute);">Отозвать доступ можно в настройках в любой момент.</span>
+      </div>
+
+      <button class="btn btn-primary">Открыть Garmin →</button>
+      <div class="legal"><a href="#">Privacy policy</a> · <a href="#">Условия</a></div>
+    </div>
+  </div>
+
+  <!-- ============= ЭКРАН 5: ВЫБОР ПЕРИОДА ============= -->
+  <div class="frame">
+    <div class="label">5 · Выбор периода истории</div>
+    <div class="screen">
+      <div class="steps">
+        <span class="dot done"></span>
+        <span class="line"></span>
+        <span class="dot done"></span>
+        <span class="line"></span>
+        <span class="dot active"></span>
+        <span style="margin-left: 8px;">Шаг 3 из 3</span>
+      </div>
+
+      <div class="section-title">За какой период загрузить?</div>
+      <div class="section-sub">чем глубже история, тем точнее аналитика — но и ждать дольше</div>
+
+      <div class="period-display">
+        <div class="value" id="periodValue">90 дней</div>
+        <div class="eta" id="periodEta">~2 минуты загрузки</div>
+        <div class="hint" id="periodHint">хватит на тренды формы и анализ зон</div>
+      </div>
+
+      <div class="period-slider-wrap">
+        <input type="range" id="periodSlider" min="0" max="6" value="2" step="1">
+        <div class="period-marks">
+          <span>15д</span><span>30д</span><span>90д</span><span>180д</span><span>1г</span><span>2г</span><span>всё</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top: 8px;">Загрузить →</button>
+
+      <div style="text-align: center; margin-top: 12px; font-size: var(--fs-sm); color: var(--color-mute);">
+        Можно изменить в настройках позже
+      </div>
+    </div>
+  </div>
+
+  <!-- ============= ЭКРАН 6: SYNC PROGRESS ============= -->
+  <div class="frame">
+    <div class="label">6 · Идёт синхронизация</div>
+    <div class="screen">
+      <div class="steps">
+        <span class="dot done"></span>
+        <span class="line"></span>
+        <span class="dot done"></span>
+        <span class="line"></span>
+        <span class="dot done"></span>
+        <span style="margin-left: 8px;">Готово</span>
+      </div>
+
+      <div class="section-title">Идёт синхронизация</div>
+      <div class="section-sub">загружаем 90 дней истории Garmin</div>
+
+      <div class="status-line" style="margin-top: 12px;">
+        <span class="dot-green"></span> Garmin подключён
+      </div>
+
+      <div class="progress-wrap">
+        <div class="progress-bar"><div class="fill"></div></div>
+        <div class="progress-text"><span>42 из 89 активностей</span><span>47%</span></div>
+      </div>
+
+      <div style="color: var(--color-mute); font-size: var(--fs-sm); margin-bottom: 24px; line-height: 1.5;">
+        Можно закрыть страницу — пришлём push, когда готово.
+      </div>
+
+      <div class="section-divider">Пока ждёшь</div>
+
+      <div class="tile">
+        <div class="icon">⚙</div>
+        <div class="body">
+          <div class="title">Заполнить профиль</div>
+          <div class="meta">рост · вес · FTP · LTHR</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="tile">
+        <div class="icon">+</div>
+        <div class="body">
+          <div class="title">Подключить ещё одни часы</div>
+          <div class="meta">Polar HR / Suunto / другое</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+      <div class="tile">
+        <div class="icon">▶</div>
+        <div class="body">
+          <div class="title">Тур по дашборду</div>
+          <div class="meta">2 минуты</div>
+        </div>
+        <span class="chev">›</span>
+      </div>
+    </div>
+  </div>
+
+  </div>
+
+  <!-- ============= ЭКРАН 7: SETTINGS / CONNECTIONS (desktop) ============= -->
+  <div class="frame desktop">
+    <div class="label">7 · Settings → Connections (после онбординга, desktop)</div>
+    <div class="screen">
+      <div class="crumb">Settings ▸ Connections</div>
+      <div class="section-title" style="margin-bottom: 24px;">Подключённые устройства</div>
+
+      <div class="conn-card">
+        <div class="top">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none">
+            <rect x="6" y="2" width="12" height="20" rx="3" stroke="#3c3489" stroke-width="1.6"/>
+            <circle cx="12" cy="12" r="4" stroke="#3c3489" stroke-width="1.6"/>
+            <path d="M12 10v2.5l1.5 1" stroke="#3c3489" stroke-width="1.6" stroke-linecap="round"/>
+          </svg>
+          <div class="name">Garmin Connect</div>
+          <div class="badge badge-ok">
+            <span style="width: 8px; height: 8px; background: var(--color-success); border-radius: 50%; display: inline-block;"></span>
+            Connected
+          </div>
+        </div>
+        <div class="grid">
+          <div>Последний синк</div><div><b>2 мин назад</b> · 1 247 активностей</div>
+          <div>Тренер видит</div><div><b>Артём Хахулин</b></div>
+          <div>Токен действует до</div><div><b>12.08.2026</b></div>
+        </div>
+        <div class="conn-actions">
+          <button class="btn">Переподключить</button>
+          <button class="btn btn-danger-text">Отключить и удалить данные</button>
+        </div>
+      </div>
+
+      <div class="conn-card">
+        <div class="top">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="#FC4C02"><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.172"/></svg>
+          <div class="name">Strava</div>
+          <div class="badge badge-warn">⚠ Reconnect needed</div>
+        </div>
+        <div class="grid">
+          <div>Последний синк</div><div><b>2 дня назад</b></div>
+          <div>Состояние</div><div>токен истёк 27.05.2026, новые активности не приходят</div>
+        </div>
+        <div class="conn-actions">
+          <button class="btn btn-primary" style="width: auto; padding: 8px 14px; font-size: var(--fs-sm);">Переподключить →</button>
+        </div>
+      </div>
+
+      <button class="btn" style="max-width: 320px;">+ Подключить ещё одни часы</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============= COOKIE CONSENT (Strava-style bottom-bar) ============= -->
+<div id="cookie-backdrop" class="cookie-backdrop" hidden></div>
+<div id="cookie-banner" class="cookie-banner" hidden role="dialog" aria-labelledby="cookieTitle">
+  <div class="cookie-inner">
+
+    <div class="cookie-brand" aria-hidden="true">
+      <svg viewBox="0 0 64 64" width="38" height="38">
+        <rect width="64" height="64" rx="14" fill="#3c3489"/>
+        <path d="M 14 12 L 14 52" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+        <path d="M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+
+    <div class="cookie-text-block">
+      <div class="cookie-head">
+        <strong id="cookieTitle">Этот сайт использует cookies</strong>
+        <button class="cookie-close" type="button" aria-label="Отказаться">×</button>
+      </div>
+      <p>
+        Мы используем обязательные cookies для авторизации и сессии. Дополнительные —
+        для запоминания настроек и анонимной аналитики. Маркетинговые cookies мы не
+        используем и третьим сторонам данные не передаём.
+        <a class="cookie-toggle-details" tabindex="0">Показать сведения ↓</a>
+      </p>
+    </div>
+
+    <div class="cookie-actions">
+      <button class="cookie-btn primary" type="button" data-action="allow-all">Принять всё</button>
+      <button class="cookie-btn ghost"   type="button" data-action="selection">Только выбранное</button>
+      <button class="cookie-btn ghost"   type="button" data-action="decline">Отклонить необязательные</button>
+    </div>
+
+    <div class="cookie-details" hidden>
+      <div class="cookie-cat">
+        <div>
+          <strong>Необходимые</strong>
+          <small>Авторизация и сессия. Без них вход не работает.</small>
+        </div>
+        <span class="locked-switch" title="Всегда включены"></span>
+      </div>
+      <div class="cookie-cat">
+        <label style="flex:1; cursor:pointer; display:block;">
+          <strong>Настройки</strong>
+          <small>Тема, последние фильтры, выбор атлета.</small>
+        </label>
+        <input type="checkbox" data-cat="preferences" checked>
+      </div>
+      <div class="cookie-cat">
+        <label style="flex:1; cursor:pointer; display:block;">
+          <strong>Статистика</strong>
+          <small>Plausible — анонимная метрика страниц, без личных данных.</small>
+        </label>
+        <input type="checkbox" data-cat="statistics">
+      </div>
+      <div class="cookie-cat">
+        <label style="flex:1; cursor:pointer; display:block;">
+          <strong>Маркетинг</strong>
+          <small>Не используем. Третьим сторонам данные не передаём.</small>
+        </label>
+        <input type="checkbox" data-cat="marketing" disabled>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// === Cookie consent ===
+(function () {
+  var STORAGE_KEY = 'beatmetrics_cookie_consent';
+  var banner = document.getElementById('cookie-banner');
+  var backdrop = document.getElementById('cookie-backdrop');
+  var details = banner.querySelector('.cookie-details');
+  var toggle = banner.querySelector('.cookie-toggle-details');
+  var resetLink = document.getElementById('cookie-reset');
+
+  function setOpen(open) {
+    banner.hidden = !open;
+    // bottom-bar не блокирует фон — backdrop и body-overflow не трогаем
+  }
+
+  if (!localStorage.getItem(STORAGE_KEY)) {
+    setOpen(true);
+  }
+
+  function setDetailsOpen(open) {
+    details.hidden = !open;
+    toggle.textContent = open ? 'Свернуть ↑' : 'Подробнее ↓';
+  }
+
+  toggle.addEventListener('click', function (e) {
+    e.preventDefault();
+    setDetailsOpen(details.hidden);
+  });
+
+  function save(consent) {
+    var payload = {
+      necessary: true,
+      preferences: !!consent.preferences,
+      statistics: !!consent.statistics,
+      marketing: false,
+      ts: Date.now(),
+      version: 1
+    };
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+    setOpen(false);
+    setDetailsOpen(false);
+  }
+
+  function readChecks() {
+    var out = {};
+    banner.querySelectorAll('input[type="checkbox"][data-cat]').forEach(function (c) {
+      out[c.dataset.cat] = c.checked && !c.disabled;
+    });
+    return out;
+  }
+
+  banner.querySelectorAll('.cookie-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var action = btn.dataset.action;
+      if (action === 'decline') {
+        save({ preferences: false, statistics: false });
+      } else if (action === 'allow-all') {
+        save({ preferences: true, statistics: true });
+      } else if (action === 'selection') {
+        save(readChecks());
+      }
+    });
+  });
+
+  banner.querySelector('.cookie-close').addEventListener('click', function () {
+    save({ preferences: false, statistics: false });
+  });
+
+  if (resetLink) {
+    resetLink.addEventListener('click', function (e) {
+      e.preventDefault();
+      localStorage.removeItem(STORAGE_KEY);
+      setDetailsOpen(false);
+      setOpen(true);
+    });
+  }
+})();
+
+// === Slider периода истории ===
+(function () {
+  var slider = document.getElementById('periodSlider');
+  if (!slider) return;
+  var valueEl = document.getElementById('periodValue');
+  var etaEl = document.getElementById('periodEta');
+  var hintEl = document.getElementById('periodHint');
+
+  var STEPS = [
+    { label: '15 дней',          eta: '~15 секунд',   hint: 'для быстрого старта, оценка свежей формы' },
+    { label: '30 дней',          eta: '~30 секунд',   hint: 'базовый минимум для виджетов недели/месяца' },
+    { label: '90 дней',          eta: '~2 минуты',    hint: 'хватит на тренды формы и анализ зон' },
+    { label: '180 дней',         eta: '~4 минуты',    hint: 'полугодовая динамика, сезонные блоки' },
+    { label: '1 год',            eta: '~5 минут',     hint: 'видна сезонность, год к году' },
+    { label: '2 года',           eta: '~10 минут',    hint: 'полная двухлетняя картина' },
+    { label: 'Вся история',      eta: '~10+ минут',   hint: 'до самой первой тренировки в Garmin' }
+  ];
+
+  function update() {
+    var step = STEPS[slider.value];
+    if (!step) return;
+    valueEl.textContent = step.label;
+    etaEl.textContent = step.eta;
+    hintEl.textContent = step.hint;
+  }
+  slider.addEventListener('input', update);
+  update();
+})();
+</script>
+
+</body>
+</html>
