@@ -13,6 +13,16 @@
           Google: {{ request.query_params.get('google_error') }}
         </div>
       {% endif %}
+      {% if request.query_params.get('verified') %}
+        <div class="alert-success">
+          ✓ Email подтверждён.
+        </div>
+      {% endif %}
+      {% if request.query_params.get('verify_error') %}
+        <div class="alert-error">
+          Ссылка для подтверждения email невалидна или истекла.
+        </div>
+      {% endif %}
 
       {% if google_enabled %}
         <a href="/auth/google/login" class="btn" style="margin-bottom:8px;text-decoration:none">
@@ -41,6 +51,12 @@
         <label for="password">Пароль</label>
         <input id="password" name="password" type="password" required
                autocomplete="current-password">
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;margin:-8px 0 8px">
+        <a href="/forgot-password" style="font-size:var(--fs-sm);color:var(--color-mute);text-decoration:none">
+          Забыл пароль?
+        </a>
       </div>
 
       <button type="submit" class="btn btn-primary" style="margin-top:4px">Войти</button>

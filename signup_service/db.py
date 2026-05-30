@@ -139,6 +139,72 @@ def init_schema() -> None:
             """
         )
         c.execute("CREATE INDEX IF NOT EXISTS idx_csr_user ON cloud_sync_runs(user_id, started_at DESC)")
+
+        # Одноразовые токены для password reset / email verify
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS auth_tokens (
+                token       TEXT PRIMARY KEY,
+                user_id     TEXT NOT NULL,
+                purpose     TEXT NOT NULL,           -- 'password_reset' | 'email_verify'
+                created_at  TEXT NOT NULL,
+                expires_at  TEXT NOT NULL,
+                used_at     TEXT
+            )
+            """
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS idx_at_user ON auth_tokens(user_id, purpose)")
+        c.commit()
+
+
+# === Auth tokens (password reset / email verify) ===
+
+def create_auth_token(user_id: str, purpose: str, ttl_hours: int) -> str:
+    """Создаёт одноразовый токен. Возвращает значение токена."""
+    import secrets as _secrets
+    from datetime import timedelta
+    token = _secrets.token_urlsafe(24)
+    expires = (datetime.now(timezone.utc) + timedelta(hours=ttl_hours)).isoformat(timespec="seconds")
+    with get_conn() as c:
+        c.execute(
+            "INSERT INTO auth_tokens (token, user_id, purpose, created_at, expires_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (token, user_id, purpose, _now_iso(), expires),
+        )
+        c.commit()
+    return token
+
+
+def find_auth_token(token: str, purpose: str) -> sqlite3.Row | None:
+    """Возвращает токен если он валидный (существует, не использован, не истёк)."""
+    now = _now_iso()
+    with get_conn() as c:
+        return c.execute(
+            "SELECT * FROM auth_tokens WHERE token = ? AND purpose = ? "
+            "AND used_at IS NULL AND expires_at > ?",
+            (token, purpose, now),
+        ).fetchone()
+
+
+def consume_auth_token(token: str) -> None:
+    with get_conn() as c:
+        c.execute("UPDATE auth_tokens SET used_at = ? WHERE token = ?",
+                  (_now_iso(), token))
+        c.commit()
+
+
+def update_password(user_id: str, new_password: str) -> None:
+    pw_hash = bcrypt.hashpw(new_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    with get_conn() as c:
+        c.execute("UPDATE users SET password_hash = ? WHERE user_id = ?",
+                  (pw_hash, user_id))
+        c.commit()
+
+
+def mark_email_verified(user_id: str) -> None:
+    with get_conn() as c:
+        c.execute("UPDATE users SET email_verified_at = ? WHERE user_id = ?",
+                  (_now_iso(), user_id))
         c.commit()
 
 

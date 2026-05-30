@@ -19,6 +19,7 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import auth_google
 from . import db as users_db
+from . import email_sender
 from . import oauth as oauth_module
 from ._session import (
     SESSION_COOKIE,
@@ -187,6 +188,15 @@ async def signup_post(
 
     if invitation:
         users_db.consume_invitation(invitation["invitation_token"], user_row["user_id"])
+
+    # Email verification — отправляем письмо со ссылкой (или пишем в outbox.log
+    # если SMTP не настроен). Не блокируем signup на отправку.
+    verify_token = users_db.create_auth_token(
+        user_row["user_id"], purpose="email_verify", ttl_hours=24 * 7,
+    )
+    base = str(request.base_url).rstrip("/")
+    verify_url = f"{base}/verify-email?token={verify_token}"
+    email_sender.send_email_verification(email_norm, name_clean, verify_url)
 
     # И атлет, и тренер после signup → /done (welcome).
     # Онбординг для атлета теперь отложенный — баннер на /done зовёт подключить
@@ -444,6 +454,119 @@ async def settings_disconnect(provider: str, request: Request):
     return RedirectResponse(
         f"/settings/connections?disconnected={provider}", status_code=303,
     )
+
+
+# === Password reset / Email verify ===
+
+
+@app.get("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_get(request: Request):
+    return templates.TemplateResponse(request, "forgot_password.html", _ctx(request))
+
+
+@app.post("/forgot-password", response_class=HTMLResponse)
+async def forgot_password_post(request: Request, email: str = Form(...)):
+    email_norm = (email or "").strip().lower()
+    if "@" not in email_norm:
+        return templates.TemplateResponse(
+            request, "forgot_password.html",
+            _ctx(request, error="Похоже на невалидный email", email_value=email_norm),
+            status_code=400,
+        )
+
+    user_row = users_db.find_user_by_email(email_norm)
+    # Не раскрываем существует email или нет — всегда рендерим "если есть, выслали"
+    if user_row is not None:
+        token = users_db.create_auth_token(
+            user_row["user_id"], purpose="password_reset", ttl_hours=1,
+        )
+        base = str(request.base_url).rstrip("/")
+        reset_url = f"{base}/reset-password?token={token}"
+        email_sender.send_password_reset(email_norm, user_row["name"], reset_url)
+
+    return templates.TemplateResponse(
+        request, "forgot_password.html", _ctx(request, sent=True),
+    )
+
+
+@app.get("/reset-password", response_class=HTMLResponse)
+async def reset_password_get(request: Request, token: str | None = None):
+    if not token:
+        return templates.TemplateResponse(
+            request, "reset_password.html",
+            _ctx(request, token_error="Ссылка некорректна — нет токена."),
+            status_code=400,
+        )
+    row = users_db.find_auth_token(token, "password_reset")
+    if row is None:
+        return templates.TemplateResponse(
+            request, "reset_password.html",
+            _ctx(request, token_error="Ссылка истекла или уже использована."),
+            status_code=400,
+        )
+    user_row = users_db.find_user_by_id(row["user_id"])
+    return templates.TemplateResponse(
+        request, "reset_password.html",
+        _ctx(request, token=token, email=user_row["email"] if user_row else "?"),
+    )
+
+
+@app.post("/reset-password", response_class=HTMLResponse)
+async def reset_password_post(
+    request: Request,
+    token: str = Form(...),
+    password: str = Form(...),
+    password2: str = Form(...),
+):
+    row = users_db.find_auth_token(token, "password_reset")
+    if row is None:
+        return templates.TemplateResponse(
+            request, "reset_password.html",
+            _ctx(request, token_error="Ссылка истекла или уже использована."),
+            status_code=400,
+        )
+    user_row = users_db.find_user_by_id(row["user_id"])
+    if user_row is None:
+        return templates.TemplateResponse(
+            request, "reset_password.html",
+            _ctx(request, token_error="Аккаунт не найден."),
+            status_code=400,
+        )
+
+    def _err(msg):
+        return templates.TemplateResponse(
+            request, "reset_password.html",
+            _ctx(request, token=token, email=user_row["email"], error=msg),
+            status_code=400,
+        )
+
+    if len(password) < 8:
+        return _err("Пароль должен быть от 8 символов")
+    if password != password2:
+        return _err("Пароли не совпадают")
+
+    users_db.update_password(user_row["user_id"], password)
+    users_db.consume_auth_token(token)
+
+    # Авто-логин после reset — пользователь сразу попадает на /done
+    response = RedirectResponse("/done", status_code=303)
+    _set_session(response, user_row)
+    return response
+
+
+@app.get("/verify-email", response_class=HTMLResponse)
+async def verify_email(request: Request, token: str | None = None):
+    if not token:
+        return RedirectResponse("/login?verify_error=no_token", status_code=303)
+    row = users_db.find_auth_token(token, "email_verify")
+    if row is None:
+        return RedirectResponse("/login?verify_error=expired", status_code=303)
+    users_db.mark_email_verified(row["user_id"])
+    users_db.consume_auth_token(token)
+    # Если уже залогинен — на /done, иначе — на /login с успехом
+    if _get_current_user(request):
+        return RedirectResponse("/done?verified=1", status_code=303)
+    return RedirectResponse("/login?verified=1", status_code=303)
 
 
 @app.post("/coach/invite")
