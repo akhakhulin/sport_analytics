@@ -18,15 +18,20 @@
     {% endif %}
 
     {% if current_user %}
+      {# Уже залогинен — НЕ показываем форму signup, она бессмысленна. #}
+      {# Только баннер с выбором: выйти или перейти на dashboard. #}
       <div class="already-logged-banner">
-        Уже вошли как <strong>{{ current_user.email }}</strong>{% if current_user.name %} ({{ current_user.name }}){% endif %}.<br>
-        Чтобы зарегистрировать новый аккаунт — сначала выйди:
-        <form method="post" action="/logout" style="display:inline;margin:0">
-          <button type="submit" class="link-btn">Выйти</button>
-        </form>
-        или <a href="/done">перейти на свой dashboard</a>.
+        <span data-i18n="signup_already_logged_pre">Уже вошли как</span>
+        <strong>{{ current_user.email }}</strong>{% if current_user.name %} ({{ current_user.name }}){% endif %}.
       </div>
-    {% endif %}
+
+      <div class="form" style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
+        <a href="/done" class="btn btn-primary" data-i18n="signup_go_dashboard">Перейти на свой dashboard →</a>
+        <form method="post" action="/logout" style="margin:0">
+          <button type="submit" class="btn" style="width:100%" data-i18n="logout">Выйти</button>
+        </form>
+      </div>
+    {% else %}
 
     <form method="post" action="/signup" class="form" autocomplete="on" novalidate>
       {% if error %}<div class="alert-error">{{ error }}</div>{% endif %}
@@ -115,6 +120,7 @@
         <span data-i18n="signup_have">Уже есть аккаунт?</span> <a href="/login" data-i18n="signup_login_link">Войти</a>
       </div>
     </form>
+    {% endif %}
   </div>
 </main>
 
