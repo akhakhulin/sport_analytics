@@ -44,8 +44,78 @@ try:
 except ImportError:
     _HAS_COOKIES = False
 
+try:
+    from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
+    _HAS_ITSDANGEROUS = True
+except ImportError:
+    _HAS_ITSDANGEROUS = False
+
 _COOKIE_NAME = "beatmetrics_auth"
 _COOKIE_TTL_SECONDS = 30 * 24 * 3600  # 30 дней
+
+# === SSO с signup_service (app.beatmetrics.ru) ===
+# Cookie `bm_session` ставится signup_service на domain `.beatmetrics.ru`,
+# подписан itsdangerous с BEATMETRICS_SESSION_SECRET. Мы расшифровываем тот же
+# токен и автоматически логиним пользователя — без отдельной формы.
+_BM_SESSION_COOKIE = "bm_session"
+_BM_SESSION_TTL = 30 * 24 * 3600
+_BM_SESSION_SECRET = os.getenv(
+    "BEATMETRICS_SESSION_SECRET",
+    "dev-secret-CHANGE-IN-PROD-please-use-32+chars",
+)
+
+
+def _read_bm_session() -> dict | None:
+    """Возвращает payload {user_id, email, name} из bm_session cookie, или None.
+    Использует st.context.cookies (server-side, доступен для HttpOnly cookies)."""
+    if not _HAS_ITSDANGEROUS:
+        return None
+    try:
+        raw = st.context.cookies.get(_BM_SESSION_COOKIE)
+    except Exception:
+        return None
+    if not raw:
+        return None
+    try:
+        ser = URLSafeTimedSerializer(_BM_SESSION_SECRET, salt="bm-session-v1")
+        return ser.loads(str(raw), max_age=_BM_SESSION_TTL)
+    except (BadSignature, SignatureExpired, Exception):
+        return None
+
+
+def _bm_session_to_authuser(payload: dict) -> "AuthUser | None":
+    """signup_service-user → Streamlit AuthUser. Ищем mapping в users-table SQLite.
+    Если у user заполнен athlete_id — используем его, иначе username = email."""
+    if not payload:
+        return None
+    user_id = payload.get("user_id")
+    email = (payload.get("email") or "").lower()
+    name = payload.get("name") or email.split("@")[0]
+    if not user_id or not email:
+        return None
+    # Подтянем athlete_id из users.athlete_id (если есть mapping)
+    athlete_id = email
+    role = "athlete"
+    try:
+        import sqlite3
+        from pathlib import Path
+        db_path = Path(__file__).resolve().parent / "data" / "garmin.db"
+        with sqlite3.connect(str(db_path)) as conn:
+            conn.row_factory = sqlite3.Row
+            row = conn.execute(
+                "SELECT athlete_id, role FROM users WHERE user_id = ?",
+                (user_id,),
+            ).fetchone()
+            if row:
+                athlete_id = row["athlete_id"] or email
+                role = row["role"] or "athlete"
+    except Exception:
+        pass
+    return AuthUser(
+        username=email, name=name, role=role,
+        athlete_id=athlete_id, is_local=False,
+        visible_athletes=None,
+    )
 
 
 class AuthUser(NamedTuple):
@@ -274,7 +344,16 @@ def _login_form(users_cfg) -> AuthUser:
     secret = _cookie_secret(users_cfg)
     cm = _get_cookie_manager()
 
-    # 2) Пробуем восстановить из cookie
+    # 2) SSO: cookie `bm_session` от signup_service на .beatmetrics.ru
+    #    Если пользователь залогинен на app.beatmetrics.ru — пускаем сюда без формы.
+    bm_payload = _read_bm_session()
+    if bm_payload:
+        bm_user = _bm_session_to_authuser(bm_payload)
+        if bm_user is not None:
+            st.session_state["auth_user"] = bm_user
+            return bm_user
+
+    # 3) Старая система: cookie от Streamlit-формы (для админ-логина coach)
     if cm is not None:
         token = cm.get(_COOKIE_NAME)
         if token:

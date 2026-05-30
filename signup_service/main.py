@@ -24,6 +24,7 @@ from . import oauth as oauth_module
 from ._session import (
     SESSION_COOKIE,
     SESSION_SECRET,
+    clear_session as _clear_session,
     get_current_user as _get_current_user,
     set_session as _set_session,
 )
@@ -206,12 +207,28 @@ async def signup_post(
     return response
 
 
+def _safe_next_url(next_url: str | None) -> str:
+    """Разрешаем редирект только на наш домен — чтобы не open-redirect.
+    Принимаем абсолютные https://*.beatmetrics.ru/* и относительные /."""
+    if not next_url:
+        return "/done"
+    nx = next_url.strip()
+    if nx.startswith("/") and not nx.startswith("//"):
+        return nx
+    if (nx.startswith("https://beatmetrics.ru/")
+            or nx.startswith("https://app.beatmetrics.ru/")
+            or nx.startswith("https://www.beatmetrics.ru/")):
+        return nx
+    return "/done"
+
+
 @app.get("/login", response_class=HTMLResponse)
-async def login_get(request: Request):
+async def login_get(request: Request, next: str | None = None):
     user = _get_current_user(request)
     if user:
-        return RedirectResponse("/done", status_code=303)
-    return templates.TemplateResponse(request, "login.html", _ctx(request))
+        return RedirectResponse(_safe_next_url(next), status_code=303)
+    return templates.TemplateResponse(request, "login.html",
+                                       _ctx(request, next_url=next))
 
 
 @app.post("/login", response_class=HTMLResponse)
@@ -219,25 +236,28 @@ async def login_post(
     request: Request,
     email: str = Form(...),
     password: str = Form(...),
+    next: str = Form(""),
 ):
     email_norm = (email or "").strip().lower()
     user_row = users_db.find_user_by_email(email_norm)
     if user_row is None or not users_db.verify_password(password, user_row["password_hash"]):
         return templates.TemplateResponse(
             request, "login.html",
-            _ctx(request, error="Неверный email или пароль", email_value=email_norm),
+            _ctx(request, error="Неверный email или пароль",
+                 email_value=email_norm, next_url=next or None),
             status_code=401,
         )
     users_db.touch_last_login(user_row["user_id"])
-    response = RedirectResponse("/done", status_code=303)
+    response = RedirectResponse(_safe_next_url(next), status_code=303)
     _set_session(response, user_row)
     return response
 
 
 @app.post("/logout")
 async def logout():
-    response = RedirectResponse("/signup", status_code=303)
-    response.delete_cookie(SESSION_COOKIE)
+    # Редирект на публичный landing — чтобы и Streamlit-cookie не висел невалидным
+    response = RedirectResponse("https://beatmetrics.ru/", status_code=303)
+    _clear_session(response)
     return response
 
 

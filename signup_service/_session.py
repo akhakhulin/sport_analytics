@@ -1,4 +1,10 @@
-"""Shared session-cookie helpers — используются main.py и oauth.py."""
+"""Shared session-cookie helpers — используются main.py, oauth.py, auth_google.py.
+
+Cookie domain выставляется через env `BEATMETRICS_COOKIE_DOMAIN`:
+- `.beatmetrics.ru` в проде → cookie виден И на app.beatmetrics.ru, И на beatmetrics.ru
+  (нужно для SSO: Streamlit читает ту же сессию)
+- пусто → host-only cookie (только на app.beatmetrics.ru) — fallback для dev
+"""
 from __future__ import annotations
 
 import os
@@ -13,6 +19,7 @@ SESSION_SECRET = os.getenv(
 SESSION_COOKIE = "bm_session"
 SESSION_TTL_SECONDS = 30 * 24 * 3600
 COOKIE_SECURE = os.getenv("BEATMETRICS_COOKIE_SECURE", "0").lower() in ("1", "true", "yes")
+COOKIE_DOMAIN = (os.getenv("BEATMETRICS_COOKIE_DOMAIN") or "").strip() or None
 
 serializer = URLSafeTimedSerializer(SESSION_SECRET, salt="bm-session-v1")
 
@@ -42,4 +49,10 @@ def set_session(response: Response, user_row) -> None:
         httponly=True,
         samesite="lax",
         secure=COOKIE_SECURE,
+        domain=COOKIE_DOMAIN,
     )
+
+
+def clear_session(response: Response) -> None:
+    """Удалить cookie — domain должен совпадать с тем что был при set_cookie."""
+    response.delete_cookie(SESSION_COOKIE, domain=COOKIE_DOMAIN)
