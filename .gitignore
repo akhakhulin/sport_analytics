@@ -37,8 +37,12 @@ tmp/
 # Raw text extraction (промежуточные, восстанавливается из source)
 analysis_temp/
 
-# Локальные настройки Claude Code (permissions)
-.claude/
+# Локальные настройки Claude Code (permissions) — но НЕ shared agent/command конфиг
+.claude/*
+!.claude/agents/
+!.claude/agents/**
+!.claude/commands/
+!.claude/commands/**
 
 # Junction к external knowledge (на машине пользователя)
 knowledge/external/
