@@ -315,11 +315,95 @@ def load_hr_zones(athlete_id: str) -> pd.DataFrame:
     return df
 
 
+# Маппинг Strava sport_type → garmin activity_type (для unified-таблицы).
+# Strava называет иначе ("Run", "Ride", "TrailRun") — приводим к нижнему регистру
+# и к Garmin-понятиям ("running", "cycling") где можно.
+_STRAVA_SPORT_MAP = {
+    "Run": "running", "TrailRun": "trail_running", "VirtualRun": "running",
+    "Ride": "cycling", "VirtualRide": "indoor_cycling",
+    "MountainBikeRide": "mountain_biking", "GravelRide": "gravel_cycling",
+    "Swim": "swimming",
+    "BackcountrySki": "backcountry_skiing", "NordicSki": "cross_country_skiing",
+    "AlpineSki": "downhill_skiing", "RollerSki": "skate_skiing",
+    "WeightTraining": "strength_training",
+    "Workout": "fitness_equipment", "Yoga": "yoga", "Hike": "hiking",
+    "Walk": "walking",
+}
+
+
+def _load_cloud_activities_for_athlete(athlete_id: str) -> pd.DataFrame:
+    """SELECT из cloud_activities через users.athlete_id mapping.
+    Колонки приводятся к схеме основной activities (start_time_local,
+    duration_sec, avg_hr и т.п.) — чтобы можно было сделать pd.concat."""
+    try:
+        raw = _read_sql(
+            """
+            SELECT ca.*, u.athlete_id AS athlete_id
+            FROM cloud_activities ca
+            INNER JOIN users u ON u.user_id = ca.user_id
+            WHERE u.athlete_id = ?
+            """,
+            (athlete_id,),
+        )
+    except Exception:
+        # Таблицы ещё нет (старая БД без signup_service) — игнорим
+        return pd.DataFrame()
+    if raw.empty:
+        return raw
+
+    out = pd.DataFrame({
+        "athlete_id":       raw["athlete_id"],
+        "activity_id":      "cloud:" + raw["provider"].astype(str) + ":" + raw["external_id"].astype(str),
+        "activity_type":    raw["sport_type"].map(_STRAVA_SPORT_MAP).fillna(raw["sport_type"].str.lower()),
+        "activity_name":    raw["name"],
+        "start_time_local": raw["start_date"],
+        "duration_sec":     raw["moving_time_s"],
+        "distance_m":       raw["distance_m"],
+        "avg_hr":           raw["average_hr"],
+        "max_hr":           raw["max_hr"],
+        "raw_json":         raw["raw_json"],
+        "data_source":      raw["provider"],
+    })
+    # колонки, которых нет в cloud-источнике — заглушки
+    for col in ("calories", "training_load", "anaerobic_te", "aerobic_te"):
+        if col not in out.columns:
+            out[col] = None
+    return out
+
+
 @st.cache_data(ttl=300)
 def load_activities(athlete_id: str) -> pd.DataFrame:
     df = _read_sql(
         "SELECT * FROM activities WHERE athlete_id = ?", (athlete_id,)
     )
+    # Дополнение из cloud_activities (Strava/Polar/Suunto через signup_service):
+    # JOIN через users.athlete_id, мапим колонки на формат основной activities.
+    # Если у этого athlete_id ещё нет линка в users — silently добавит 0 строк.
+    cloud_df = _load_cloud_activities_for_athlete(athlete_id)
+    if not cloud_df.empty:
+        if df.empty:
+            df = cloud_df
+        else:
+            df = pd.concat([df, cloud_df], ignore_index=True, sort=False)
+            # Дедуп: одна тренировка могла прийти и через Garmin, и через Strava.
+            # Garmin timestamps в local time, Strava — UTC; сравниваем по
+            # календарному дню + типу + дистанции (округлённой до 100м).
+            # Garmin приоритетнее (богаче по зонам/HRV).
+            _day = pd.to_datetime(df["start_time_local"], errors="coerce", utc=True).dt.date
+            _km100 = (df["distance_m"].fillna(0) / 100).round().astype(int)
+            df["_dedup_key"] = (
+                _day.astype(str)
+                + "|" + df["activity_type"].fillna("unknown").astype(str).str.lower()
+                + "|" + _km100.astype(str)
+            )
+            df["_source_priority"] = (
+                df.get("data_source", pd.Series([None] * len(df)))
+                  .fillna("garmin").astype(str).str.lower()
+                  .apply(lambda v: 0 if v == "garmin" else 1)
+            )
+            df = df.sort_values("_source_priority").drop_duplicates(
+                subset=["_dedup_key"], keep="first"
+            ).drop(columns=["_dedup_key", "_source_priority"], errors="ignore")
     if df.empty:
         return df
 
