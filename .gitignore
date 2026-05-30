@@ -51,11 +51,16 @@ video_analysis/
 # TLS-сертификаты — приватный ключ НИКОГДА не должен попасть в git
 beatmetrics/certs/
 
-# nginx — коммитим только conf/ и start_nginx.bat (см. !-исключения ниже).
+# nginx — коммитим только conf/, start_nginx.bat и наш landing (html/ + assets).
 # Бинарник nginx.exe и дистрибутив (docs/contrib/modules) ставятся локально.
 beatmetrics/nginx/*
 !beatmetrics/nginx/conf/
 !beatmetrics/nginx/start_nginx.bat
+!beatmetrics/nginx/html/
+beatmetrics/nginx/html/*
+!beatmetrics/nginx/html/landing.html
+!beatmetrics/nginx/html/landing-assets/
+!beatmetrics/nginx/html/landing-assets/**
 
 # Бинарники third-party (большие, ставятся локально на каждой машине)
 tools/cloudflared.exe

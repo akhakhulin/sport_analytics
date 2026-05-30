@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="COROS">
+  <path d="M12 2 L20.66 7 L20.66 17 L12 22 L3.34 17 L3.34 7 Z"
+        fill="none" stroke="#e2231a" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M12 7 L16.33 9.5 L16.33 14.5 L12 17 L7.67 14.5 L7.67 9.5 Z"
+        fill="none" stroke="#e2231a" stroke-width="1.6" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>BeatMetrics — тренируйся осознанно</title>
+<meta name="description" content="Аналитика тренировок для лыжников, бегунов и велосипедистов. Garmin, Polar, Suunto, Strava — в одном дашборде.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%233c3489'/><path d='M 14 12 L 14 52' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round'/><path d='M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/><path d='M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+<style>
+:root {
+  --brand: #3c3489;
+  --brand-dark: #2f2a73;
+  --brand-soft: #ebe9f7;
+  --ink: #1a1a18;
+  --mute: #6b6a64;
+  --line: #e8e7e1;
+  --paper: #fdfdfc;
+  --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--font); font-size: 16px; line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+header.nav {
+  position: sticky; top: 0; z-index: 100;
+  background: rgba(253,253,252,0.92);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.nav-inner {
+  max-width: 1100px; margin: 0 auto;
+  padding: 14px 24px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+}
+.nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; }
+.nav-logo svg { width: 32px; height: 32px; }
+.nav-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 500;
+  border: 1px solid var(--line); background: #fff; color: var(--ink);
+  cursor: pointer; transition: background .12s ease, border-color .12s ease;
+  text-decoration: none !important;
+}
+.btn:hover { background: #faf9f5; border-color: #d8d6cd; }
+.btn-primary { background: var(--brand); color: #fff; border-color: var(--brand); }
+.btn-primary:hover { background: var(--brand-dark); border-color: var(--brand-dark); }
+.btn-lg { padding: 13px 28px; font-size: 15px; }
+
+main { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+/* Hero */
+section.hero {
+  padding: 80px 0 60px;
+  display: grid; grid-template-columns: 1.1fr 1fr; gap: 60px; align-items: center;
+}
+@media (max-width: 860px) {
+  section.hero { grid-template-columns: 1fr; gap: 30px; padding: 48px 0 32px; }
+}
+.hero h1 {
+  font-size: 44px; line-height: 1.1; letter-spacing: -0.02em;
+  font-weight: 500; margin-bottom: 18px;
+}
+@media (max-width: 860px) { .hero h1 { font-size: 32px; } }
+.hero h1 em { color: var(--brand); font-style: normal; }
+.hero p.lead {
+  font-size: 18px; color: var(--mute); line-height: 1.55; margin-bottom: 28px;
+  max-width: 540px;
+}
+.hero .cta-row { display: flex; gap: 12px; flex-wrap: wrap; }
+.hero-visual {
+  position: relative;
+  aspect-ratio: 4/3;
+  border-radius: 18px;
+  background:
+    linear-gradient(160deg, rgba(60,52,137,0.08), rgba(60,52,137,0.02)),
+    url('/landing-assets/hero-triathlon.jpg');
+  background-size: cover; background-position: center;
+  box-shadow: 0 20px 50px rgba(60,52,137,0.16);
+}
+
+/* Value props */
+section.values { padding: 60px 0; }
+.values h2 {
+  font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 28px; text-align: center;
+}
+.value-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+@media (max-width: 760px) {
+  .value-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+.value-card {
+  padding: 24px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: #fff;
+}
+.value-card .icon {
+  width: 44px; height: 44px; border-radius: 10px;
+  background: var(--brand-soft); color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; margin-bottom: 14px;
+}
+.value-card h3 { font-size: 17px; font-weight: 500; margin-bottom: 6px; }
+.value-card p { font-size: 14px; color: var(--mute); line-height: 1.55; }
+
+/* Sources */
+section.sources {
+  padding: 40px 0 60px;
+  background: var(--brand-soft);
+  margin: 0 -24px;
+  padding-left: 24px; padding-right: 24px;
+}
+.sources-inner { max-width: 1100px; margin: 0 auto; text-align: center; }
+.sources h2 {
+  font-size: 22px; font-weight: 500;
+  color: var(--ink); margin-bottom: 6px;
+}
+.sources p.sub {
+  color: var(--mute); font-size: 14px; margin-bottom: 24px;
+}
+.sources-row {
+  display: flex; gap: 28px; justify-content: center; align-items: center;
+  flex-wrap: wrap;
+}
+.sources-row .item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; color: var(--ink);
+}
+.sources-row .item img { width: 24px; height: 24px; }
+.sources-row .item.soon { color: var(--mute); }
+
+/* Footer CTA */
+section.cta-final {
+  padding: 70px 0; text-align: center;
+}
+.cta-final h2 {
+  font-size: 28px; font-weight: 500; margin-bottom: 8px;
+}
+.cta-final p {
+  color: var(--mute); font-size: 16px; margin-bottom: 24px;
+}
+
+footer.foot {
+  border-top: 1px solid var(--line);
+  padding: 24px;
+  text-align: center;
+  font-size: 13px; color: var(--mute);
+}
+footer.foot a { color: var(--mute); margin: 0 10px; }
+</style>
+</head>
+<body>
+
+<header class="nav">
+  <div class="nav-inner">
+    <a href="/" class="nav-logo" style="text-decoration:none;color:var(--ink)">
+      <svg viewBox="0 0 64 64" aria-hidden="true">
+        <rect width="64" height="64" rx="14" fill="#3c3489"/>
+        <path d="M 14 12 L 14 52" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round"/>
+        <path d="M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42" fill="none" stroke="#fff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      BeatMetrics
+    </a>
+    <div class="nav-actions">
+      <a href="https://app.beatmetrics.ru/login" class="btn">Войти</a>
+      <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary">Регистрация</a>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section class="hero">
+    <div>
+      <h1>Тренируйся <em>осознанно</em>,<br>а не на чутьё</h1>
+      <p class="lead">
+        BeatMetrics собирает тренировки из Garmin, Strava, Polar и Suunto в один
+        дашборд. Тренды формы, распределение по зонам, recovery, сравнение плана
+        с фактом — для лыжников, бегунов и велосипедистов.
+      </p>
+      <div class="cta-row">
+        <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary btn-lg">
+          Создать аккаунт →
+        </a>
+        <a href="https://app.beatmetrics.ru/login" class="btn btn-lg">
+          У меня уже есть
+        </a>
+      </div>
+    </div>
+    <div class="hero-visual" aria-hidden="true"></div>
+  </section>
+
+  <section class="values">
+    <h2>Что ты увидишь после подключения</h2>
+    <div class="value-grid">
+      <div class="value-card">
+        <div class="icon">📊</div>
+        <h3>Тренды формы</h3>
+        <p>CTL / ATL / TSB по hrTSS. Видишь когда ты в форме, а когда перегружен.</p>
+      </div>
+      <div class="value-card">
+        <div class="icon">🎯</div>
+        <h3>Зоны и интенсивность</h3>
+        <p>Распределение времени по HR и мощностным зонам. Сравниваешь неделю с
+           эталонами по твоей дисциплине.</p>
+      </div>
+      <div class="value-card">
+        <div class="icon">📅</div>
+        <h3>План vs факт</h3>
+        <p>Тренировочный план рядом с фактическими активностями. Видно где
+           недобрал, где переборщил.</p>
+      </div>
+      <div class="value-card">
+        <div class="icon">🛌</div>
+        <h3>Recovery и HRV</h3>
+        <p>Сон, Body Battery, HRV-тренд (для Garmin). Понимаешь когда можно
+           грузиться, а когда отдохнуть.</p>
+      </div>
+      <div class="value-card">
+        <div class="icon">👔</div>
+        <h3>Совместная работа с тренером</h3>
+        <p>Пригласи тренера по ссылке — он видит твои данные и может строить
+           план опираясь на цифры, не на «как себя чувствуешь».</p>
+      </div>
+      <div class="value-card">
+        <div class="icon">🔒</div>
+        <h3>Твои данные — твои</h3>
+        <p>Тренировки хранятся у нас, ничего не продаём третьим сторонам.
+           Можно отозвать доступ и удалить аккаунт в любой момент.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sources">
+    <div class="sources-inner">
+      <h2>Подключи свой источник</h2>
+      <p class="sub">— и мы синканем тренировки в течение нескольких минут</p>
+      <div class="sources-row">
+        <div class="item">
+          <img src="/landing-assets/icons/garmin.svg" alt="Garmin"> Garmin Connect
+        </div>
+        <div class="item">
+          <img src="/landing-assets/icons/strava.svg" alt="Strava"> Strava
+        </div>
+        <div class="item">
+          <img src="/landing-assets/icons/polar.svg" alt="Polar"> Polar
+        </div>
+        <div class="item">
+          <img src="/landing-assets/icons/suunto.svg" alt="Suunto"> Suunto
+        </div>
+        <div class="item soon">
+          <img src="/landing-assets/icons/apple.svg" alt="Apple"> Apple Watch
+          <span style="font-size:12px">(через Strava)</span>
+        </div>
+        <div class="item soon">
+          <img src="/landing-assets/icons/coros.svg" alt="COROS"> COROS
+          <span style="font-size:12px">(скоро)</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cta-final">
+    <h2>Готов попробовать?</h2>
+    <p>Регистрация через Google или email — 30 секунд. Затем 2-3 клика, чтобы подключить часы.</p>
+    <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary btn-lg">
+      Начать →
+    </a>
+  </section>
+</main>
+
+<footer class="foot">
+  &copy; 2026 BeatMetrics ·
+  <a href="https://app.beatmetrics.ru/login">Войти</a> ·
+  <a href="mailto:a.khakhulin89@gmail.com">support</a>
+</footer>
+
+</body>
+</html>
