@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Suunto">
+  <rect x="1" y="1" width="22" height="22" rx="4" fill="#1a1a18"/>
+  <text x="12" y="16" font-family="-apple-system,Segoe UI,Inter,system-ui,sans-serif"
+        font-size="12" font-weight="700" fill="#fff" text-anchor="middle"
+        letter-spacing="-0.5">S</text>
+</svg>

@@ -351,12 +351,19 @@ def _load_cloud_activities_for_athlete(athlete_id: str) -> pd.DataFrame:
     if raw.empty:
         return raw
 
+    # Strava отдаёт start_date в ISO с Z (UTC). Дашборд везде ожидает
+    # tz-naive local-time-like строки (как Garmin). Конвертируем в naive UTC —
+    # pd.to_datetime в основном flow сожрёт это однообразно.
+    start_naive = pd.to_datetime(
+        raw["start_date"], errors="coerce", utc=True
+    ).dt.tz_convert(None).dt.strftime("%Y-%m-%d %H:%M:%S")
+
     out = pd.DataFrame({
         "athlete_id":       raw["athlete_id"],
         "activity_id":      "cloud:" + raw["provider"].astype(str) + ":" + raw["external_id"].astype(str),
         "activity_type":    raw["sport_type"].map(_STRAVA_SPORT_MAP).fillna(raw["sport_type"].str.lower()),
         "activity_name":    raw["name"],
-        "start_time_local": raw["start_date"],
+        "start_time_local": start_naive,
         "duration_sec":     raw["moving_time_s"],
         "distance_m":       raw["distance_m"],
         "avg_hr":           raw["average_hr"],
@@ -407,7 +414,10 @@ def load_activities(athlete_id: str) -> pd.DataFrame:
     if df.empty:
         return df
 
-    df["start"] = pd.to_datetime(df["start_time_local"])
+    df["start"] = pd.to_datetime(df["start_time_local"], format="mixed", errors="coerce")
+    df = df.dropna(subset=["start"])
+    if df.empty:
+        return df
     df["day"] = df["start"].dt.date
     df["week"] = df["start"].dt.to_period("W").dt.start_time
     df["month"] = df["start"].dt.to_period("M").dt.start_time
