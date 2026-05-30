@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Polar">
-  <circle cx="12" cy="12" r="9" fill="none" stroke="#1a1a18" stroke-width="2"/>
-  <circle cx="12" cy="12" r="4.5" fill="#e30613"/>
+  <circle cx="12" cy="12" r="11" fill="#cb1d22"/>
+  <path d="M 4 12 L 9.5 7 L 9.5 10 L 20.5 10 L 20.5 14 L 9.5 14 L 9.5 17 Z"
+        fill="#ffffff"/>
 </svg>
