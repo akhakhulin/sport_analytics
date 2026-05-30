@@ -92,47 +92,79 @@
 
     {% else %}
       {# === АТЛЕТ === #}
-      <div class="done-check">✓</div>
+      <div class="done-check">{% if connected_count > 0 %}✓{% else %}👋{% endif %}</div>
       <div class="done-title">
-        {% if user and user.name %}Привет, {{ user.name }}!{% else %}Аккаунт создан{% endif %}
+        {% if user and user.name %}Привет, {{ user.name }}!{% else %}Привет!{% endif %}
       </div>
       <div class="done-sub">
         {% if user %}{{ user.email }}<br>{% endif %}
-        Подключи источник данных, чтобы видеть аналитику тренировок.
+        Добро пожаловать в BeatMetrics.
       </div>
 
       {% if request.query_params.get('connected') %}
         <div class="alert-success">
           ✓ <strong>{{ request.query_params.get('connected') | upper }}</strong> подключён —
-          мы начнём забирать твои тренировки в ближайшие минуты.
-        </div>
-      {% endif %}
-      {% if request.query_params.get('oauth_error') %}
-        <div class="alert-error">
-          Ошибка OAuth: {{ request.query_params.get('oauth_error') }}.
-          Попробуй ещё раз или подключи другого провайдера.
+          активности начнут синкаться в ближайшие минуты.
         </div>
       {% endif %}
 
-      <div class="provider-list">
-        {% for p in providers %}
-          <div class="provider-card {% if p.primary %}provider-primary{% endif %} {% if not p.configured %}provider-disabled{% endif %}">
-            <div class="provider-info">
-              <div class="provider-name">{{ p.label }}</div>
-              <div class="provider-meta">{{ p.meta }}</div>
+      {% if connected_count == 0 %}
+        {# Big CTA для свежезарегистрированного — нет источника данных #}
+        <div class="invite-banner" style="text-align:left;flex-direction:column;align-items:stretch;gap:8px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="invite-icon" style="font-size:24px">⌚</div>
+            <div>
+              <div class="invite-head">Шаг 1 — источник данных</div>
+              <div class="invite-name" style="font-size:var(--fs-lg)">
+                Подключи часы или Strava
+              </div>
             </div>
-            {% if p.configured %}
-              <a href="/oauth/{{ p.key }}/connect" class="btn {% if p.primary %}btn-primary{% endif %}">
-                Подключить →
-              </a>
-            {% else %}
-              <span class="provider-soon">скоро</span>
-            {% endif %}
           </div>
-        {% endfor %}
+          <div class="invite-sub" style="margin-bottom:8px">
+            Без подключения мы не видим твоих тренировок. Это займёт 30 секунд.
+          </div>
+          <a href="/onboarding/connect" class="btn btn-primary">Подключить источник →</a>
+        </div>
+
+        <div style="margin:16px 0;text-align:left">
+          <div style="font-size:var(--fs-sm);color:var(--color-mute);text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin-bottom:8px">
+            Что появится после подключения
+          </div>
+          <ul style="list-style:none;padding:0;margin:0;font-size:var(--fs-md);color:var(--color-ink);line-height:1.7">
+            <li>📊 Тренды формы, объём по неделям и месяцам</li>
+            <li>🎯 Распределение по HR/мощности зонам</li>
+            <li>📅 Сравнение плана с фактом</li>
+            <li>🛌 Recovery, HRV, сон (для Garmin)</li>
+          </ul>
+        </div>
+      {% else %}
+        {# Уже есть подключённые — короткий статус и ссылки на навигацию #}
+        <div class="alert-success" style="background:var(--color-brand-soft);border-left-color:var(--color-brand);color:var(--color-ink)">
+          ✓ Источников подключено: <strong>{{ connected_count }}</strong>.
+          {% if connected_count == 1 %}
+            Можешь подключить ещё один — например, Strava для Apple Watch.
+          {% else %}
+            Можно управлять подключениями в Settings.
+          {% endif %}
+        </div>
+        <div class="done-actions">
+          <a href="/onboarding/connect" class="btn">Добавить ещё устройство</a>
+          <a href="/settings/connections" class="btn">Settings → Connections</a>
+        </div>
+      {% endif %}
+
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid var(--color-line);
+                  font-size:var(--fs-sm);color:var(--color-mute);text-align:center">
+        Дашборд с аналитикой — на
+        <a href="https://beatmetrics.ru/" target="_self"
+           style="color:var(--color-brand);font-weight:500;text-decoration:underline">
+          beatmetrics.ru
+        </a>
+        <br>
+        <span style="font-size:var(--fs-xs)">(пока с отдельным входом — SSO в работе)</span>
       </div>
 
-      <form method="post" action="/logout" style="margin: 16px 0 0">
+      <form method="post" action="/logout" style="margin: 14px 0 0">
         <button type="submit" class="btn">Выйти</button>
       </form>
     {% endif %}

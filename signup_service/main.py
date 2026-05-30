@@ -15,10 +15,14 @@ from fastapi.templating import Jinja2Templates
 
 from datetime import datetime, timezone
 
+from starlette.middleware.sessions import SessionMiddleware
+
+from . import auth_google
 from . import db as users_db
 from . import oauth as oauth_module
 from ._session import (
     SESSION_COOKIE,
+    SESSION_SECRET,
     get_current_user as _get_current_user,
     set_session as _set_session,
 )
@@ -58,8 +62,19 @@ BASE = Path(__file__).resolve().parent
 templates = Jinja2Templates(directory=str(BASE / "templates"))
 
 app = FastAPI(title="BeatMetrics signup", docs_url=None, redoc_url=None)
+# SessionMiddleware нужен authlib для хранения OAuth state/PKCE.
+# Используем тот же SESSION_SECRET что и для itsdangerous-сессии.
+app.add_middleware(
+    SessionMiddleware,
+    secret_key=SESSION_SECRET,
+    session_cookie="bm_auth_session",  # отдельная cookie от bm_session
+    max_age=600,
+    same_site="lax",
+    https_only=False,
+)
 app.mount("/static", StaticFiles(directory=str(BASE / "static")), name="static")
 app.include_router(oauth_module.router)
+app.include_router(auth_google.router)
 
 
 @app.on_event("startup")
@@ -70,7 +85,10 @@ async def _startup() -> None:
 def _ctx(request: Request, **extra) -> dict:
     """Базовый context — request передаём в TemplateResponse отдельно
     (новый Starlette API), сюда кладём только данные шаблона."""
-    base = {"user": _get_current_user(request)}
+    base = {
+        "user": _get_current_user(request),
+        "google_enabled": auth_google.is_configured(),
+    }
     base.update(extra)
     return base
 
@@ -170,10 +188,10 @@ async def signup_post(
     if invitation:
         users_db.consume_invitation(invitation["invitation_token"], user_row["user_id"])
 
-    # Атлет после signup → онбординг (выбор провайдеров). Тренер → /done
-    # (где он генерит инвайт-ссылки, никаких часов не подключает).
-    next_url = "/done" if role_clean == "coach" else "/onboarding/connect"
-    response = RedirectResponse(next_url, status_code=303)
+    # И атлет, и тренер после signup → /done (welcome).
+    # Онбординг для атлета теперь отложенный — баннер на /done зовёт подключить
+    # часы, но не блокирует продукт. Snowball-style: сначала ценность, потом setup.
+    response = RedirectResponse("/done", status_code=303)
     _set_session(response, user_row)
     return response
 
@@ -230,21 +248,9 @@ async def done(request: Request):
         host = str(request.base_url).rstrip("/")
         extras["invite_url_base"] = f"{host}/signup?invite="
     else:
-        # Атлет видит карточки провайдеров (active/disabled по env)
-        extras["providers"] = [
-            {"key": "garmin", "label": "Garmin Connect",
-             "meta": "ждём аппрува заявки",
-             "configured": False, "primary": True},
-            {"key": "strava", "label": "Strava",
-             "meta": "активности, HR, мост для Apple Watch",
-             "configured": oauth_module.is_configured("strava")},
-            {"key": "polar",  "label": "Polar",
-             "meta": "exercises, HRV, daily activity",
-             "configured": oauth_module.is_configured("polar")},
-            {"key": "suunto", "label": "Suunto",
-             "meta": "workouts, FIT-файлы",
-             "configured": oauth_module.is_configured("suunto")},
-        ]
+        # Атлет: welcome + CTA-баннер на подключение (если 0 источников),
+        # либо короткий статус (если есть подключённые)
+        extras["connected_count"] = len(users_db.get_connected_providers(user["user_id"]))
 
     return templates.TemplateResponse(request, "done.html", _ctx(request, **extras))
 

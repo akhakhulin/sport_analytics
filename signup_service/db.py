@@ -90,6 +90,55 @@ def init_schema() -> None:
             """
         )
         c.execute("CREATE INDEX IF NOT EXISTS idx_conn_user ON connected_accounts(user_id)")
+
+        # Активности из cloud-источников (Strava/Polar/Suunto/Garmin OAuth).
+        # Отдельная таблица от существующей "activities" (которая для прямого
+        # garmin-sync через garminconnect-py с auth-tokens).
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cloud_activities (
+                id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id              TEXT NOT NULL,
+                provider             TEXT NOT NULL,
+                external_id          TEXT NOT NULL,
+                name                 TEXT,
+                sport_type           TEXT,
+                start_date           TEXT,
+                distance_m           REAL,
+                moving_time_s        INTEGER,
+                elapsed_time_s       INTEGER,
+                total_elevation_m    REAL,
+                average_hr           REAL,
+                max_hr               REAL,
+                average_watts        REAL,
+                max_watts            REAL,
+                kilojoules           REAL,
+                raw_json             TEXT,
+                synced_at            TEXT NOT NULL,
+                UNIQUE(provider, external_id)
+            )
+            """
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS idx_ca_user ON cloud_activities(user_id, start_date DESC)")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_ca_provider ON cloud_activities(provider, external_id)")
+
+        # Sync runs log — для дебага и UI "когда последний раз дёргали"
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS cloud_sync_runs (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      TEXT NOT NULL,
+                provider     TEXT NOT NULL,
+                started_at   TEXT NOT NULL,
+                finished_at  TEXT,
+                status       TEXT,           -- 'ok' | 'token_refreshed' | 'error'
+                error        TEXT,
+                pulled_count INTEGER DEFAULT 0,
+                new_count    INTEGER DEFAULT 0
+            )
+            """
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS idx_csr_user ON cloud_sync_runs(user_id, started_at DESC)")
         c.commit()
 
 

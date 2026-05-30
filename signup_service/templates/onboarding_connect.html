@@ -5,17 +5,10 @@
   <div class="onb-card">
     <div class="logo-wrap">{% include "_logo.html" %}</div>
 
-    <div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="2">
-      <span class="dot done"></span>
-      <span class="line"></span>
-      <span class="dot active"></span>
-      <span class="line"></span>
-      <span class="dot"></span>
-      <span class="label">Шаг 2 из 3 · подключи часы</span>
-    </div>
+    <a href="/done" class="back">← к dashboard</a>
 
     <div class="section-title">Подключи источник данных</div>
-    <div class="section-sub">без этого мы не увидим твои тренировки</div>
+    <div class="section-sub">часы, велокомпьютер или Strava — без этого мы не увидим твои тренировки</div>
 
     {% if request.query_params.get('connected') %}
       <div class="alert-success">
@@ -117,17 +110,9 @@
       {% endif %}
     {% endif %}
 
-    <div class="skip">
-      {% if connected_providers %}
-        <a href="/done">Перейти в дашборд →</a>
-      {% else %}
-        <a href="/done">Пропустить, добавлю позже</a>
-      {% endif %}
+    <div style="margin-top:14px;text-align:center">
+      <a href="/done" class="btn">{% if connected_providers %}Готово, к dashboard →{% else %}Назад к dashboard{% endif %}</a>
     </div>
-
-    <form method="post" action="/logout" style="margin-top:14px">
-      <button type="submit" class="btn">Выйти</button>
-    </form>
   </div>
 </main>
 {% endblock %}
