@@ -1,0 +1,206 @@
+<!-- Eng/Rus pill-toggle + client-side i18n словарь.
+     Подключается из base.html — работает на всех страницах app.beatmetrics.ru.
+     Тексты переводятся через data-i18n="key" или data-i18n-placeholder="key". -->
+<style>
+.lang-toggle {
+  position: fixed; top: 16px; right: 16px; z-index: 200;
+  display: inline-flex; align-items: center;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid var(--color-line);
+  border-radius: 999px; padding: 3px;
+  font-size: 12px; font-weight: 500;
+  user-select: none;
+  backdrop-filter: blur(8px) saturate(150%);
+  -webkit-backdrop-filter: blur(8px) saturate(150%);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+.lang-toggle button {
+  border: none; background: transparent; cursor: pointer;
+  padding: 5px 12px; border-radius: 999px;
+  color: var(--color-mute); font: inherit;
+  transition: background .15s ease, color .15s ease;
+}
+.lang-toggle button.active {
+  background: var(--color-brand);
+  color: #fff;
+}
+.lang-toggle button:hover:not(.active) { color: var(--color-ink); }
+</style>
+
+<div class="lang-toggle" role="radiogroup" aria-label="Language">
+  <button type="button" data-lang="en" role="radio" aria-checked="false">Eng</button>
+  <button type="button" data-lang="ru" role="radio" aria-checked="true" class="active">Rus</button>
+</div>
+
+<script>
+(function () {
+  var DICT = {
+    en: {
+      // common
+      tagline: 'train with intent',
+      logout: 'Log out',
+      // signup
+      signup_step: 'Step 1 of 3 · account',
+      signup_role_athlete_t: 'I’m an athlete',
+      signup_role_athlete_m: 'I analyse my own training',
+      signup_role_coach_t: 'I’m a coach',
+      signup_role_coach_m: 'I review athletes’ data',
+      signup_email: 'Email',
+      signup_password: 'Password',
+      signup_password_ph: 'min 8 characters',
+      signup_name: 'Name',
+      signup_name_opt: '(optional)',
+      signup_name_ph: 'how should we address you',
+      signup_submit: 'Create account →',
+      signup_have: 'Already have an account?',
+      signup_login_link: 'Log in',
+      signup_continue_google: 'Continue with Google',
+      signup_or_email: 'or email',
+      signup_already_logged_pre: 'Logged in as',
+      signup_already_logged_post: '. To create a new account, log out first:',
+      signup_already_logged_or: 'or',
+      signup_already_logged_dash: 'go to your dashboard',
+      // login
+      login_email: 'Email',
+      login_password: 'Password',
+      login_submit: 'Log in',
+      login_forgot: 'Forgot password?',
+      login_no_account: 'No account?',
+      login_signup_link: 'Sign up',
+      login_continue_google: 'Continue with Google',
+      login_or_email: 'or email',
+      login_verified: '✓ Email verified.',
+      // done (welcome)
+      done_hi: 'Hi',
+      done_welcome: 'Welcome to BeatMetrics.',
+      done_step1_t: 'Step 1 — data source',
+      done_step1_name: 'Connect your watch or Strava',
+      done_step1_sub: 'Without a source we don’t see your training. Takes 30 seconds.',
+      done_step1_btn: 'Connect a source →',
+      done_after_h: 'What you’ll see after connecting',
+      done_after_1: '📊 Fitness trends, weekly and monthly volume',
+      done_after_2: '🎯 HR / power zone distribution',
+      done_after_3: '📅 Plan vs actual',
+      done_after_4: '🛌 Recovery, HRV, sleep (Garmin only)',
+      // onboarding/connect
+      conn_title: 'Connect a data source',
+      conn_garmin_sub: 'preferred by skiers / runners',
+      conn_garmin_btn: 'Connect →',
+      conn_section_other: 'Other watches',
+      conn_connect: 'Connect →',
+      conn_soon: 'Soon',
+      conn_skip_to_dash: 'Done, to dashboard →',
+      conn_back: 'Back to dashboard',
+      // forgot
+      forgot_intro: 'Enter your email — we’ll send a reset link.',
+      forgot_email: 'Email',
+      forgot_submit: 'Send link →',
+      forgot_back: '← back to login',
+      forgot_sent: 'If this email is registered, we’ve sent reset instructions.',
+      forgot_sent_sub: 'Check your inbox (and spam). Link expires in 1 hour.',
+      // reset
+      reset_intro_pre: 'Set a new password for',
+      reset_new: 'New password',
+      reset_new_ph: 'min 8 characters',
+      reset_repeat: 'Repeat password',
+      reset_submit: 'Save new password →',
+      reset_token_err: 'Link expired or already used.',
+      reset_request_new: 'Request a new one →'
+    },
+    ru: {
+      tagline: 'тренируйся осознанно',
+      logout: 'Выйти',
+      signup_step: 'Шаг 1 из 3 · аккаунт',
+      signup_role_athlete_t: '🏃 Я атлет',
+      signup_role_athlete_m: 'анализирую свои тренировки',
+      signup_role_coach_t: '👔 Я тренер',
+      signup_role_coach_m: 'смотрю данные атлетов',
+      signup_email: 'Email',
+      signup_password: 'Пароль',
+      signup_password_ph: 'минимум 8 символов',
+      signup_name: 'Имя',
+      signup_name_opt: '(необязательно)',
+      signup_name_ph: 'как к тебе обращаться',
+      signup_submit: 'Создать аккаунт →',
+      signup_have: 'Уже есть аккаунт?',
+      signup_login_link: 'Войти',
+      signup_continue_google: 'Продолжить с Google',
+      signup_or_email: 'или email',
+      signup_already_logged_pre: 'Уже вошли как',
+      signup_already_logged_post: '. Чтобы зарегистрировать новый аккаунт — сначала выйди:',
+      signup_already_logged_or: 'или',
+      signup_already_logged_dash: 'перейти на свой dashboard',
+      login_email: 'Email',
+      login_password: 'Пароль',
+      login_submit: 'Войти',
+      login_forgot: 'Забыл пароль?',
+      login_no_account: 'Нет аккаунта?',
+      login_signup_link: 'Зарегистрироваться',
+      login_continue_google: 'Продолжить с Google',
+      login_or_email: 'или email',
+      login_verified: '✓ Email подтверждён.',
+      done_hi: 'Привет',
+      done_welcome: 'Добро пожаловать в BeatMetrics.',
+      done_step1_t: 'Шаг 1 — источник данных',
+      done_step1_name: 'Подключи часы или Strava',
+      done_step1_sub: 'Без подключения мы не видим твоих тренировок. Это займёт 30 секунд.',
+      done_step1_btn: 'Подключить источник →',
+      done_after_h: 'Что появится после подключения',
+      done_after_1: '📊 Тренды формы, объём по неделям и месяцам',
+      done_after_2: '🎯 Распределение по HR/мощности зонам',
+      done_after_3: '📅 Сравнение плана с фактом',
+      done_after_4: '🛌 Recovery, HRV, сон (для Garmin)',
+      conn_title: 'Подключи источник данных',
+      conn_garmin_sub: 'основной выбор лыжников / бегунов',
+      conn_garmin_btn: 'Подключить →',
+      conn_section_other: 'Другие часы',
+      conn_connect: 'Подключить →',
+      conn_soon: 'Скоро',
+      conn_skip_to_dash: 'Готово, к dashboard →',
+      conn_back: 'Назад к dashboard',
+      forgot_intro: 'Введи email — пришлём ссылку на сброс пароля.',
+      forgot_email: 'Email',
+      forgot_submit: 'Прислать ссылку →',
+      forgot_back: '← к входу',
+      forgot_sent: 'Если аккаунт с этим email есть — мы выслали инструкцию для сброса пароля.',
+      forgot_sent_sub: 'Проверь почту (включая спам). Ссылка действует 1 час.',
+      reset_intro_pre: 'Установи новый пароль для',
+      reset_new: 'Новый пароль',
+      reset_new_ph: 'минимум 8 символов',
+      reset_repeat: 'Повтори пароль',
+      reset_submit: 'Сохранить новый пароль →',
+      reset_token_err: 'Ссылка истекла или уже использована.',
+      reset_request_new: 'Запросить новую ссылку →'
+    }
+  };
+
+  var KEY = 'beatmetrics_lang';
+  var stored = localStorage.getItem(KEY);
+  var lang = (stored === 'en' || stored === 'ru') ? stored : 'ru';
+
+  function applyLang(l) {
+    lang = l;
+    localStorage.setItem(KEY, l);
+    document.documentElement.setAttribute('lang', l);
+    var dict = DICT[l] || {};
+    document.querySelectorAll('[data-i18n]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n');
+      if (dict[key] !== undefined) el.innerHTML = dict[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-placeholder');
+      if (dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
+    });
+    document.querySelectorAll('.lang-toggle button').forEach(function (b) {
+      var isActive = b.dataset.lang === l;
+      b.classList.toggle('active', isActive);
+      b.setAttribute('aria-checked', isActive ? 'true' : 'false');
+    });
+  }
+
+  document.querySelectorAll('.lang-toggle button').forEach(function (b) {
+    b.addEventListener('click', function () { applyLang(b.dataset.lang); });
+  });
+  applyLang(lang);
+})();
+</script>

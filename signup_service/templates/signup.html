@@ -4,7 +4,7 @@
 <main class="auth-shell">
   <div class="auth-card">
     <div class="logo-wrap">{% include "_logo.html" %}</div>
-    <div class="tagline">тренируйся осознанно</div>
+    <div class="tagline" data-i18n="tagline">тренируйся осознанно</div>
 
     {% if not current_user %}
       <div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
@@ -13,7 +13,7 @@
         <span class="dot"></span>
         <span class="line"></span>
         <span class="dot"></span>
-        <span class="label">Шаг 1 из 3 · аккаунт</span>
+        <span class="label" data-i18n="signup_step">Шаг 1 из 3 · аккаунт</span>
       </div>
     {% endif %}
 
@@ -39,11 +39,11 @@
             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
           </svg>
-          Продолжить с Google
+          <span data-i18n="signup_continue_google">Продолжить с Google</span>
         </a>
         <div style="display:flex;align-items:center;gap:8px;margin:12px 0;color:var(--color-mute);font-size:var(--fs-sm)">
           <span style="flex:1;height:1px;background:var(--color-line)"></span>
-          или email
+          <span data-i18n="signup_or_email">или email</span>
           <span style="flex:1;height:1px;background:var(--color-line)"></span>
         </div>
       {% endif %}
@@ -70,23 +70,23 @@
             <input type="radio" name="role" value="athlete"
                    {% if selected_role != 'coach' %}checked{% endif %}>
             <div>
-              <div class="role-title">🏃 Я атлет</div>
-              <div class="role-meta">анализирую свои тренировки</div>
+              <div class="role-title" data-i18n="signup_role_athlete_t">🏃 Я атлет</div>
+              <div class="role-meta" data-i18n="signup_role_athlete_m">анализирую свои тренировки</div>
             </div>
           </label>
           <label class="role-option {% if selected_role == 'coach' %}selected{% endif %}">
             <input type="radio" name="role" value="coach"
                    {% if selected_role == 'coach' %}checked{% endif %}>
             <div>
-              <div class="role-title">👔 Я тренер</div>
-              <div class="role-meta">смотрю данные атлетов</div>
+              <div class="role-title" data-i18n="signup_role_coach_t">👔 Я тренер</div>
+              <div class="role-meta" data-i18n="signup_role_coach_m">смотрю данные атлетов</div>
             </div>
           </label>
         </div>
       {% endif %}
 
       <div class="field">
-        <label for="email">Email</label>
+        <label for="email" data-i18n="signup_email">Email</label>
         <input id="email" name="email" type="email" required
                autocomplete="email" placeholder="ivan@example.com"
                value="{{ email_value or '' }}"
@@ -94,23 +94,25 @@
       </div>
 
       <div class="field">
-        <label for="password">Пароль</label>
+        <label for="password" data-i18n="signup_password">Пароль</label>
         <input id="password" name="password" type="password" required
                autocomplete="new-password" minlength="8"
-               placeholder="минимум 8 символов">
+               placeholder="минимум 8 символов"
+               data-i18n-placeholder="signup_password_ph">
       </div>
 
       <div class="field">
-        <label for="name">Имя <span style="color:var(--color-mute);text-transform:none;letter-spacing:0;font-weight:400">(необязательно)</span></label>
+        <label for="name"><span data-i18n="signup_name">Имя</span> <span data-i18n="signup_name_opt" style="color:var(--color-mute);text-transform:none;letter-spacing:0;font-weight:400">(необязательно)</span></label>
         <input id="name" name="name" type="text" autocomplete="given-name"
                placeholder="как к тебе обращаться"
+               data-i18n-placeholder="signup_name_ph"
                value="{{ name_value or '' }}">
       </div>
 
-      <button type="submit" class="btn btn-primary" style="margin-top:4px">Создать аккаунт →</button>
+      <button type="submit" class="btn btn-primary" style="margin-top:4px" data-i18n="signup_submit">Создать аккаунт →</button>
 
       <div class="form-bottom">
-        Уже есть аккаунт? <a href="/login">Войти</a>
+        <span data-i18n="signup_have">Уже есть аккаунт?</span> <a href="/login" data-i18n="signup_login_link">Войти</a>
       </div>
     </form>
   </div>

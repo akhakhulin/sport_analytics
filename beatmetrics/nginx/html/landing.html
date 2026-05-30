@@ -40,27 +40,6 @@ header.nav {
 .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; }
 .nav-logo svg { width: 32px; height: 32px; }
 
-/* Language toggle (Eng/Rus pill) */
-.lang-toggle {
-  display: inline-flex; align-items: center;
-  background: var(--brand-soft);
-  border-radius: 999px; padding: 4px;
-  font-size: 13px; font-weight: 500;
-  user-select: none;
-}
-.lang-toggle button {
-  border: none; background: transparent; cursor: pointer;
-  padding: 6px 14px; border-radius: 999px;
-  color: var(--mute); font: inherit;
-  transition: background .15s ease, color .15s ease;
-}
-.lang-toggle button.active {
-  background: #ffffff;
-  color: var(--brand);
-  box-shadow: 0 1px 3px rgba(60,52,137,0.12);
-}
-.lang-toggle button:hover:not(.active) { color: var(--ink); }
-
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
   padding: 10px 18px; border-radius: 6px; font-size: 14px; font-weight: 500;
@@ -178,10 +157,6 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       </svg>
       BeatMetrics
     </a>
-    <div class="lang-toggle" role="radiogroup" aria-label="Language">
-      <button type="button" data-lang="en" role="radio" aria-checked="false">Eng</button>
-      <button type="button" data-lang="ru" role="radio" aria-checked="true" class="active">Rus</button>
-    </div>
   </div>
 </header>
 
@@ -265,84 +240,6 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
   &copy; 2026 BeatMetrics ·
   <a href="mailto:a.khakhulin89@gmail.com">support</a>
 </footer>
-
-<script>
-(function () {
-  var DICT = {
-    en: {
-      hero_title: 'Train with <em>intent</em>,<br>not on a hunch',
-      hero_lead: 'BeatMetrics pulls workouts from Garmin, Strava, Polar and Suunto into a single dashboard. Fitness trends, zone distribution, recovery, plan vs actual — for skiers, runners and cyclists.',
-      cta_signup: 'Get started →',
-      values_h2: 'What you get after connecting',
-      v1_t: 'Fitness trends',
-      v1_p: 'CTL / ATL / TSB from hrTSS. See when you are peaking and when you are overloaded.',
-      v2_t: 'Zones and intensity',
-      v2_p: 'Time distribution across HR and power zones. Compare your week with benchmarks for your discipline.',
-      v3_t: 'Plan vs actual',
-      v3_p: 'Training plan next to actual sessions. See where you underdid it and where you overshot.',
-      v4_t: 'Recovery and HRV',
-      v4_p: 'Sleep, Body Battery, HRV trend (for Garmin). Know when to push and when to rest.',
-      v5_t: 'Work with your coach',
-      v5_p: 'Invite a coach by link — they see your data and build plans on numbers, not on "how you feel".',
-      v6_t: 'Your data stays yours',
-      v6_p: 'We store workouts ourselves, we do not sell to third parties. Revoke access and delete your account anytime.',
-      sources_h2: 'Connect your source',
-      sources_sub: '— we will sync workouts within a few minutes',
-      apple_note: '(via Strava)',
-      coros_note: '(soon)'
-    },
-    ru: {
-      hero_title: 'Тренируйся <em>осознанно</em>,<br>а не на чутьё',
-      hero_lead: 'BeatMetrics собирает тренировки из Garmin, Strava, Polar и Suunto в один дашборд. Тренды формы, распределение по зонам, recovery, сравнение плана с фактом — для лыжников, бегунов и велосипедистов.',
-      cta_signup: 'Начать →',
-      values_h2: 'Что ты увидишь после подключения',
-      v1_t: 'Тренды формы',
-      v1_p: 'CTL / ATL / TSB по hrTSS. Видишь когда ты в форме, а когда перегружен.',
-      v2_t: 'Зоны и интенсивность',
-      v2_p: 'Распределение времени по HR и мощностным зонам. Сравниваешь неделю с эталонами по твоей дисциплине.',
-      v3_t: 'План vs факт',
-      v3_p: 'Тренировочный план рядом с фактическими активностями. Видно где недобрал, где переборщил.',
-      v4_t: 'Recovery и HRV',
-      v4_p: 'Сон, Body Battery, HRV-тренд (для Garmin). Понимаешь когда можно грузиться, а когда отдохнуть.',
-      v5_t: 'Совместная работа с тренером',
-      v5_p: 'Пригласи тренера по ссылке — он видит твои данные и может строить план опираясь на цифры, не на «как себя чувствуешь».',
-      v6_t: 'Твои данные — твои',
-      v6_p: 'Тренировки хранятся у нас, ничего не продаём третьим сторонам. Можно отозвать доступ и удалить аккаунт в любой момент.',
-      sources_h2: 'Подключи свой источник',
-      sources_sub: '— и мы синканем тренировки в течение нескольких минут',
-      apple_note: '(через Strava)',
-      coros_note: '(скоро)'
-    }
-  };
-  var KEY = 'beatmetrics_landing_lang';
-  var stored = localStorage.getItem(KEY);
-  var lang = (stored === 'en' || stored === 'ru') ? stored : 'ru';
-
-  function applyLang(l) {
-    lang = l;
-    localStorage.setItem(KEY, l);
-    document.documentElement.setAttribute('lang', l);
-    var dict = DICT[l];
-    document.querySelectorAll('[data-i18n]').forEach(function (el) {
-      var key = el.getAttribute('data-i18n');
-      if (dict[key]) el.innerHTML = dict[key];
-    });
-    document.querySelectorAll('.lang-toggle button').forEach(function (b) {
-      var isActive = b.dataset.lang === l;
-      b.classList.toggle('active', isActive);
-      b.setAttribute('aria-checked', isActive ? 'true' : 'false');
-    });
-    document.title = (l === 'en')
-      ? 'BeatMetrics — train with intent'
-      : 'BeatMetrics — тренируйся осознанно';
-  }
-
-  document.querySelectorAll('.lang-toggle button').forEach(function (b) {
-    b.addEventListener('click', function () { applyLang(b.dataset.lang); });
-  });
-  applyLang(lang);
-})();
-</script>
 
 </body>
 </html>
