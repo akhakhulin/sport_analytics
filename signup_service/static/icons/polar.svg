@@ -1,6 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" role="img" aria-label="Polar">
-  <circle cx="12" cy="12" r="11" fill="#cb1d22"/>
-  <text x="12" y="16" font-family="-apple-system,Segoe UI,Inter,system-ui,sans-serif"
-        font-size="12" font-weight="700" fill="#fff" text-anchor="middle"
-        letter-spacing="-0.5">P</text>
+  <circle cx="12" cy="12" r="9" fill="none" stroke="#1a1a18" stroke-width="2"/>
+  <circle cx="12" cy="12" r="4.5" fill="#e30613"/>
 </svg>
