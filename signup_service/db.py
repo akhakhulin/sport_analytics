@@ -44,13 +44,16 @@ def init_schema() -> None:
         )
         c.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)")
 
-        # Миграция: если у старой БД нет колонок role/coach_user_id — добавим
-        # ДО создания индекса на coach_user_id
+        # Миграция: если у старой БД нет колонок role/coach_user_id/auth_method —
+        # добавим ДО создания индекса на coach_user_id
         cols = {r["name"] for r in c.execute("PRAGMA table_info(users)").fetchall()}
         if "role" not in cols:
             c.execute("ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'athlete'")
         if "coach_user_id" not in cols:
             c.execute("ALTER TABLE users ADD COLUMN coach_user_id TEXT")
+        if "auth_method" not in cols:
+            # 'email' (создан через signup-форму) | 'google' (через OAuth Google)
+            c.execute("ALTER TABLE users ADD COLUMN auth_method TEXT NOT NULL DEFAULT 'email'")
 
         c.execute("CREATE INDEX IF NOT EXISTS idx_users_coach ON users(coach_user_id)")
 
@@ -218,10 +221,14 @@ def create_user(
     name: str | None = None,
     role: str = "athlete",
     coach_user_id: str | None = None,
+    auth_method: str = "email",
 ) -> str:
-    """Хэширует пароль и создаёт user. Возвращает user_id."""
+    """Хэширует пароль и создаёт user. Возвращает user_id.
+    auth_method: 'email' (signup-форма) или 'google' (OAuth)."""
     if role not in ("athlete", "coach"):
         role = "athlete"
+    if auth_method not in ("email", "google"):
+        auth_method = "email"
     user_id = str(uuid.uuid4())
     pw_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
     name_clean = (name or "").strip() or None
@@ -229,11 +236,11 @@ def create_user(
         c.execute(
             """
             INSERT INTO users (user_id, email, password_hash, name, role,
-                               coach_user_id, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                               coach_user_id, auth_method, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (user_id, email.lower().strip(), pw_hash, name_clean, role,
-             coach_user_id, _now_iso()),
+             coach_user_id, auth_method, _now_iso()),
         )
         c.commit()
     return user_id

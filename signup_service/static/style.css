@@ -70,7 +70,37 @@ html, body {
   font-weight: 500;
 }
 
-/* === Stepper «Шаг X из N» === */
+/* === Stepper-roadmap (show all 3 steps with labels) === */
+.steps-roadmap {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 4px; margin: 0 0 18px;
+  padding: 10px 14px;
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(10px) saturate(150%);
+  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--r-md);
+}
+.steps-roadmap .rm-step {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.5px;
+  color: var(--color-mute); font-weight: 500;
+}
+.steps-roadmap .rm-step.active { color: var(--color-brand); }
+.steps-roadmap .rm-step .rm-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--color-line); color: var(--color-mute);
+  font-size: 10px; font-weight: 700;
+}
+.steps-roadmap .rm-step.active .rm-num {
+  background: var(--color-brand); color: #fff;
+}
+.steps-roadmap .rm-arrow {
+  color: var(--color-line); font-size: var(--fs-xs); flex: 0 0 auto;
+}
+
+/* === Stepper «Шаг X из N» (legacy) === */
 .steps {
   display: flex; align-items: center; gap: 6px;
   margin: 0 0 18px;
@@ -153,6 +183,11 @@ html, body {
 }
 .btn-primary:hover { background: #2f2a73; border-color: #2f2a73; }
 
+.form-legal {
+  margin-top: 10px;
+  font-size: var(--fs-xs); color: var(--color-mute);
+  line-height: 1.45; text-align: center;
+}
 .form-bottom {
   text-align: center; margin-top: 16px;
   font-size: var(--fs-md); color: var(--color-mute);

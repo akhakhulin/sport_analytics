@@ -177,7 +177,14 @@ async def signup_post(
         return _err("Похоже на невалидный email")
     if len(password) < 8:
         return _err("Пароль должен быть от 8 символов")
-    if users_db.find_user_by_email(email_norm) is not None:
+    existing = users_db.find_user_by_email(email_norm)
+    if existing is not None:
+        # Friendly hint если этот email уже привязан к Google
+        if existing["auth_method"] == "google":
+            return _err(
+                "Этот email уже привязан к Google — войди через кнопку "
+                "«Продолжить с Google» наверху", status=409,
+            )
         return _err("Этот email уже зарегистрирован — попробуй войти", status=409)
 
     users_db.create_user(
@@ -240,6 +247,15 @@ async def login_post(
 ):
     email_norm = (email or "").strip().lower()
     user_row = users_db.find_user_by_email(email_norm)
+    # Friendly hint: если user зарегался через Google, пароля у него нет
+    if user_row is not None and user_row["auth_method"] == "google":
+        return templates.TemplateResponse(
+            request, "login.html",
+            _ctx(request,
+                 error="Этот аккаунт зарегистрирован через Google — войди через кнопку «Продолжить с Google» выше",
+                 email_value=email_norm, next_url=next or None),
+            status_code=401,
+        )
     if user_row is None or not users_db.verify_password(password, user_row["password_hash"]):
         return templates.TemplateResponse(
             request, "login.html",
@@ -593,6 +609,22 @@ async def verify_email(request: Request, token: str | None = None):
     if _get_current_user(request):
         return RedirectResponse("/done?verified=1", status_code=303)
     return RedirectResponse("/login?verified=1", status_code=303)
+
+
+@app.post("/settings/role/{new_role}")
+async def settings_change_role(new_role: str, request: Request):
+    """Переключение роли athlete↔coach. По умолчанию все signup-ы athlete;
+    тренер может переключить с /done через кнопку «Я тренер»."""
+    user = _get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    if new_role not in ("athlete", "coach"):
+        return RedirectResponse("/done?role_error=invalid", status_code=303)
+    with users_db.get_conn() as c:
+        c.execute("UPDATE users SET role = ? WHERE user_id = ?",
+                  (new_role, user["user_id"]))
+        c.commit()
+    return RedirectResponse("/done", status_code=303)
 
 
 @app.post("/coach/invite")

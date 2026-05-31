@@ -153,6 +153,17 @@
         </div>
       {% endif %}
 
+      {# Опция «Я тренер» — для свежезарегистрированных, default=athlete #}
+      <div style="margin-top:14px;text-align:center;font-size:var(--fs-sm);color:var(--color-mute)">
+        <span data-i18n="done_coach_switch_pre">Регистрировались как тренер?</span>
+        <form method="post" action="/settings/role/coach" style="display:inline;margin:0">
+          <button type="submit" class="link-btn" style="background:none;border:none;
+                  padding:0;color:var(--color-brand);font-weight:500;cursor:pointer;
+                  font-family:inherit;font-size:inherit;text-decoration:underline"
+                  data-i18n="done_coach_switch_btn">Переключить профиль</button>
+        </form>
+      </div>
+
       <form method="post" action="/logout" style="margin: 18px 0 0">
         <button type="submit" class="btn" data-i18n="logout">Выйти</button>
       </form>

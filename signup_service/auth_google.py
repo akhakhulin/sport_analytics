@@ -121,9 +121,12 @@ async def google_callback(request: Request, code: str | None = None,
     existing = users_db.find_user_by_email(email)
     if existing is None:
         # Создаём с рандом-паролем (не используется для входа,
-        # но колонка NOT NULL — заполняем заглушкой)
+        # но колонка NOT NULL — заполняем заглушкой). auth_method='google'
+        # чтобы на /login по email мы могли узнать пользователя и сказать
+        # «у тебя Google-аккаунт, войди через Google»
         random_password = secrets.token_urlsafe(32)
-        users_db.create_user(email, random_password, name=name, role="athlete")
+        users_db.create_user(email, random_password, name=name, role="athlete",
+                             auth_method="google")
         # Помечаем email_verified_at вручную (create_user не выставляет)
         with users_db.get_conn() as c:
             c.execute(

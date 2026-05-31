@@ -7,13 +7,21 @@
     <div class="tagline" data-i18n="tagline">тренируйся осознанно</div>
 
     {% if not current_user %}
-      <div class="steps" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
-        <span class="dot active"></span>
-        <span class="line"></span>
-        <span class="dot"></span>
-        <span class="line"></span>
-        <span class="dot"></span>
-        <span class="label" data-i18n="signup_step">Шаг 1 из 3 · аккаунт</span>
+      <div class="steps-roadmap" role="progressbar" aria-valuemin="1" aria-valuemax="3" aria-valuenow="1">
+        <div class="rm-step active">
+          <span class="rm-num">1</span>
+          <span class="rm-text" data-i18n="step1_label">Аккаунт</span>
+        </div>
+        <span class="rm-arrow">→</span>
+        <div class="rm-step">
+          <span class="rm-num">2</span>
+          <span class="rm-text" data-i18n="step2_label">Устройство</span>
+        </div>
+        <span class="rm-arrow">→</span>
+        <div class="rm-step">
+          <span class="rm-num">3</span>
+          <span class="rm-text" data-i18n="step3_label">Готово</span>
+        </div>
       </div>
     {% endif %}
 
@@ -68,27 +76,9 @@
           </div>
         </div>
         <input type="hidden" name="invite_token" value="{{ invite_token }}">
-        <input type="hidden" name="role" value="athlete">
-      {% else %}
-        <div class="role-chooser">
-          <label class="role-option {% if selected_role != 'coach' %}selected{% endif %}">
-            <input type="radio" name="role" value="athlete"
-                   {% if selected_role != 'coach' %}checked{% endif %}>
-            <div>
-              <div class="role-title" data-i18n="signup_role_athlete_t">🏃 Я атлет</div>
-              <div class="role-meta" data-i18n="signup_role_athlete_m">анализирую свои тренировки</div>
-            </div>
-          </label>
-          <label class="role-option {% if selected_role == 'coach' %}selected{% endif %}">
-            <input type="radio" name="role" value="coach"
-                   {% if selected_role == 'coach' %}checked{% endif %}>
-            <div>
-              <div class="role-title" data-i18n="signup_role_coach_t">🤝 Я тренер</div>
-              <div class="role-meta" data-i18n="signup_role_coach_m">смотрю данные атлетов</div>
-            </div>
-          </label>
-        </div>
       {% endif %}
+      {# Роль = athlete по дефолту (server-side). Тренер переключит на /done. #}
+      <input type="hidden" name="role" value="athlete">
 
       <div class="field">
         <label for="email" data-i18n="signup_email">Email</label>
@@ -115,6 +105,11 @@
       </div>
 
       <button type="submit" class="btn btn-primary" style="margin-top:4px" data-i18n="signup_submit">Создать аккаунт →</button>
+
+      <div class="form-legal" data-i18n="signup_legal">
+        Нажимая «Создать аккаунт», вы соглашаетесь с
+        пользовательским соглашением и политикой конфиденциальности.
+      </div>
 
       <div class="form-bottom">
         <span data-i18n="signup_have">Уже есть аккаунт?</span> <a href="/login" data-i18n="signup_login_link">Войти</a>
