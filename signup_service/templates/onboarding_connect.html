@@ -5,7 +5,7 @@
   <div class="onb-card">
     <div class="logo-wrap">{% include "_logo.html" %}</div>
 
-    <div class="section-title">Подключи источник данных</div>
+    <div class="section-title" data-i18n="conn_title">Подключи источник данных</div>
 
     {% if request.query_params.get('connected') %}
       <div class="alert-success" style="margin-top:12px">
@@ -31,20 +31,20 @@
           <img src="/static/icons/strava.svg" width="32" height="32" alt="Strava">
           <div>
             <div class="name">Strava</div>
-            <div class="sub">самый универсальный мост — работает с Apple Watch и большинством Garmin</div>
+            <div class="sub" data-i18n="conn_strava_sub">самый универсальный мост — работает с Apple Watch и большинством Garmin</div>
           </div>
         </div>
-        <div class="scope">активности · HR · темп · мощность · GPS-треки</div>
+        <div class="scope" data-i18n="conn_strava_scope">активности · HR · темп · мощность · GPS-треки</div>
         {% if strava_connected %}
-          <span class="meta-pill" style="background:var(--color-success);color:#fff">Подключён ✓</span>
+          <span class="meta-pill" style="background:var(--color-success);color:#fff" data-i18n="conn_connected">Подключён ✓</span>
         {% else %}
-          <a href="/oauth/strava/preview" class="btn btn-primary">Подключить →</a>
+          <a href="/oauth/strava/preview" class="btn btn-primary" data-i18n="conn_connect">Подключить →</a>
         {% endif %}
       </div>
     {% endif %}
 
     {# === ALT: Polar / Suunto / Apple Watch === #}
-    <div class="section-divider">Другие варианты</div>
+    <div class="section-divider" data-i18n="conn_section_other">Другие варианты</div>
     <div class="secondary-row cols-3">
       {% for key in ['polar', 'suunto', 'apple'] %}
         {% set p = providers.get(key) %}
@@ -55,19 +55,19 @@
               <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="{{ p.label }}">
               <div class="name">{{ p.label }}</div>
               {% if is_connected %}
-                <span class="platform-meta" style="color:var(--color-success);font-weight:500">Подключён ✓</span>
+                <span class="platform-meta" style="color:var(--color-success);font-weight:500" data-i18n="conn_connected">Подключён ✓</span>
               {% elif p.get('via_strava') %}
                 <a href="/oauth/strava/preview?from=apple" class="platform-meta"
-                   style="color:var(--color-brand);font-weight:500;text-decoration:none">
+                   style="color:var(--color-brand);font-weight:500;text-decoration:none" data-i18n="conn_connect">
                   Подключить →
                 </a>
               {% elif p.configured %}
                 <a href="/oauth/{{ key }}/preview" class="platform-meta"
-                   style="color:var(--color-brand);font-weight:500;text-decoration:none">
+                   style="color:var(--color-brand);font-weight:500;text-decoration:none" data-i18n="conn_connect">
                   Подключить →
                 </a>
               {% else %}
-                <span class="platform-meta">Скоро</span>
+                <span class="platform-meta" data-i18n="conn_soon">Скоро</span>
               {% endif %}
             </div>
           </div>
@@ -84,8 +84,9 @@
       <div style="margin-top:14px;padding:10px 14px;background:rgba(60,52,137,0.04);
                   border-radius:6px;font-size:var(--fs-sm);color:var(--color-mute);
                   text-align:center;line-height:1.5">
-        Ещё на подходе: <strong style="color:var(--color-ink)">{{ pending_list | join(' · ') }}</strong>
-        — открываем по мере получения партнёрского API
+        <span data-i18n="conn_pending_pre">Ещё на подходе:</span>
+        <strong style="color:var(--color-ink)">{{ pending_list | join(' · ') }}</strong>
+        <span data-i18n="conn_pending_post">— открываем по мере получения партнёрского API</span>
       </div>
     {% endif %}
 
