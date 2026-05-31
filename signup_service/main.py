@@ -330,11 +330,17 @@ def _provider_catalog() -> dict[str, dict]:
         "apple": {
             "label": "Apple Watch",
             "meta": "подключаем через Strava",
-            "configured": True,  # сам клик работает (редирект на /oauth/strava/preview?from=apple)
+            "configured": True,
             "via_strava": True,
         },
-        # === Не показываем как карточки — попадают в "ещё на подходе" ===
-        "garmin": {"label": "Garmin Connect", "pending": True, "_hidden": True},
+        # === Garmin — pending, но показываем карточку с inline-формой notify ===
+        "garmin": {
+            "label": "Garmin Connect",
+            "meta": "OAuth в pending",
+            "pending": True,
+            "notify_form": True,
+        },
+        # === Остальные pending — пока в compact-блоке внизу ===
         "coros":  {"label": "COROS", "pending": True, "_hidden": True},
         "trainingpeaks": {"label": "TrainingPeaks", "pending": True, "_hidden": True},
         "decathlon": {"label": "Decathlon Coach", "pending": True, "_hidden": True},
@@ -682,6 +688,33 @@ async def settings_account_delete(
 @app.get("/goodbye", response_class=HTMLResponse)
 async def goodbye_page(request: Request):
     return templates.TemplateResponse(request, "goodbye.html", _ctx(request))
+
+
+@app.post("/notify/{provider}")
+async def notify_provider(provider: str, request: Request,
+                           email: str = Form("")):
+    """Подписка на уведомление «когда {provider} заработает»."""
+    user = _get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    allowed = {"garmin", "coros", "trainingpeaks", "decathlon", "finalsurge"}
+    if provider not in allowed:
+        return RedirectResponse(
+            f"/onboarding/connect?oauth_error=notify:invalid-provider",
+            status_code=303,
+        )
+    user_row = users_db.find_user_by_id(user["user_id"])
+    email_value = (email or "").strip() or (user_row["email"] if user_row else "")
+    result = users_db.request_provider_notify(
+        email_value, provider, user_id=user["user_id"],
+    )
+    if result == "invalid":
+        return RedirectResponse(
+            f"/onboarding/connect?notify_error=invalid-email", status_code=303,
+        )
+    return RedirectResponse(
+        f"/onboarding/connect?notify_{result}={provider}", status_code=303,
+    )
 
 
 @app.post("/settings/role/{new_role}")

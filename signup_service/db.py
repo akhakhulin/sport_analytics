@@ -157,7 +157,39 @@ def init_schema() -> None:
             """
         )
         c.execute("CREATE INDEX IF NOT EXISTS idx_at_user ON auth_tokens(user_id, purpose)")
+
+        # Notify-list: «уведомить когда подключим Garmin/COROS/...»
+        c.execute(
+            """
+            CREATE TABLE IF NOT EXISTS notify_list (
+                id           INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id      TEXT,
+                email        TEXT NOT NULL,
+                provider     TEXT NOT NULL,
+                requested_at TEXT NOT NULL,
+                notified_at  TEXT,
+                UNIQUE(email, provider)
+            )
+            """
+        )
+        c.execute("CREATE INDEX IF NOT EXISTS idx_notify_provider ON notify_list(provider, notified_at)")
         c.commit()
+
+
+def request_provider_notify(email: str, provider: str,
+                             user_id: str | None = None) -> str:
+    """Регистрирует email в notify-list. Возвращает: created / already / invalid."""
+    email_norm = (email or "").strip().lower()
+    if "@" not in email_norm or len(email_norm) < 5:
+        return "invalid"
+    with get_conn() as c:
+        cur = c.execute(
+            "INSERT OR IGNORE INTO notify_list "
+            "(user_id, email, provider, requested_at) VALUES (?, ?, ?, ?)",
+            (user_id, email_norm, provider, _now_iso()),
+        )
+        c.commit()
+        return "created" if cur.rowcount > 0 else "already"
 
 
 # === Auth tokens (password reset / email verify) ===

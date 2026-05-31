@@ -22,6 +22,21 @@
         Ошибка OAuth: {{ request.query_params.get('oauth_error') }}.
       </div>
     {% endif %}
+    {% if request.query_params.get('notify_created') %}
+      <div class="alert-success" style="margin-top:12px">
+        ✓ Уведомим, когда подключится
+        <strong>{{ providers[request.query_params.get('notify_created')].label }}</strong>.
+      </div>
+    {% endif %}
+    {% if request.query_params.get('notify_already') %}
+      <div class="alert-success" style="margin-top:12px;background:#FAEEDA;border-left-color:#854F0B">
+        Вы уже в списке уведомлений для
+        <strong>{{ providers[request.query_params.get('notify_already')].label }}</strong>.
+      </div>
+    {% endif %}
+    {% if request.query_params.get('notify_error') %}
+      <div class="alert-error" style="margin-top:12px">Не удалось — невалидный email.</div>
+    {% endif %}
 
     {# === PRIMARY: Strava === #}
     {% set strava_connected = 'strava' in connected_providers %}
@@ -45,8 +60,8 @@
 
     {# === ALT: Polar / Suunto / Apple Watch === #}
     <div class="section-divider" data-i18n="conn_section_other">Другие варианты</div>
-    <div class="secondary-row cols-3">
-      {% for key in ['polar', 'suunto', 'apple'] %}
+    <div class="secondary-row cols-4">
+      {% for key in ['garmin', 'polar', 'suunto', 'apple'] %}
         {% set p = providers.get(key) %}
         {% set is_connected = key in connected_providers %}
         {% if p and not p.get('_hidden') %}
@@ -61,6 +76,27 @@
                    style="color:var(--color-brand);font-weight:500;text-decoration:none" data-i18n="conn_connect">
                   Подключить →
                 </a>
+              {% elif p.get('notify_form') %}
+                <details class="notify-details">
+                  <summary class="platform-meta" data-i18n="conn_notify_cta"
+                           style="color:var(--color-brand);font-weight:500;cursor:pointer;list-style:none">
+                    Уведомить →
+                  </summary>
+                  <form method="post" action="/notify/{{ key }}"
+                        style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
+                    <input type="email" name="email"
+                           value="{{ user.email if user else '' }}" required
+                           placeholder="email"
+                           style="padding:6px 8px;font-size:var(--fs-xs);
+                                  border:1px solid var(--color-line);
+                                  border-radius:var(--r-sm)">
+                    <button type="submit" class="btn btn-primary"
+                            style="padding:6px;font-size:var(--fs-xs);height:auto"
+                            data-i18n="conn_notify_submit">
+                      Сообщить когда заработает
+                    </button>
+                  </form>
+                </details>
               {% elif p.configured %}
                 <a href="/oauth/{{ key }}/preview" class="platform-meta"
                    style="color:var(--color-brand);font-weight:500;text-decoration:none" data-i18n="conn_connect">
