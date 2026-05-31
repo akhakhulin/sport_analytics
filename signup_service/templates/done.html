@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Готово · BeatMetrics{% endblock %}
 {% block body %}
+{% include "_app_header.html" %}
 <main class="done-shell">
   <div class="done-card {% if role == 'coach' %}done-card-wide{% endif %}">
-    <div class="logo-wrap">{% include "_logo.html" %}</div>
 
     {% if role == 'coach' %}
       {# === ТРЕНЕР === #}
@@ -86,10 +86,6 @@
       </div>
       {% endif %}
 
-      <form method="post" action="/logout" style="margin: 12px 0 0">
-        <button type="submit" class="btn" data-i18n="logout">Выйти</button>
-      </form>
-
     {% else %}
       {# === АТЛЕТ === #}
       <div class="done-check">{% if connected_count > 0 %}✓{% else %}👋{% endif %}</div>
@@ -163,10 +159,6 @@
                   data-i18n="done_coach_switch_btn">Переключить профиль</button>
         </form>
       </div>
-
-      <form method="post" action="/logout" style="margin: 18px 0 0">
-        <button type="submit" class="btn" data-i18n="logout">Выйти</button>
-      </form>
     {% endif %}
   </div>
 </main>

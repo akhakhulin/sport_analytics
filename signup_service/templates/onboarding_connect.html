@@ -1,9 +1,9 @@
 {% extends "base.html" %}
 {% block title %}Подключи источник данных · BeatMetrics{% endblock %}
 {% block body %}
+{% include "_app_header.html" %}
 <main class="onb-shell">
   <div class="onb-card">
-    <div class="logo-wrap">{% include "_logo.html" %}</div>
 
     <div class="section-title" data-i18n="conn_title">Подключи источник данных</div>
 
@@ -90,9 +90,6 @@
       </div>
     {% endif %}
 
-    <form method="post" action="/logout" style="margin-top:16px">
-      <button type="submit" class="btn" data-i18n="logout">Выйти</button>
-    </form>
   </div>
 </main>
 {% endblock %}

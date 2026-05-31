@@ -231,9 +231,9 @@ def _safe_next_url(next_url: str | None) -> str:
 
 @app.get("/login", response_class=HTMLResponse)
 async def login_get(request: Request, next: str | None = None):
-    user = _get_current_user(request)
-    if user:
-        return RedirectResponse(_safe_next_url(next), status_code=303)
+    # НЕ делаем silent redirect для залогиненного — рендерим panel
+    # «Уже вошли как X», симметрично с /signup. Пользователь может прийти
+    # на /login осознанно (переключить аккаунт), и silent redirect путает.
     return templates.TemplateResponse(request, "login.html",
                                        _ctx(request, next_url=next))
 

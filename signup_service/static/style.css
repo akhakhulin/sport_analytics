@@ -80,6 +80,57 @@ html, body {
   font-weight: 500;
 }
 
+/* === App header (logged-in pages: done / onboarding / settings) === */
+.app-header {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center;
+  gap: 12px;
+  height: 56px;
+  padding: 12px clamp(16px, 4vw, 32px);
+  background: rgba(255,255,255,0.78);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  border-bottom: 1px solid rgba(255,255,255,0.55);
+  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 2px 8px rgba(0,0,0,0.04);
+}
+.app-header-brand {
+  display: inline-flex; align-items: center; gap: 8px;
+  color: var(--color-ink); text-decoration: none;
+}
+.app-header-brand:hover { text-decoration: none; }
+.app-header-brand svg { display: block; }
+.app-header-brand-name {
+  font-size: 15px; font-weight: 500; letter-spacing: -0.01em;
+}
+.app-header-spacer { flex: 1; }
+.app-header-user {
+  font-size: var(--fs-md); color: var(--color-mute);
+  max-width: 220px; overflow: hidden; text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.app-header-logout-form { margin: 0; }
+.app-header-logout {
+  border: 1px solid var(--color-line);
+  background: rgba(255,255,255,0.6);
+  color: var(--color-ink);
+  font: inherit; font-size: var(--fs-sm); font-weight: 500;
+  padding: 6px 14px; border-radius: var(--r-md);
+  cursor: pointer; min-height: 32px;
+  transition: background .12s ease, border-color .12s ease;
+}
+.app-header-logout:hover {
+  background: var(--color-danger-bg);
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+@media (max-width: 860px) {
+  .app-header { height: 48px; padding: 8px 16px; }
+  .app-header-user { display: none; }
+}
+@media (max-width: 480px) {
+  .app-header-brand-name { display: none; }
+}
+
 /* === Stepper-roadmap (show all 3 steps with labels) === */
 .steps-roadmap {
   display: flex; align-items: center; justify-content: space-between;

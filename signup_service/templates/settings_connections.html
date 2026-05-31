@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Settings · Connections · BeatMetrics{% endblock %}
 {% block body %}
+{% include "_app_header.html" %}
 <main class="onb-shell">
   <div class="onb-card onb-card-wide">
     <div class="crumb">Settings ▸ Connections</div>
@@ -62,9 +63,6 @@
       <a href="/done" class="btn">К приложению →</a>
     </div>
 
-    <form method="post" action="/logout" style="margin-top:14px">
-      <button type="submit" class="btn">Выйти</button>
-    </form>
   </div>
 </main>
 {% endblock %}
