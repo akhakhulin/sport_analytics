@@ -18,15 +18,15 @@
     {% endif %}
 
     {% if current_user %}
-      {# Уже залогинен — НЕ показываем форму signup, она бессмысленна. #}
-      {# Только баннер с выбором: выйти или перейти на dashboard. #}
-      <div class="already-logged-banner">
-        <span data-i18n="signup_already_logged_pre">Уже вошли как</span>
-        <strong>{{ current_user.email }}</strong>{% if current_user.name %} ({{ current_user.name }}){% endif %}.
-      </div>
+      {# Уже залогинен — единый frosted-glass контейнер: info + actions. #}
+      <div class="form">
+        <div class="already-logged-banner" style="margin-bottom:14px">
+          <span data-i18n="signup_already_logged_pre">Уже вошли как</span>
+          <strong>{{ current_user.email }}</strong>{% if current_user.name %} ({{ current_user.name }}){% endif %}.
+        </div>
 
-      <div class="form" style="display:flex;flex-direction:column;gap:10px;margin-top:14px">
-        <a href="/done" class="btn btn-primary" data-i18n="signup_go_dashboard">Запустить приложение →</a>
+        <a href="/done" class="btn btn-primary" data-i18n="signup_go_dashboard"
+           style="margin-bottom:8px">Запустить приложение →</a>
         <form method="post" action="/logout" style="margin:0">
           <button type="submit" class="btn" style="width:100%" data-i18n="logout">Выйти</button>
         </form>
