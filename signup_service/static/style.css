@@ -51,6 +51,16 @@ html, body {
 .auth-card {
   width: 100%; max-width: 400px;
   position: relative; z-index: 1;
+  /* Единая frosted-glass панель — лого+tagline+form внутри одного бекграунда */
+  background: rgba(255,255,255,0.82);
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+  border: 1px solid rgba(255,255,255,0.55);
+  border-radius: var(--r-xl);
+  padding: 24px 28px;
+  box-shadow:
+    0 8px 32px rgba(0,0,0,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.6);
 }
 @media (max-width: 860px) {
   .auth-shell {
@@ -123,15 +133,9 @@ html, body {
 .steps .label { margin-left: 8px; }
 
 .form {
-  background: rgba(255,255,255,0.82);
-  backdrop-filter: blur(14px) saturate(150%);
-  -webkit-backdrop-filter: blur(14px) saturate(150%);
-  border: 1px solid rgba(255,255,255,0.55);
-  border-radius: var(--r-xl);
-  padding: 28px 28px 24px;
-  box-shadow:
-    0 8px 32px rgba(0,0,0,0.10),
-    inset 0 1px 0 rgba(255,255,255,0.6);
+  /* .form внутри .auth-card — самой панели достаточно, transparent inner */
+  background: none;
+  border: none; padding: 0;
 }
 
 .field { margin-bottom: 14px; }
@@ -197,11 +201,10 @@ html, body {
 }
 .form-bottom a:hover { text-decoration: underline; }
 
-/* Баннер «уже вошёл как X» на /signup при активной сессии */
+/* Баннер «уже вошёл как X» на /signup при активной сессии.
+   Внутри уже frosted .auth-card — не дублируем blur, просто border-tint. */
 .already-logged-banner {
-  background: rgba(255,255,255,0.82);
-  backdrop-filter: blur(10px) saturate(150%);
-  -webkit-backdrop-filter: blur(10px) saturate(150%);
+  background: rgba(255,255,255,0.55);
   border: 1px solid var(--color-line);
   border-left: 3px solid var(--color-warning);
   border-radius: var(--r-md);

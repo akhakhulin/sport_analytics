@@ -271,8 +271,9 @@ async def login_post(
 
 @app.post("/logout")
 async def logout():
-    # Редирект на публичный landing — чтобы и Streamlit-cookie не висел невалидным
-    response = RedirectResponse("https://beatmetrics.ru/", status_code=303)
+    # После logout открываем форму входа — пользователь чаще всего нажимает
+    # «Выйти» когда хочет переключить аккаунт, а не уйти на landing.
+    response = RedirectResponse("/login", status_code=303)
     _clear_session(response)
     return response
 

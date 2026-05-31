@@ -19,7 +19,7 @@ ATHLETE_ID = os.environ.get("ATHLETE_ID", "akhakhulin").strip()
 DB_PATH = PROJECT_ROOT / os.environ.get("DB_PATH", "./data/garmin.db").lstrip("./").lstrip("/")
 
 # === Файлы плана ===
-PLAN_EXCEL = PROJECT_ROOT / "plans" / "2026_05_may_schedule_v2.xlsx"
+PLAN_EXCEL = PROJECT_ROOT / "plans" / "2026_06_june_schedule.xlsx"
 PLAN_SHEET = "Тренировки списком"
 
 # === Расписание ===
