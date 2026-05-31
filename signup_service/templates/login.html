@@ -14,6 +14,11 @@
           Google: {{ request.query_params.get('google_error') }}
         </div>
       {% endif %}
+      {% if request.query_params.get('logged_out') %}
+        <div class="alert-success" data-i18n="login_logged_out">
+          ✓ Вы вышли из аккаунта
+        </div>
+      {% endif %}
       {% if request.query_params.get('verified') %}
         <div class="alert-success" data-i18n="login_verified">
           ✓ Email подтверждён.
@@ -45,7 +50,8 @@
       <div class="field">
         <label for="email" data-i18n="login_email">Email</label>
         <input id="email" name="email" type="email" required autofocus
-               autocomplete="email" value="{{ email_value or '' }}">
+               autocomplete="email"
+               value="{% if not request.query_params.get('logged_out') %}{{ email_value or '' }}{% endif %}">
       </div>
 
       <div class="field field-password">

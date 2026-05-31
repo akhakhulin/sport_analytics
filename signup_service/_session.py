@@ -54,5 +54,12 @@ def set_session(response: Response, user_row) -> None:
 
 
 def clear_session(response: Response) -> None:
-    """Удалить cookie — domain должен совпадать с тем что был при set_cookie."""
-    response.delete_cookie(SESSION_COOKIE, domain=COOKIE_DOMAIN)
+    """Удалить cookie. Делаем DOUBLE-DELETE — и с parent-domain, и host-only —
+    на случай если у пользователя от прошлых сессий лежат обе версии
+    (до SSO-миграции cookie ставилась host-only, после — с .beatmetrics.ru).
+    Браузер чтит только matching domain, лишний delete безвреден."""
+    # 1. С parent-domain (.beatmetrics.ru) — для текущих сессий
+    if COOKIE_DOMAIN:
+        response.delete_cookie(SESSION_COOKIE, domain=COOKIE_DOMAIN, path="/")
+    # 2. Host-only (app.beatmetrics.ru) — для старых сессий до SSO
+    response.delete_cookie(SESSION_COOKIE, path="/")

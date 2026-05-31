@@ -271,9 +271,9 @@ async def login_post(
 
 @app.post("/logout")
 async def logout():
-    # После logout открываем форму входа — пользователь чаще всего нажимает
-    # «Выйти» когда хочет переключить аккаунт, а не уйти на landing.
-    response = RedirectResponse("/login", status_code=303)
+    # После logout — форма входа с баннером «Вы вышли». Без баннера
+    # пользователь на shared-устройстве сомневается «а точно вышел?».
+    response = RedirectResponse("/login?logged_out=1", status_code=303)
     _clear_session(response)
     return response
 
