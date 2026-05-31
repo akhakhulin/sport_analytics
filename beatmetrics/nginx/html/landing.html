@@ -177,6 +177,82 @@ section.values { padding: 60px 0; }
 .value-card h3 { font-size: 17px; font-weight: 500; margin-bottom: 6px; }
 .value-card p { font-size: 14px; color: var(--mute); line-height: 1.55; }
 
+/* Тултипы для аббревиатур внутри value-card (CTL/ATL/TSB/hrTSS) */
+.value-card abbr[title] {
+  text-decoration: underline dotted var(--brand);
+  text-underline-offset: 3px;
+  cursor: help;
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* === Section: Как работает (3 шага) === */
+section.howto { padding: 70px 0 40px; }
+.howto h2 {
+  font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 28px; text-align: center;
+}
+.howto-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+}
+@media (max-width: 760px) {
+  .howto-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+.howto-step {
+  position: relative;
+  padding: 28px 24px 24px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: #fff;
+}
+.howto-step .step-num {
+  position: absolute; top: -18px; left: 24px;
+  width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--brand); color: #fff;
+  border-radius: 50%;
+  font-size: 16px; font-weight: 600;
+  box-shadow: 0 4px 12px rgba(60,52,137,0.32);
+}
+.howto-step h3 {
+  font-size: 17px; font-weight: 500; margin-bottom: 6px; margin-top: 8px;
+}
+.howto-step p { font-size: 14px; color: var(--mute); line-height: 1.55; }
+.howto-step .meta {
+  display: inline-block; margin-top: 10px;
+  padding: 2px 10px; background: var(--brand-soft); color: var(--brand);
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+}
+
+/* === Section: Для кого (3 карточки персон) === */
+section.audience { padding: 30px 0 60px; }
+.audience h2 {
+  font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 28px; text-align: center;
+}
+.audience-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+@media (max-width: 760px) {
+  .audience-grid { grid-template-columns: 1fr; gap: 14px; }
+}
+.audience-card {
+  padding: 28px 24px;
+  border: 1px solid var(--line); border-radius: 14px;
+  background: linear-gradient(180deg, #fff, #fafafa);
+}
+.audience-card .who {
+  display: inline-block;
+  padding: 4px 12px;
+  background: var(--brand-soft); color: var(--brand);
+  border-radius: 999px; font-size: 12px; font-weight: 500;
+  letter-spacing: 0.3px; margin-bottom: 14px;
+}
+.audience-card h3 {
+  font-size: 18px; font-weight: 500;
+  letter-spacing: -0.01em; margin-bottom: 8px;
+}
+.audience-card p { font-size: 14px; color: var(--mute); line-height: 1.6; }
+
 /* Sources */
 section.sources {
   padding: 40px 0 60px;
@@ -259,13 +335,39 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
+  <section class="howto">
+    <h2>Как это работает</h2>
+    <div class="howto-grid">
+      <div class="howto-step">
+        <div class="step-num">1</div>
+        <h3>Регистрируешься</h3>
+        <p>Email или один клик через Google. Не нужна карта — это бета и она бесплатна.</p>
+        <span class="meta">~ 10 секунд</span>
+      </div>
+      <div class="howto-step">
+        <div class="step-num">2</div>
+        <h3>Подключаешь источник</h3>
+        <p>Strava (мост для Apple Watch и большинства Garmin), Polar или Suunto.
+           Один OAuth-клик — мы получаем доступ только на чтение.</p>
+        <span class="meta">~ 30 секунд</span>
+      </div>
+      <div class="howto-step">
+        <div class="step-num">3</div>
+        <h3>Получаешь аналитику</h3>
+        <p>Тренировки за последние 90 дней синхронизируются автоматически.
+           Дальше — обновление каждые 30 минут в фоне.</p>
+        <span class="meta">через 2–5 минут</span>
+      </div>
+    </div>
+  </section>
+
   <section class="values">
     <h2 data-i18n="values_h2">Что ты увидишь после подключения</h2>
     <div class="value-grid">
       <div class="value-card">
         <div class="icon">📊</div>
         <h3 data-i18n="v1_t">Тренды формы</h3>
-        <p data-i18n="v1_p">CTL / ATL / TSB по hrTSS. Видишь когда ты в форме, а когда перегружен.</p>
+        <p data-i18n="v1_p"><abbr title="Chronic Training Load — фитнес, экспоненциальное среднее нагрузки за 42 дня">CTL</abbr> / <abbr title="Acute Training Load — усталость, среднее за 7 дней">ATL</abbr> / <abbr title="Training Stress Balance — форма, разница CTL минус ATL">TSB</abbr> по <abbr title="heart-rate Training Stress Score — нагрузка тренировки по пульсу относительно LTHR">hrTSS</abbr>. Видишь когда ты в форме, а когда перегружен.</p>
       </div>
       <div class="value-card">
         <div class="icon">🎯</div>
@@ -291,6 +393,30 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
         <div class="icon">🔒</div>
         <h3 data-i18n="v6_t">Твои данные — твои</h3>
         <p data-i18n="v6_p">Тренировки хранятся у нас, ничего не продаём третьим сторонам. Можно отозвать доступ и удалить аккаунт в любой момент.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="audience">
+    <h2>Для кого это</h2>
+    <div class="audience-grid">
+      <div class="audience-card">
+        <div class="who">🏃 Любителю</div>
+        <h3>Тренируйся осмысленно, а не хаотично</h3>
+        <p>Видишь когда форма растёт, а когда нужен отдых. Перестаёшь тренироваться
+           «по самочувствию» и начинаешь по объективным метрикам — не сгораешь и не плато́́́́́сишь.</p>
+      </div>
+      <div class="audience-card">
+        <div class="who">🏆 Спортсмену</div>
+        <h3>Готовишься к старту — выходи в пик в день гонки</h3>
+        <p>CTL / ATL / TSB показывают где ты на кривой формы. Тейпер перед стартом,
+           распределение зон по неделям, сравнение с эталонами по дисциплине.</p>
+      </div>
+      <div class="audience-card">
+        <div class="who">🤝 Тренеру</div>
+        <h3>Видишь данные всех атлетов в одном месте</h3>
+        <p>Приглашаешь атлета по ссылке — получаешь его тренировки. Строишь план
+           на цифрах: HR-зоны, hrTSS, recovery — не на «как ты себя чувствуешь».</p>
       </div>
     </div>
   </section>
