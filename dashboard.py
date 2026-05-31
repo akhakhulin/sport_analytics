@@ -977,12 +977,36 @@ if st.sidebar.button("📄 PDF-экспорт", key="pdf_export", use_container_
 
 # region Header + KPI
 
-st.title(f"🏃 Аналитика Спортсмена · {selected_athlete}")
-st.caption(
-    f"👤 **{selected_athlete}**  ·  "
-    f"📅 **{start}** → **{end}**  ·  📊 **{len(view)}** активностей  ·  "
-    f"📐 группировка: **{AGG_NOM}**  ·  "
-    f"🕐 {datetime.now().strftime('%H:%M:%S')}"
+# Title-блок (P0-2 от UX-агента): убрали '🏃 Аналитика Спортсмена · {email}' —
+# эмодзи-бегунок не подходит лыжникам, leak email/username в title мешает
+# screenshot-sharing, заголовок дублирует st.logo() в сайдбаре. Заменили на
+# компактный period-bar. Имя атлета — только для тренера в режиме просмотра
+# чужого профиля (атлет себя сам знает).
+if IS_ADMIN and selected_athlete != USER.athlete_id:
+    st.markdown(
+        f'<div style="font-size:18px; font-weight:500; color:#2C2C2A;'
+        f' margin: 4px 0 2px;">Атлет: <b>{selected_athlete}</b></div>',
+        unsafe_allow_html=True,
+    )
+
+# Period-bar: компактная строка с минимумом эмодзи и без часов:минут.
+_period_short = {
+    "7 дней": "7 дней", "14 дней ★": "14 дней", "30 дней": "30 дней",
+    "90 дней": "90 дней", "365 дней": "год", "Свой диапазон": "свой период",
+}.get(preset, preset)
+st.markdown(
+    f'<div style="display:flex; gap:16px; align-items:baseline; flex-wrap:wrap;'
+    f' padding:6px 0 14px; border-bottom:1px solid rgba(0,0,0,0.08);'
+    f' margin-bottom:12px; font-size:13px; color:#5F5E5A;">'
+    f'<span style="font-size:15px; color:#2C2C2A; font-weight:500;'
+    f' letter-spacing:-0.01em;">{_period_short}</span>'
+    f'<span>{start.strftime("%d.%m")} – {end.strftime("%d.%m.%Y")}</span>'
+    f'<span style="color:rgba(0,0,0,0.20);">·</span>'
+    f'<span><b style="color:#2C2C2A;">{len(view)}</b> активностей</span>'
+    f'<span style="color:rgba(0,0,0,0.20);">·</span>'
+    f'<span>по {AGG_LOC}</span>'
+    f'</div>',
+    unsafe_allow_html=True,
 )
 
 

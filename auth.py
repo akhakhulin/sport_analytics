@@ -319,6 +319,43 @@ html, body,
 .bm-login-logo { text-align: center; margin: 32px 0 4px; }
 .bm-login-sub { text-align: center; color: #3c3489; font-size: 13px;
     margin-bottom: 4px; font-weight: 500; }
+/* SSO redirect-screen для незалогиненных */
+.bm-redirect-card {
+    max-width: 380px; margin: 16px auto; padding: 28px;
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.55);
+    border-radius: 14px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.10),
+                inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.bm-redirect-msg {
+    text-align: center; color: #1a1a18; font-size: 14px;
+    line-height: 1.5; margin-bottom: 18px;
+}
+.bm-redirect-msg b { color: #3c3489; }
+.bm-redirect-cta {
+    display: flex; align-items: center; justify-content: center;
+    height: 42px; width: 100%;
+    background: #3c3489 !important;
+    color: #ffffff !important;
+    border: 1px solid #3c3489;
+    border-radius: 6px;
+    text-decoration: none !important;
+    font-weight: 500; font-size: 14px;
+    transition: background .12s ease;
+}
+.bm-redirect-cta:hover { background: #2f2a73 !important; }
+.bm-redirect-coach-hint {
+    margin-top: 16px; text-align: center;
+    font-size: 11px; color: #6b6a64;
+}
+.bm-redirect-coach-hint a {
+    color: #3c3489 !important; font-weight: 500;
+    text-decoration: none !important;
+}
+.bm-redirect-coach-hint a:hover { text-decoration: underline !important; }
 </style>
 """
 
@@ -362,10 +399,35 @@ def _login_form(users_cfg) -> AuthUser:
                 st.session_state["auth_user"] = restored
                 return restored
 
-    # 3) Рисуем форму
+    # 4) SSO-first: для незалогиненных рисуем не форму, а redirect-screen
+    #    на единую точку входа app.beatmetrics.ru/login. Старая форма остаётся
+    #    только за ?coach_login=1 (технический fallback для coach в обход SSO,
+    #    например когда SSO-секрет рассинхронизирован).
+    is_coach_fallback = "coach_login" in st.query_params
+
     st.markdown(_LOGIN_CSS, unsafe_allow_html=True)
     st.markdown(_LOGIN_LOGO_SVG, unsafe_allow_html=True)
 
+    if not is_coach_fallback:
+        st.markdown(
+            '<div class="bm-redirect-card">'
+            '<div class="bm-redirect-msg">'
+            'Войдите через <b>основной кабинет</b> BeatMetrics — '
+            'там единая регистрация и Google-логин.'
+            '</div>'
+            '<a class="bm-redirect-cta" target="_self" '
+            'href="https://app.beatmetrics.ru/login?next='
+            'https%3A%2F%2Fbeatmetrics.ru%2Fdashboard%2F">Перейти ко входу →</a>'
+            '<div class="bm-redirect-coach-hint">'
+            'Тренеру нужен прямой вход? '
+            '<a href="?coach_login=1">Войти через старую форму</a>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
+        st.stop()
+
+    # Coach-fallback: старая Streamlit-форма (доступна за ?coach_login=1)
     with st.form("login_form", clear_on_submit=False):
         username = st.text_input("Логин", autocomplete="username")
         password = st.text_input(
@@ -376,8 +438,6 @@ def _login_form(users_cfg) -> AuthUser:
             submitted = st.form_submit_button("Войти", use_container_width=True)
         with _col_r:
             # «Регистрация» — ссылка-кнопка на отдельный signup-сервис
-            # app.beatmetrics.ru. target="_self" — открыть в той же вкладке.
-            # Стрелочка ↗ намекает, что это другой адрес, не та же страница.
             st.markdown(
                 '<a href="https://app.beatmetrics.ru/signup" target="_self" '
                 'class="bm-register-btn">Регистрация&nbsp;↗</a>',
