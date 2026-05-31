@@ -7,37 +7,37 @@
 
     {% if role == 'coach' %}
       {# === ТРЕНЕР === #}
-      <div class="done-check">👔</div>
+      <div class="done-check">🤝</div>
       <div class="done-title">
-        {% if user and user.name %}Привет, {{ user.name }}!{% else %}Аккаунт тренера создан{% endif %}
+        {% if user and user.name %}<span data-i18n="done_hi">Привет</span>, {{ user.name }}!{% else %}<span data-i18n="done_coach_created">Аккаунт тренера создан</span>{% endif %}
       </div>
       <div class="done-sub">
         {% if user %}{{ user.email }}<br>{% endif %}
-        Пригласи атлетов — они зарегаются по твоей ссылке, и ты сразу увидишь их данные.
+        <span data-i18n="done_coach_pitch">Пригласи атлетов — они зарегаются по твоей ссылке, и ты сразу увидишь их данные.</span>
       </div>
 
       <!-- Генерация новой ссылки -->
       <div class="invite-gen" id="invites">
-        <div class="invite-gen-title">Создать новое приглашение</div>
+        <div class="invite-gen-title" data-i18n="done_coach_create_inv">Создать новое приглашение</div>
         <form method="post" action="/coach/invite" class="invite-form">
           <div class="field">
-            <label for="invited_email">Email атлета <span style="color:var(--color-mute);text-transform:none;font-weight:400">(необязательно)</span></label>
+            <label for="invited_email"><span data-i18n="done_coach_email">Email атлета</span> <span data-i18n="done_coach_optional" style="color:var(--color-mute);text-transform:none;font-weight:400">(необязательно)</span></label>
             <input id="invited_email" name="invited_email" type="email"
                    placeholder="petya@example.com">
           </div>
           <div class="field">
-            <label for="note">Заметка для себя</label>
+            <label for="note" data-i18n="done_coach_note">Заметка для себя</label>
             <input id="note" name="note" type="text"
                    placeholder="например: Петя, 5к 17:30">
           </div>
-          <button type="submit" class="btn btn-primary">Создать ссылку →</button>
+          <button type="submit" class="btn btn-primary" data-i18n="done_coach_create_btn">Создать ссылку →</button>
         </form>
       </div>
 
       <!-- Существующие приглашения -->
       {% if invitations %}
       <div class="invite-list">
-        <div class="invite-gen-title">Мои приглашения ({{ invitations|length }})</div>
+        <div class="invite-gen-title"><span data-i18n="done_coach_my_inv">Мои приглашения</span> ({{ invitations|length }})</div>
         {% for inv in invitations %}
           <div class="invite-row">
             <div class="invite-row-meta">
@@ -73,7 +73,7 @@
       <!-- Атлеты тренера -->
       {% if athletes %}
       <div class="invite-list">
-        <div class="invite-gen-title">Мои атлеты ({{ athletes|length }})</div>
+        <div class="invite-gen-title"><span data-i18n="done_coach_my_athletes">Мои атлеты</span> ({{ athletes|length }})</div>
         {% for a in athletes %}
           <div class="invite-row">
             <div class="invite-row-meta">
@@ -87,24 +87,24 @@
       {% endif %}
 
       <form method="post" action="/logout" style="margin: 12px 0 0">
-        <button type="submit" class="btn">Выйти</button>
+        <button type="submit" class="btn" data-i18n="logout">Выйти</button>
       </form>
 
     {% else %}
       {# === АТЛЕТ === #}
       <div class="done-check">{% if connected_count > 0 %}✓{% else %}👋{% endif %}</div>
       <div class="done-title">
-        {% if user and user.name %}Привет, {{ user.name }}!{% else %}Привет!{% endif %}
+        {% if user and user.name %}<span data-i18n="done_hi">Привет</span>, {{ user.name }}!{% else %}<span data-i18n="done_hi_plain">Привет!</span>{% endif %}
       </div>
       <div class="done-sub">
         {% if user %}{{ user.email }}<br>{% endif %}
-        Добро пожаловать в BeatMetrics.
+        <span data-i18n="done_welcome">Добро пожаловать в BeatMetrics.</span>
       </div>
 
       {% if request.query_params.get('connected') %}
         <div class="alert-success">
-          ✓ <strong>{{ request.query_params.get('connected') | upper }}</strong> подключён —
-          активности начнут синкаться в ближайшие минуты.
+          ✓ <strong>{{ request.query_params.get('connected') | upper }}</strong>
+          <span data-i18n="done_connected_msg">подключён — активности начнут синкаться в ближайшие минуты.</span>
         </div>
       {% endif %}
 
@@ -114,47 +114,47 @@
           <div style="display:flex;align-items:center;gap:10px">
             <div class="invite-icon" style="font-size:24px">⌚</div>
             <div>
-              <div class="invite-head">Шаг 1 — источник данных</div>
-              <div class="invite-name" style="font-size:var(--fs-lg)">
+              <div class="invite-head" data-i18n="done_step1_t">Шаг 1 — источник данных</div>
+              <div class="invite-name" style="font-size:var(--fs-lg)" data-i18n="done_step1_name">
                 Подключи часы или Strava
               </div>
             </div>
           </div>
-          <div class="invite-sub" style="margin-bottom:8px">
+          <div class="invite-sub" style="margin-bottom:8px" data-i18n="done_step1_sub">
             Без подключения мы не видим твоих тренировок. Это займёт 30 секунд.
           </div>
-          <a href="/onboarding/connect" class="btn btn-primary">Подключить источник →</a>
+          <a href="/onboarding/connect" class="btn btn-primary" data-i18n="done_step1_btn">Подключить источник →</a>
         </div>
 
         <div style="margin:16px 0;text-align:left">
-          <div style="font-size:var(--fs-sm);color:var(--color-mute);text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin-bottom:8px">
+          <div style="font-size:var(--fs-sm);color:var(--color-mute);text-transform:uppercase;letter-spacing:0.5px;font-weight:500;margin-bottom:8px" data-i18n="done_after_h">
             Что появится после подключения
           </div>
           <ul style="list-style:none;padding:0;margin:0;font-size:var(--fs-md);color:var(--color-ink);line-height:1.7">
-            <li>📊 Тренды формы, объём по неделям и месяцам</li>
-            <li>🎯 Распределение по HR/мощности зонам</li>
-            <li>📅 Сравнение плана с фактом</li>
-            <li>🛌 Recovery, HRV, сон (для Garmin)</li>
+            <li data-i18n="done_after_1">📊 Тренды формы, объём по неделям и месяцам</li>
+            <li data-i18n="done_after_2">🎯 Распределение по HR/мощности зонам</li>
+            <li data-i18n="done_after_3">📅 Сравнение плана с фактом</li>
+            <li data-i18n="done_after_4">🛌 Recovery, HRV, сон (для Garmin)</li>
           </ul>
         </div>
       {% else %}
         {# Уже есть подключённые — короткий статус и ссылки на навигацию #}
         <div class="alert-success" style="background:var(--color-brand-soft);border-left-color:var(--color-brand);color:var(--color-ink)">
-          ✓ Источников подключено: <strong>{{ connected_count }}</strong>.
+          ✓ <span data-i18n="done_connected_count">Источников подключено:</span> <strong>{{ connected_count }}</strong>.
           {% if connected_count == 1 %}
-            Можешь подключить ещё один — например, Strava для Apple Watch.
+            <span data-i18n="done_one_more">Можешь подключить ещё один — например, Strava для Apple Watch.</span>
           {% else %}
-            Можно управлять подключениями в Settings.
+            <span data-i18n="done_manage">Можно управлять подключениями в Settings.</span>
           {% endif %}
         </div>
         <div class="done-actions">
-          <a href="/onboarding/connect" class="btn">Добавить ещё устройство</a>
+          <a href="/onboarding/connect" class="btn" data-i18n="done_add_more">Добавить ещё устройство</a>
           <a href="/settings/connections" class="btn">Settings → Connections</a>
         </div>
       {% endif %}
 
       <form method="post" action="/logout" style="margin: 18px 0 0">
-        <button type="submit" class="btn">Выйти</button>
+        <button type="submit" class="btn" data-i18n="logout">Выйти</button>
       </form>
     {% endif %}
   </div>
