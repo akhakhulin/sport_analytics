@@ -569,10 +569,44 @@ df = load_activities(selected_athlete)
 daily = load_daily(selected_athlete)
 
 if df.empty:
-    st.error(
-        f"Нет данных для атлета **{selected_athlete}**. "
-        f"Запусти sync.cmd с правильным ATHLETE_ID в .env."
-    )
+    # Empty state (P0-4 от UX-агента) — дружелюбный экран вместо stack-trace.
+    # Тренеру (IS_ADMIN, смотрит чужого атлета) показываем технический детал;
+    # атлету (смотрит свой профиль) — pollite onboarding-message с CTA.
+    if IS_ADMIN and selected_athlete != USER.athlete_id:
+        st.warning(
+            f"У атлета **{selected_athlete}** нет данных в выбранном срезе. "
+            f"Возможно, sync ещё не отрабатывал или athlete_id не совпадает с тем, "
+            f"под которым лежат активности в БД."
+        )
+    else:
+        st.markdown(
+            '<div style="max-width:560px; margin:60px auto; text-align:center;'
+            ' padding:32px; background:white; border-radius:14px;'
+            ' box-shadow:0 4px 16px rgba(0,0,0,0.06);">'
+            '<div style="font-size:48px; margin-bottom:12px;">📡</div>'
+            '<div style="font-size:18px; font-weight:500; color:#2C2C2A;'
+            ' margin-bottom:8px;">Ждём первую синхронизацию</div>'
+            '<div style="font-size:13px; color:#5F5E5A; line-height:1.5;">'
+            'Тренировки появятся здесь после ближайшей загрузки данных из подключённого'
+            ' источника — обычно в течение нескольких часов после подключения часов или Strava.'
+            '</div>'
+            '<div style="margin-top:20px; display:flex; gap:12px; justify-content:center;'
+            ' flex-wrap:wrap;">'
+            '<a href="https://app.beatmetrics.ru/settings/connections" target="_self"'
+            ' style="background:#3c3489; color:white; padding:10px 20px; border-radius:6px;'
+            ' text-decoration:none; font-size:14px; font-weight:500;">Проверить подключения →</a>'
+            '<a href="https://app.beatmetrics.ru/" target="_self"'
+            ' style="background:white; color:#3c3489; padding:10px 20px; border-radius:6px;'
+            ' text-decoration:none; font-size:14px; font-weight:500;'
+            ' border:1px solid #3c3489;">В кабинет</a>'
+            '</div>'
+            '<div style="margin-top:18px; font-size:11px; color:#888780;">'
+            'Если данные не появились через 24 часа — напишите на '
+            '<a href="mailto:support@beatmetrics.ru" style="color:#3c3489;">support@beatmetrics.ru</a>'
+            '</div>'
+            '</div>',
+            unsafe_allow_html=True,
+        )
     st.stop()
 
 min_day = df["day"].min()
