@@ -2,23 +2,31 @@
      Подключается из base.html — работает на всех страницах app.beatmetrics.ru.
      Тексты переводятся через data-i18n="key" или data-i18n-placeholder="key". -->
 <style>
+/* Тумблер прикрепляется JS-ом к верхнему правому углу карточки
+   (.auth-card / .done-card / .onb-card). Сами карточки получают
+   position:relative для якоря. Если карточки нет на странице — fallback
+   на fixed-top-right viewport. */
 .lang-toggle {
-  position: fixed; top: 16px; right: 16px; z-index: 200;
+  position: absolute; top: 10px; right: 10px; z-index: 10;
   display: inline-flex; align-items: center;
   background: rgba(255,255,255,0.92);
   border: 1px solid var(--color-line);
-  border-radius: 999px; padding: 3px;
-  font-size: 12px; font-weight: 500;
+  border-radius: 999px; padding: 2px;
+  font-size: 11px; font-weight: 500;
   user-select: none;
   backdrop-filter: blur(8px) saturate(150%);
   -webkit-backdrop-filter: blur(8px) saturate(150%);
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+.lang-toggle.lang-toggle-fixed {
+  position: fixed; top: 16px; right: 16px; z-index: 200;
+}
 .lang-toggle button {
   border: none; background: transparent; cursor: pointer;
-  padding: 5px 12px; border-radius: 999px;
+  padding: 4px 10px; border-radius: 999px;
   color: var(--color-mute); font: inherit;
   transition: background .15s ease, color .15s ease;
+  min-width: 28px;
 }
 .lang-toggle button.active {
   background: var(--color-brand);
@@ -27,9 +35,9 @@
 .lang-toggle button:hover:not(.active) { color: var(--color-ink); }
 </style>
 
-<div class="lang-toggle" role="radiogroup" aria-label="Language">
-  <button type="button" data-lang="en" role="radio" aria-checked="false">Eng</button>
-  <button type="button" data-lang="ru" role="radio" aria-checked="true" class="active">Rus</button>
+<div class="lang-toggle lang-toggle-fixed" role="radiogroup" aria-label="Language">
+  <button type="button" data-lang="en" role="radio" aria-checked="false">En</button>
+  <button type="button" data-lang="ru" role="radio" aria-checked="true" class="active">Ru</button>
 </div>
 
 <script>
@@ -213,6 +221,17 @@
       reset_request_new: 'Запросить новую ссылку →'
     }
   };
+
+  // Прикрепляем тумблер в угол карточки, если такая есть на странице.
+  // Иначе остаётся fixed в углу viewport (fallback).
+  var toggleEl = document.querySelector('.lang-toggle');
+  var card = document.querySelector('.auth-card, .done-card, .onb-card');
+  if (toggleEl && card) {
+    var cs = getComputedStyle(card);
+    if (cs.position === 'static') card.style.position = 'relative';
+    toggleEl.classList.remove('lang-toggle-fixed');
+    card.appendChild(toggleEl);
+  }
 
   var KEY = 'beatmetrics_lang';
   var stored = localStorage.getItem(KEY);
