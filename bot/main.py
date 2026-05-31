@@ -36,38 +36,41 @@ def acquire_single_instance_lock() -> None:
     global _LOCK_FH
     LOCK_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    fh = open(LOCK_FILE, "a+", encoding="utf-8")
-    try:
-        if os.name == "nt":
-            import msvcrt
-            # Если файл пустой, locking может упасть — гарантируем 1 байт
-            fh.seek(0, os.SEEK_END)
-            if fh.tell() == 0:
-                fh.write(" ")
-                fh.flush()
-            fh.seek(0)
-            try:
+    # Retry: при профилактическом рестарте новый инстанс спавнится ДО смерти
+    # старого, поэтому даём ~10с на освобождение лока.
+    import time as _t
+    fh = None
+    last_old = "?"
+    for attempt in range(6):
+        if fh is None:
+            fh = open(LOCK_FILE, "a+", encoding="utf-8")
+        try:
+            if os.name == "nt":
+                import msvcrt
+                fh.seek(0, os.SEEK_END)
+                if fh.tell() == 0:
+                    fh.write(" ")
+                    fh.flush()
+                fh.seek(0)
                 msvcrt.locking(fh.fileno(), msvcrt.LK_NBLCK, 1)
-            except OSError:
-                fh.seek(0)
-                old = fh.read().strip() or "?"
-                fh.close()
-                print(
-                    f"❌ Бот уже запущен (PID={old}). "
-                    f"Чтобы остановить: taskkill /PID {old} /F",
-                    file=sys.stderr,
-                )
-                sys.exit(1)
-        else:
-            import fcntl
-            try:
+            else:
+                import fcntl
                 fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
-                fh.seek(0)
-                old = fh.read().strip() or "?"
-                fh.close()
-                print(f"❌ Бот уже запущен (PID={old}).", file=sys.stderr)
-                sys.exit(1)
+            break  # лок получен
+        except OSError:
+            fh.seek(0)
+            last_old = fh.read().strip() or "?"
+            if attempt < 5:
+                _t.sleep(2)
+                continue
+            fh.close()
+            print(
+                f"❌ Бот уже запущен (PID={last_old}). "
+                f"Чтобы остановить: taskkill /PID {last_old} /F",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+    try:
 
         # Лок наш — пишем актуальный PID для информативности
         fh.seek(0)

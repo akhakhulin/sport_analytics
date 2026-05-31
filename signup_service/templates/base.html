@@ -11,5 +11,25 @@
 {% block body %}{% endblock %}
 {% include "_lang_toggle.html" %}
 {% include "_cookie_banner.html" %}
+<script>
+// Глазик для всех input[type=password] внутри .field-password
+(function () {
+  document.querySelectorAll('.field-password').forEach(function (wrap) {
+    var input = wrap.querySelector('input[type="password"]');
+    if (!input || wrap.querySelector('.pw-toggle')) return;
+    var btn = document.createElement('button');
+    btn.type = 'button'; btn.className = 'pw-toggle';
+    btn.setAttribute('aria-label', 'Показать пароль');
+    btn.innerHTML = '👁';
+    btn.addEventListener('click', function () {
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      btn.innerHTML = show ? '🙈' : '👁';
+      btn.setAttribute('aria-label', show ? 'Скрыть пароль' : 'Показать пароль');
+    });
+    wrap.appendChild(btn);
+  });
+})();
+</script>
 </body>
 </html>

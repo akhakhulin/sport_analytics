@@ -6,6 +6,24 @@
 <title>BeatMetrics — тренируйся осознанно</title>
 <meta name="description" content="Аналитика тренировок для лыжников, бегунов и велосипедистов. Garmin, Polar, Suunto, Strava — в одном дашборде.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><rect width='64' height='64' rx='14' fill='%233c3489'/><path d='M 14 12 L 14 52' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round'/><path d='M 14 30 Q 14 20 26 20 Q 38 20 38 36 Q 38 52 26 52 Q 14 52 14 42' fill='none' stroke='%23fff' stroke-width='4' stroke-linecap='round' stroke-linejoin='round'/><path d='M 44 36 L 46 36 L 48 31 L 51 41 L 53 36 L 55 36' fill='none' stroke='%23fff' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+
+<!-- Open Graph / соц-сети (Telegram, VK, Facebook, WhatsApp) -->
+<meta property="og:type"        content="website">
+<meta property="og:site_name"   content="BeatMetrics">
+<meta property="og:url"         content="https://beatmetrics.ru">
+<meta property="og:title"       content="BeatMetrics — тренируйся осознанно">
+<meta property="og:description" content="Аналитика тренировок для лыжников, бегунов и велосипедистов. Garmin, Polar, Suunto, Strava — в одном дашборде.">
+<meta property="og:image"       content="https://beatmetrics.ru/landing-assets/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:locale"      content="ru_RU">
+<meta property="og:locale:alternate" content="en_US">
+
+<!-- Twitter / X -->
+<meta name="twitter:card"        content="summary_large_image">
+<meta name="twitter:title"       content="BeatMetrics — тренируйся осознанно">
+<meta name="twitter:description" content="Аналитика тренировок для лыжников, бегунов и велосипедистов. Garmin, Polar, Suunto, Strava — в одном дашборде.">
+<meta name="twitter:image"       content="https://beatmetrics.ru/landing-assets/og-image.png">
 <style>
 :root {
   --brand: #3c3489;
@@ -71,6 +89,19 @@ section.hero {
 .hero p.lead {
   font-size: 18px; color: var(--mute); line-height: 1.55; margin-bottom: 28px;
   max-width: 540px;
+}
+.hero-badge {
+  display: inline-block;
+  padding: 5px 12px;
+  background: var(--brand-soft); color: var(--brand);
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500;
+  letter-spacing: 0.3px;
+  margin-bottom: 16px;
+}
+.hero-microcopy {
+  margin-top: 12px;
+  font-size: 13px; color: var(--mute);
 }
 .hero-visual {
   position: relative;
@@ -163,6 +194,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 <main>
   <section class="hero">
     <div>
+      <div class="hero-badge" data-i18n="hero_badge">Бета — бесплатно для первых пользователей</div>
       <h1 data-i18n="hero_title">
         Тренируйся <em>осознанно</em>,<br>а не на чутьё
       </h1>
@@ -172,8 +204,9 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
         с фактом — для лыжников, бегунов и велосипедистов.
       </p>
       <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary btn-lg" data-i18n="cta_signup">
-        Начать →
+        Подключить устройство →
       </a>
+      <div class="hero-microcopy" data-i18n="hero_microcopy">бесплатно · без карты · 30 секунд</div>
     </div>
     <div class="hero-visual" aria-hidden="true"></div>
   </section>
@@ -192,7 +225,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
         <p data-i18n="v2_p">Распределение времени по HR и мощностным зонам. Сравниваешь неделю с эталонами по твоей дисциплине.</p>
       </div>
       <div class="value-card">
-        <div class="icon">📅</div>
+        <div class="icon">📊</div>
         <h3 data-i18n="v3_t">План vs факт</h3>
         <p data-i18n="v3_p">Тренировочный план рядом с фактическими активностями. Видно где недобрал, где переборщил.</p>
       </div>
@@ -202,7 +235,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
         <p data-i18n="v4_p">Сон, Body Battery, HRV-тренд (для Garmin). Понимаешь когда можно грузиться, а когда отдохнуть.</p>
       </div>
       <div class="value-card">
-        <div class="icon">👔</div>
+        <div class="icon">🤝</div>
         <h3 data-i18n="v5_t">Совместная работа с тренером</h3>
         <p data-i18n="v5_p">Пригласи тренера по ссылке — он видит твои данные и может строить план опираясь на цифры, не на «как себя чувствуешь».</p>
       </div>
@@ -217,7 +250,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
   <section class="sources">
     <div class="sources-inner">
       <h2 data-i18n="sources_h2">Подключи свой источник</h2>
-      <p class="sub" data-i18n="sources_sub">— и мы синканем тренировки в течение нескольких минут</p>
+      <p class="sub" data-i18n="sources_sub">— и мы синхронизируем тренировки в течение нескольких минут</p>
       <div class="sources-row">
         <div class="item"><img src="/landing-assets/icons/garmin.svg" alt="Garmin"> Garmin Connect</div>
         <div class="item"><img src="/landing-assets/icons/strava.svg" alt="Strava"> Strava</div>
@@ -238,7 +271,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 
 <footer class="foot">
   &copy; 2026 BeatMetrics ·
-  <a href="mailto:a.khakhulin89@gmail.com">support</a>
+  <a href="mailto:support@beatmetrics.ru">support@beatmetrics.ru</a>
 </footer>
 
 </body>

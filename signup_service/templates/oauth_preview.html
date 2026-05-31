@@ -5,8 +5,23 @@
   <div class="onb-card">
     <a href="/onboarding/connect" class="back">← к выбору устройств</a>
 
-    <div class="section-title">Сейчас откроется {{ provider_label }}</div>
-    <div class="section-sub">войди и нажми «Allow» — мы получим доступ только на чтение</div>
+    {% if via_label == 'apple' %}
+      <div class="section-title">Apple Watch — подключаем через Strava</div>
+      <div class="section-sub" style="margin-bottom: 14px">
+        У Apple Watch нет публичного API, поэтому мы читаем твои тренировки
+        через приложение Strava на iPhone (она автоматически синкается с
+        Apple Health). Тренировка с часов → iPhone → Strava → BeatMetrics
+        за 5–10 минут.
+      </div>
+      <div class="coach-block" style="margin: 0 0 16px; background: #fff4ec; border-left: 3px solid #FC4C02">
+        Если ты ещё не настроил Strava с iPhone — открой Strava на телефоне,
+        в настройках включи «Health» → «Apple Watch». После этого тренировки
+        автоматически попадут к нам.
+      </div>
+    {% else %}
+      <div class="section-title">Сейчас откроется {{ provider_label }}</div>
+      <div class="section-sub">войди и нажми «Allow» — мы получим доступ только на чтение</div>
+    {% endif %}
 
     <div style="font-size: var(--fs-md); font-weight: 500; margin: 16px 0 4px; color: var(--color-ink);">
       Что мы прочитаем:
@@ -33,7 +48,9 @@
       </div>
     {% endif %}
 
-    <a href="/oauth/{{ provider }}/connect" class="btn btn-primary">Открыть {{ provider_label }} →</a>
+    <a href="/oauth/{{ provider }}/connect{{ connect_query or '' }}" class="btn btn-primary">
+      {% if via_label == 'apple' %}Подключить через Strava →{% else %}Открыть {{ provider_label }} →{% endif %}
+    </a>
 
     <div class="legal">
       <a href="#">Privacy policy</a> · <a href="#">Условия</a>

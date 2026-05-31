@@ -116,6 +116,20 @@ html, body {
   outline-offset: -1px; border-color: transparent;
 }
 
+/* Glassика "показать пароль" — wrapping field-password */
+.field-password { position: relative; }
+.field-password input { padding-right: 38px; }
+.field-password .pw-toggle {
+  position: absolute; right: 8px; top: 50%;
+  transform: translateY(-50%);
+  width: 28px; height: 28px;
+  background: none; border: 0; cursor: pointer; padding: 0;
+  color: var(--color-mute); font-size: 14px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border-radius: 4px;
+}
+.field-password .pw-toggle:hover { color: var(--color-ink); background: rgba(0,0,0,0.04); }
+
 .btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   width: 100%; padding: 10px 16px;

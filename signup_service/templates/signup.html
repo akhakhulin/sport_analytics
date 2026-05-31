@@ -83,7 +83,7 @@
             <input type="radio" name="role" value="coach"
                    {% if selected_role == 'coach' %}checked{% endif %}>
             <div>
-              <div class="role-title" data-i18n="signup_role_coach_t">👔 Я тренер</div>
+              <div class="role-title" data-i18n="signup_role_coach_t">🤝 Я тренер</div>
               <div class="role-meta" data-i18n="signup_role_coach_m">смотрю данные атлетов</div>
             </div>
           </label>
@@ -98,7 +98,7 @@
                {% if invitation and invitation.invited_email %}readonly{% endif %}>
       </div>
 
-      <div class="field">
+      <div class="field field-password">
         <label for="password" data-i18n="signup_password">Пароль</label>
         <input id="password" name="password" type="password" required
                autocomplete="new-password" minlength="8"

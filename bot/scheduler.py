@@ -104,8 +104,32 @@ async def job_daily_restart_check(application) -> None:
 
     log.info(
         f"Профилактический рестарт — uptime превысил 18ч "
-        f"(last_start={last_restart_iso}, now={now.isoformat()}). sys.exit(0)"
+        f"(last_start={last_restart_iso}, now={now.isoformat()}). "
+        f"Спавню новый инстанс и выхожу."
     )
+    # Спавним новый процесс детачем — он поднимется ДО того, как мы умрём.
+    # Lock-файл удерживается до sys.exit, новый инстанс подождёт ~3с и заберёт его.
+    try:
+        import subprocess
+        bat = config.PROJECT_ROOT / "bot" / "start_bot.bat"
+        DETACHED_PROCESS = 0x00000008
+        CREATE_NEW_PROCESS_GROUP = 0x00000200
+        subprocess.Popen(
+            ["cmd", "/c", str(bat)],
+            cwd=str(config.PROJECT_ROOT),
+            creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+        )
+        log.info("Новый инстанс запущен через start_bot.bat (detached).")
+    except Exception as e:
+        log.exception(f"Не удалось спавнить новый инстанс: {e}")
+    # Небольшая задержка, чтобы новый инстанс успел стартовать (и упереться в lock),
+    # а потом дождаться нашего sys.exit и сразу зайти при retry.
+    import time as _t
+    _t.sleep(2)
     sys.exit(0)
 
 

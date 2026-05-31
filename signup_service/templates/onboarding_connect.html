@@ -23,64 +23,40 @@
       </div>
     {% endif %}
 
-    {# Garmin primary #}
-    {% set garmin_connected = 'garmin' in connected_providers %}
-    <div class="device-card device-card-primary {% if not providers.garmin.configured %}device-card-disabled{% endif %}"
-         style="margin-top:16px">
-      <div class="top">
-        <img src="/static/icons/garmin.svg" width="32" height="32" alt="Garmin" style="flex-shrink:0">
-        <div>
-          <div class="name">Garmin Connect</div>
-          <div class="sub">основной выбор лыжников / бегунов</div>
-        </div>
-      </div>
-      <div class="scope">активности · HR · сон · recovery · HRV · Body Battery</div>
-      {% if garmin_connected %}
-        <span class="meta-pill" style="background:var(--color-success);color:#fff">Подключён ✓</span>
-      {% elif providers.garmin.configured %}
-        <a href="/oauth/garmin/preview" class="btn btn-primary">Подключить →</a>
-      {% else %}
-        <span class="meta-pill">Скоро</span>
-      {% endif %}
-    </div>
-
-    {# Strava — выделенная primary-карточка (бренд-цвет) #}
+    {# === PRIMARY: Strava === #}
+    {% set strava_connected = 'strava' in connected_providers %}
     {% if providers.strava and providers.strava.configured %}
-      {% if 'strava' in connected_providers %}
-        <div class="bridge-card" style="background:#777;border-color:#777;margin-top:10px">
-          <img src="/static/icons/strava.svg" width="26" height="26" alt="Strava"
-               style="filter:brightness(0) invert(1);flex-shrink:0">
-          <div>
-            <div class="name">Strava подключён ✓</div>
-          </div>
-          <span class="arrow">✓</span>
-        </div>
-      {% else %}
-        <a href="/oauth/strava/preview" class="bridge-card" style="margin-top:10px">
-          <img src="/static/icons/strava.svg" width="26" height="26" alt="Strava"
-               style="filter:brightness(0) invert(1);flex-shrink:0">
+      <div class="device-card device-card-primary" style="margin-top:16px">
+        <div class="top">
+          <img src="/static/icons/strava.svg" width="32" height="32" alt="Strava">
           <div>
             <div class="name">Strava</div>
+            <div class="sub">самый универсальный мост — работает с Apple Watch и большинством Garmin</div>
           </div>
-          <span class="arrow">→</span>
-        </a>
-      {% endif %}
+        </div>
+        <div class="scope">активности · HR · темп · мощность · GPS-треки</div>
+        {% if strava_connected %}
+          <span class="meta-pill" style="background:var(--color-success);color:#fff">Подключён ✓</span>
+        {% else %}
+          <a href="/oauth/strava/preview" class="btn btn-primary">Подключить →</a>
+        {% endif %}
+      </div>
     {% endif %}
 
-    <div class="section-divider">Другие часы</div>
-    <div class="secondary-row cols-4">
-      {% for key in ['polar', 'suunto', 'coros', 'apple'] %}
+    {# === ALT: Polar / Suunto / Apple Watch === #}
+    <div class="section-divider">Другие варианты</div>
+    <div class="secondary-row cols-3">
+      {% for key in ['polar', 'suunto', 'apple'] %}
         {% set p = providers.get(key) %}
         {% set is_connected = key in connected_providers %}
-        {% if p %}
-          <div class="device-card {% if not p.configured and key != 'apple' %}device-card-disabled{% endif %}">
+        {% if p and not p.get('_hidden') %}
+          <div class="device-card{% if not p.configured %} device-card-disabled{% endif %}">
             <div class="top">
               <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="{{ p.label }}">
               <div class="name">{{ p.label }}</div>
               {% if is_connected %}
                 <span class="platform-meta" style="color:var(--color-success);font-weight:500">Подключён ✓</span>
-              {% elif key == 'apple' %}
-                {# Apple Watch не имеет нативного API — ведём прямо на Strava OAuth preview #}
+              {% elif p.get('via_strava') %}
                 <a href="/oauth/strava/preview?from=apple" class="platform-meta"
                    style="color:var(--color-brand);font-weight:500;text-decoration:none">
                   Подключить →
@@ -99,8 +75,22 @@
       {% endfor %}
     </div>
 
+    {# === COMING SOON: компактная строка, не плодим disabled-карточки === #}
+    {% set pending_list = [] %}
+    {% for key, p in providers.items() %}
+      {% if p.get('pending') %}{% set _ = pending_list.append(p.label) %}{% endif %}
+    {% endfor %}
+    {% if pending_list %}
+      <div style="margin-top:14px;padding:10px 14px;background:rgba(60,52,137,0.04);
+                  border-radius:6px;font-size:var(--fs-sm);color:var(--color-mute);
+                  text-align:center;line-height:1.5">
+        Ещё на подходе: <strong style="color:var(--color-ink)">{{ pending_list | join(' · ') }}</strong>
+        — открываем по мере получения партнёрского API
+      </div>
+    {% endif %}
+
     <form method="post" action="/logout" style="margin-top:16px">
-      <button type="submit" class="btn">Выйти</button>
+      <button type="submit" class="btn" data-i18n="logout">Выйти</button>
     </form>
   </div>
 </main>

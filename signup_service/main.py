@@ -288,47 +288,40 @@ async def done(request: Request):
 # === Onboarding ===
 
 def _provider_catalog() -> dict[str, dict]:
-    """Сводный каталог провайдеров для /onboarding/connect.
-    configured берётся из oauth.is_configured(); meta — статус заявки."""
+    """Каталог провайдеров для /onboarding/connect.
+    Только активные (configured=True) попадают в primary-сетку.
+    Провайдеры без живого API НЕ показываются как карточки —
+    они есть в comeback-блоке "ещё на подходе" мелким текстом."""
     return {
-        "garmin": {
-            "label": "Garmin Connect", "meta": "ждём аппрува Dev Program",
-            "configured": False,
+        # === Primary: Strava (единственный с активным OAuth + мост для Apple) ===
+        "strava": {
+            "label": "Strava",
+            "meta": "HR · темп · мост для Apple Watch и большинства Garmin",
+            "configured": oauth_module.is_configured("strava"),
+            "primary": True,
         },
+        # === Active OAuth ===
         "polar": {
             "label": "Polar", "meta": "exercises · HRV · daily activity",
             "configured": oauth_module.is_configured("polar"),
-            "icon": _ICON_POLAR,
         },
         "suunto": {
             "label": "Suunto", "meta": "workouts · FIT-файлы",
             "configured": oauth_module.is_configured("suunto"),
-            "icon": _ICON_SUUNTO,
         },
-        "coros": {
-            "label": "COROS", "meta": "ждём аппрува",
-            "configured": False, "icon": _ICON_COROS,
-        },
+        # === Apple — кликабельна, ведёт на Strava OAuth с from=apple ===
         "apple": {
-            "label": "Apple", "meta": "через мост Strava",
-            "configured": False, "icon": _ICON_APPLE,
+            "label": "Apple Watch",
+            "meta": "подключаем через Strava",
+            "configured": True,  # сам клик работает (редирект на /oauth/strava/preview?from=apple)
+            "via_strava": True,
         },
-        "trainingpeaks": {
-            "label": "TrainingPeaks", "meta": "планы тренера · в работе",
-            "configured": False,
-        },
-        "decathlon": {
-            "label": "Decathlon Coach", "meta": "self-serve · в работе",
-            "configured": False,
-        },
-        "finalsurge": {
-            "label": "Final Surge", "meta": "B2B · в работе",
-            "configured": False,
-        },
-        "strava": {
-            "label": "Strava", "meta": "активности · HR · мост Apple Watch",
-            "configured": oauth_module.is_configured("strava"),
-        },
+        # === Не показываем как карточки — попадают в "ещё на подходе" ===
+        "garmin": {"label": "Garmin Connect", "pending": True, "_hidden": True},
+        "coros":  {"label": "COROS", "pending": True, "_hidden": True},
+        "trainingpeaks": {"label": "TrainingPeaks", "pending": True, "_hidden": True},
+        "decathlon": {"label": "Decathlon Coach", "pending": True, "_hidden": True},
+        "finalsurge": {"label": "Final Surge", "pending": True, "_hidden": True},
     }
 
 
@@ -388,6 +381,15 @@ async def oauth_preview(provider: str, request: Request):
             status_code=303,
         )
 
+    # ?from=apple — пользователь пришёл по Apple-карточке.
+    # Strava-OAuth тут используется как мост: Strava читает Apple Health
+    # на iPhone, и наши синки идут через неё. Покажем это пользователю —
+    # иначе он жмёт «Apple» и видит «Strava», и это выглядит как bait-and-switch.
+    from_source = (request.query_params.get("from") or "").lower()
+    via_label = None
+    if from_source == "apple" and provider == "strava":
+        via_label = "apple"
+
     user_row = users_db.find_user_by_id(user["user_id"])
     coach_name = None
     if user_row and user_row["coach_user_id"]:
@@ -401,7 +403,11 @@ async def oauth_preview(provider: str, request: Request):
              provider=provider,
              provider_label=oauth_module.PROVIDERS[provider]["label"],
              scope_read=_OAUTH_SCOPES_HUMAN.get(provider, ["Тренировки и сессии"]),
-             coach_name=coach_name),
+             coach_name=coach_name,
+             via_label=via_label,
+             # link для кнопки "Открыть провайдер" сохраняет from=
+             connect_query="?from=" + from_source if from_source else "",
+            ),
     )
 
 
