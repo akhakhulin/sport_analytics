@@ -89,6 +89,10 @@
       login_verified: '✓ Email verified.',
       login_logged_out: '✓ You have been signed out',
       login_help_q: 'Need help?',
+      // email typo-suggestion (signup only)
+      email_typo_q: 'Did you mean',
+      email_typo_apply: 'Use this',
+      email_typo_dismiss_aria: 'Dismiss suggestion',
       // done (welcome)
       done_hi: 'Hi',
       done_welcome: 'Welcome to BeatMetrics.',
@@ -190,6 +194,9 @@
       login_verified: '✓ Email подтверждён.',
       login_logged_out: '✓ Вы вышли из аккаунта',
       login_help_q: 'Нужна помощь?',
+      email_typo_q: 'Возможно, вы имели в виду',
+      email_typo_apply: 'Применить',
+      email_typo_dismiss_aria: 'Закрыть подсказку',
       done_hi: 'Привет',
       done_welcome: 'Добро пожаловать в BeatMetrics.',
       done_step1_t: 'Шаг 1 — источник данных',
@@ -273,6 +280,10 @@
     document.querySelectorAll('[data-i18n-placeholder]').forEach(function (el) {
       var key = el.getAttribute('data-i18n-placeholder');
       if (dict[key] !== undefined) el.setAttribute('placeholder', dict[key]);
+    });
+    document.querySelectorAll('[data-i18n-aria]').forEach(function (el) {
+      var key = el.getAttribute('data-i18n-aria');
+      if (dict[key] !== undefined) el.setAttribute('aria-label', dict[key]);
     });
     document.querySelectorAll('.lang-toggle button').forEach(function (b) {
       var isActive = b.dataset.lang === l;

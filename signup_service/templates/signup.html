@@ -86,6 +86,7 @@
                autocomplete="email" placeholder="ivan@example.com"
                value="{{ email_value or '' }}"
                {% if invitation and invitation.invited_email %}readonly{% endif %}>
+        {% include "_email_typo_check.html" %}
       </div>
 
       <div class="field field-password">

@@ -1,0 +1,163 @@
+{# Realtime email typo-suggestion. Подключать ТОЛЬКО после <input id="email" type="email">.
+   Не блокирует submit — это hint, не validation error. На /login не подключать
+   (там email сравнивается с БД, suggestion даст false positive). #}
+<div id="email-typo-hint" class="email-typo-hint" hidden role="status" aria-live="polite">
+  <span class="etc-text">
+    <span data-i18n="email_typo_q">Возможно, вы имели в виду</span>
+    <button type="button" class="etc-apply" data-action="apply"></button>?
+  </span>
+  <button type="button" class="etc-dismiss" data-action="dismiss"
+          aria-label="Закрыть подсказку" data-i18n-aria="email_typo_dismiss_aria">×</button>
+</div>
+
+<style>
+.email-typo-hint {
+  margin-top: 6px;
+  padding: 8px 12px;
+  background: var(--color-warning-bg);
+  border-left: 3px solid var(--color-warning);
+  border-radius: var(--r-md, 6px);
+  font-size: var(--fs-sm, 13px);
+  color: var(--color-ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  line-height: 1.4;
+  animation: etc-fade-in .18s ease-out;
+}
+.email-typo-hint[hidden] { display: none; }
+@keyframes etc-fade-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.etc-text { flex: 1; min-width: 0; word-break: break-all; }
+.etc-apply {
+  background: none; border: none; padding: 0 2px;
+  color: var(--color-brand); font: inherit; font-weight: 600;
+  text-decoration: underline; text-underline-offset: 2px;
+  cursor: pointer;
+}
+.etc-apply:hover { color: #2f2a73; }
+.etc-apply:focus-visible { outline: 2px solid var(--color-brand); outline-offset: 2px; border-radius: 2px; }
+.etc-dismiss {
+  background: none; border: none; cursor: pointer;
+  color: var(--color-mute); font-size: 18px; line-height: 1;
+  padding: 0 4px; flex-shrink: 0;
+  min-width: 24px; min-height: 24px;
+}
+.etc-dismiss:hover { color: var(--color-ink); }
+</style>
+
+<script>
+(function () {
+  var input = document.getElementById('email');
+  var hint  = document.getElementById('email-typo-hint');
+  if (!input || !hint || input.readOnly) return;
+
+  var POPULAR_DOMAINS = [
+    'yandex.ru','yandex.com','ya.ru',
+    'mail.ru','list.ru','bk.ru','inbox.ru',
+    'rambler.ru',
+    'gmail.com',
+    'hotmail.com','outlook.com','live.com',
+    'icloud.com','me.com',
+    'yahoo.com',
+    'proton.me','protonmail.com'
+  ];
+  var TLD_FIX = {
+    'con':'com','cmo':'com','vom':'com','xom':'com','clm':'com','co,':'com','om':'com','cm':'com',
+    'ry':'ru','ri':'ru','re':'ru','tu':'ru','ru,':'ru',
+    'ner':'net','met':'net','ogr':'org','orgg':'org'
+  };
+  var CYR2LAT = {'у':'y','р':'p','с':'c','а':'a','е':'e','о':'o','х':'x','к':'k','м':'m','т':'t','н':'h','в':'b'};
+
+  function editDistance(a, b) {
+    if (a === b) return 0;
+    if (!a.length || !b.length) return Math.abs(a.length - b.length);
+    var prev = []; for (var i = 0; i <= b.length; i++) prev[i] = i;
+    for (var i = 1; i <= a.length; i++) {
+      var curr = [i];
+      for (var j = 1; j <= b.length; j++) {
+        var cost = a[i-1] === b[j-1] ? 0 : 1;
+        curr[j] = Math.min(curr[j-1] + 1, prev[j] + 1, prev[j-1] + cost);
+      }
+      prev = curr;
+    }
+    return prev[b.length];
+  }
+
+  function normalize(email) {
+    var lower = email.trim().toLowerCase();
+    return lower.replace(/[Ѐ-ӿ]/g, function (ch) {
+      return CYR2LAT[ch] !== undefined ? CYR2LAT[ch] : ch;
+    });
+  }
+
+  function suggest(email) {
+    var clean = normalize(email);
+    var at = clean.lastIndexOf('@');
+    if (at < 1 || at === clean.length - 1) return null;
+    var local  = clean.slice(0, at);
+    var domain = clean.slice(at + 1);
+    if (!domain.includes('.')) return null;
+    if (POPULAR_DOMAINS.indexOf(domain) !== -1) return null;
+
+    var dot = domain.lastIndexOf('.');
+    var base = domain.slice(0, dot);
+    var tld  = domain.slice(dot + 1);
+    if (TLD_FIX[tld]) {
+      var fixed = base + '.' + TLD_FIX[tld];
+      if (POPULAR_DOMAINS.indexOf(fixed) !== -1) return local + '@' + fixed;
+    }
+
+    var best = null, bestDist = 3;
+    for (var i = 0; i < POPULAR_DOMAINS.length; i++) {
+      var d = editDistance(domain, POPULAR_DOMAINS[i]);
+      if (d < bestDist) { bestDist = d; best = POPULAR_DOMAINS[i]; }
+    }
+    if (best && bestDist <= 2) return local + '@' + best;
+
+    return null;
+  }
+
+  var lastShown = null;
+  var dismissed = Object.create(null);
+  var applied   = Object.create(null);
+
+  function showSuggestion(corrected) {
+    var btn = hint.querySelector('.etc-apply');
+    btn.textContent = corrected;
+    btn.dataset.value = corrected;
+    hint.hidden = false;
+    lastShown = corrected;
+  }
+  function hideSuggestion() { hint.hidden = true; }
+
+  input.addEventListener('blur', function () {
+    var val = input.value;
+    if (!val || val.indexOf('@') === -1) { hideSuggestion(); return; }
+    if (applied[val] || dismissed[val]) { hideSuggestion(); return; }
+    var corrected = suggest(val);
+    if (corrected && corrected !== val) showSuggestion(corrected);
+    else hideSuggestion();
+  });
+
+  input.addEventListener('input', function () { hideSuggestion(); });
+
+  hint.addEventListener('click', function (e) {
+    var t = e.target.closest('button');
+    if (!t) return;
+    if (t.dataset.action === 'apply') {
+      var v = t.dataset.value;
+      input.value = v;
+      applied[v] = true;
+      hideSuggestion();
+      input.dispatchEvent(new Event('change', { bubbles: true }));
+    } else if (t.dataset.action === 'dismiss') {
+      if (lastShown) dismissed[input.value] = true;
+      hideSuggestion();
+    }
+  });
+})();
+</script>
