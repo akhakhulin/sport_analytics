@@ -15,7 +15,7 @@ enableStaticServing = true
 
 # Тема под прототип Sportsmen Analytics
 [theme]
-primaryColor = "#185FA5"
+primaryColor = "#3c3489"
 backgroundColor = "#F5F4EF"
 secondaryBackgroundColor = "#F5F4EF"
 textColor = "#2C2C2A"

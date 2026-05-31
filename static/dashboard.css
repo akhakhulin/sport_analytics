@@ -17,6 +17,11 @@
   --color-z4: #BA7517;
   --color-z5: #E24B4A;
 
+  /* Colors — brand (single source of truth с signup_service/static/style.css) */
+  --color-brand:       #3c3489;
+  --color-brand-light: #7f77dd;
+  --color-brand-soft:  #ebe9f7;
+
   /* Colors — semantic */
   --color-success: #3B6D11;
   --color-success-bg: #EAF3DE;
@@ -24,7 +29,7 @@
   --color-warning-bg: #FAEEDA;
   --color-danger: #A32D2D;
   --color-danger-bg: #FCEBEB;
-  --color-info: #185FA5;
+  --color-info: #185FA5;       /* только для st.info() — UX-стандарт для info-сообщений */
   --color-info-bg: #E6F1FB;
 
   /* Colors — neutral */
@@ -79,7 +84,10 @@ html, body, [data-testid="stApp"] {
 
 /* ---- 3. Сайдбар ---- */
 [data-testid="stSidebar"] {
-  background: var(--color-bg-app) !important;
+  background: linear-gradient(180deg,
+    var(--color-brand-soft) 0,
+    var(--color-brand-soft) 64px,
+    var(--color-bg-app) 140px) !important;
   border-right: 0.5px solid var(--color-border);
 }
 
@@ -175,15 +183,15 @@ html, body, [data-testid="stApp"] {
   cursor: pointer;
 }
 [data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label:hover {
-  color: var(--color-info);
+  color: var(--color-brand);
 }
 
-/* Multiselect (Типы активности) — чипы в синем стиле */
+/* Multiselect (Типы активности) — чипы в brand purple */
 [data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="select"] {
   background: transparent;
 }
 [data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="tag"] {
-  background: var(--color-info) !important;
+  background: var(--color-brand) !important;
   color: white !important;
   border-radius: 12px !important;
   font-size: var(--fs-sm) !important;
@@ -198,7 +206,7 @@ html, body, [data-testid="stApp"] {
   opacity: 0.9;
 }
 [data-testid="stSidebar"] [data-testid="stMultiSelect"] [data-baseweb="tag"]:hover {
-  background: #0C447C !important;
+  background: #2f2a73 !important;
 }
 
 /* Кнопка коллапса сайдбара — sticky/fixed (раньше было inline) */
@@ -344,7 +352,7 @@ html, body, [data-testid="stApp"] {
   margin: 6px 2px 0;
 }
 .sa-foot-link {
-  color: var(--color-info);
+  color: var(--color-brand);
   cursor: pointer;
   text-decoration: none;
   font-weight: 500;
@@ -429,22 +437,22 @@ html, body, [data-testid="stApp"] {
 [data-testid="stMain"] .st-key-kpi_card_workouts [data-testid="stMetric"],
 [data-testid="stMain"] .st-key-kpi_card_hours [data-testid="stMetric"],
 [data-testid="stMain"] .st-key-kpi_card_km [data-testid="stMetric"] {
-  background: #F8FAFD !important;
-  border-color: rgba(24, 95, 165, 0.18) !important;
+  background: #FAFAFE !important;
+  border-color: rgba(60, 52, 137, 0.18) !important;
   cursor: pointer !important;
   transition: background 0.15s, border-color 0.15s;
 }
-/* Hover-усиление */
+/* Hover-усиление — brand-soft подложка вместо steel-blue */
 [data-testid="stMain"] .st-key-kpi_card_workouts:hover [data-testid="stMetric"],
 [data-testid="stMain"] .st-key-kpi_card_hours:hover [data-testid="stMetric"],
 [data-testid="stMain"] .st-key-kpi_card_km:hover [data-testid="stMetric"] {
-  background: #EAF2FB !important;
-  border-color: rgba(24, 95, 165, 0.45) !important;
+  background: var(--color-brand-soft) !important;
+  border-color: rgba(60, 52, 137, 0.45) !important;
 }
 
-/* === KPI drilldown panel (синяя рамка + бейдж) === */
+/* === KPI drilldown panel (brand purple рамка + бейдж) === */
 [data-testid="stMain"] .st-key-kpi_dd_panel {
-  border: 1.5px solid var(--color-info) !important;
+  border: 1.5px solid var(--color-brand) !important;
   border-radius: var(--r-lg) !important;
   padding: 14px !important;
   margin-top: 14px !important;
@@ -455,8 +463,8 @@ html, body, [data-testid="stApp"] {
   position: absolute;
   top: -8px;
   left: 14px;
-  background: var(--color-info-bg);
-  color: var(--color-info);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
   font-size: var(--fs-xs);
   padding: 2px 8px;
   border-radius: var(--r-sm);
@@ -464,20 +472,20 @@ html, body, [data-testid="stApp"] {
   z-index: 2;
 }
 
-/* Раскрытая карточка «Километров» — тоже белая, но с синей рамкой выделения */
+/* Раскрытая карточка «Километров» — белая, brand purple рамка выделения */
 .kpi-expanded {
   background: var(--color-bg-block);
   border-radius: var(--r-lg);
   padding: 12px 14px;
-  border: 1.5px solid var(--color-info);
+  border: 1.5px solid var(--color-brand);
   position: relative;
 }
 .kpi-exp-badge {
   position: absolute;
   top: -8px;
   right: 12px;
-  background: var(--color-info-bg);
-  color: var(--color-info);
+  background: var(--color-brand-soft);
+  color: var(--color-brand);
   font-size: var(--fs-xs);
   padding: 2px 7px;
   border-radius: var(--r-sm);
@@ -513,7 +521,7 @@ html, body, [data-testid="stApp"] {
 [data-testid="stMain"] button[data-testid$="kpi_km_collapse"] {
   background: transparent !important;
   border: none !important;
-  color: var(--color-info) !important;
+  color: var(--color-brand) !important;
   font-size: var(--fs-sm) !important;
   padding: 2px 6px !important;
   margin-top: 4px !important;
@@ -521,7 +529,7 @@ html, body, [data-testid="stApp"] {
 }
 [data-testid="stMain"] button[data-testid$="kpi_km_expand"]:hover,
 [data-testid="stMain"] button[data-testid$="kpi_km_collapse"]:hover {
-  background: var(--color-info-bg) !important;
+  background: var(--color-brand-soft) !important;
   text-decoration: underline;
 }
 
@@ -636,7 +644,7 @@ html, body, [data-testid="stApp"] {
 }
 .st-key-sa_custom_start [data-baseweb="input"]:focus-within,
 .st-key-sa_custom_end [data-baseweb="input"]:focus-within {
-  outline: 2px solid #185FA5 !important;
+  outline: 2px solid var(--color-brand) !important;
   outline-offset: -1px !important;
 }
 

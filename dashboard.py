@@ -1335,9 +1335,9 @@ with tab1:
       position: relative !important;
     }}
     [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown} [data-testid="stMetric"] {{
-      border: 2px solid var(--color-info) !important;
+      border: 2px solid var(--color-brand) !important;
       border-radius: var(--r-lg) !important;
-      background: #F7FAFD !important;
+      background: var(--color-brand-soft) !important;
     }}
     [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown}::after {{
       content: '';
@@ -1348,7 +1348,7 @@ with tab1:
       width: 0; height: 0;
       border-left: 12px solid transparent;
       border-right: 12px solid transparent;
-      border-top: 14px solid var(--color-info);
+      border-top: 14px solid var(--color-brand);
       z-index: 11;
     }}
     [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown}::before {{
@@ -2270,7 +2270,7 @@ with tab1:
             fig.add_trace(go.Scatter(
                 x=pmc_view["day"], y=pmc_view["CTL"],
                 name="CTL · фитнес", mode="lines",
-                line=dict(color="#185FA5", width=2.5),
+                line=dict(color="#3c3489", width=2.5),
                 hovertemplate="%{x}<br>CTL: %{y:.1f}<extra></extra>",
             ))
             # ATL · усталость — коралловый
