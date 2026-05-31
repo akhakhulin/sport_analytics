@@ -690,6 +690,87 @@ async def goodbye_page(request: Request):
     return templates.TemplateResponse(request, "goodbye.html", _ctx(request))
 
 
+# === Period selection (глубина истории) ===
+
+_PERIOD_OPTIONS = [
+    # (days, label_ru, label_en, eta_ru, eta_en)
+    (15,   "15 дней",  "15 days",  "~10 секунд",      "~10 seconds"),
+    (30,   "30 дней",  "30 days",  "~15 секунд",      "~15 seconds"),
+    (90,   "90 дней",  "90 days",  "~30 секунд",      "~30 seconds"),
+    (180,  "180 дней", "180 days", "~1 минута",       "~1 minute"),
+    (365,  "1 год",    "1 year",   "~2-3 минуты",     "~2-3 minutes"),
+    (730,  "2 года",   "2 years",  "~5-10 минут",     "~5-10 minutes"),
+    (0,    "Вся история", "Full history",
+                                    "~10+ минут",     "~10+ minutes"),
+]
+
+
+def _render_period_page(request: Request, just_connected: str | None = None,
+                        is_settings: bool = False):
+    user = _get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    user_row = users_db.find_user_by_id(user["user_id"])
+    current = user_row["period_days"] if user_row and user_row["period_days"] else 90
+    return templates.TemplateResponse(
+        request, "onboarding_period.html",
+        _ctx(request,
+             options=_PERIOD_OPTIONS,
+             current_period_days=current,
+             just_connected=just_connected,
+             is_settings=is_settings),
+    )
+
+
+@app.get("/onboarding/period", response_class=HTMLResponse)
+async def onboarding_period_get(request: Request,
+                                  just_connected: str | None = None):
+    return _render_period_page(request, just_connected=just_connected,
+                                is_settings=False)
+
+
+@app.post("/onboarding/period")
+async def onboarding_period_post(request: Request,
+                                  period_days: str = Form(...)):
+    user = _get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    try:
+        days = int(period_days)
+    except (ValueError, TypeError):
+        return RedirectResponse("/onboarding/period?period_error=invalid",
+                                status_code=303)
+    valid_values = {opt[0] for opt in _PERIOD_OPTIONS}
+    if days not in valid_values:
+        return RedirectResponse("/onboarding/period?period_error=invalid",
+                                status_code=303)
+    # days=0 означает «вся история» → period_days = None в БД
+    users_db.set_period_days(user["user_id"], days if days > 0 else None)
+    # Триггерим первый sync в фоне (для signup_service не блокируем UI)
+    import threading
+    from .sync_worker import _sync_one_strava
+
+    def _bg_sync():
+        try:
+            with users_db.get_conn() as c:
+                row = c.execute(
+                    "SELECT * FROM connected_accounts WHERE user_id=? AND provider='strava'",
+                    (user["user_id"],),
+                ).fetchone()
+            if row:
+                _sync_one_strava(user["user_id"], row)
+        except Exception:
+            pass
+
+    threading.Thread(target=_bg_sync, daemon=True).start()
+    return RedirectResponse("/done?syncing=1", status_code=303)
+
+
+@app.get("/settings/period", response_class=HTMLResponse)
+async def settings_period_get(request: Request):
+    return _render_period_page(request, is_settings=True)
+
+
 @app.post("/notify/{provider}")
 async def notify_provider(provider: str, request: Request,
                            email: str = Form("")):

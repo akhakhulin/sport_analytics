@@ -246,9 +246,14 @@ async def callback(
     external_user_id = _extract_external_user_id(provider, token_data)
     _save_connected_account(user["user_id"], provider, token_data, external_user_id)
 
-    response = RedirectResponse(
-        f"/onboarding/connect?connected={provider}", status_code=303,
-    )
+    # Первый connect → ведём на /onboarding/period (выбор глубины истории).
+    # Последующие подключения → обычный /onboarding/connect.
+    connected_now = users_db.get_connected_providers(user["user_id"])
+    if len(connected_now) == 1:
+        next_url = f"/onboarding/period?just_connected={provider}"
+    else:
+        next_url = f"/onboarding/connect?connected={provider}"
+    response = RedirectResponse(next_url, status_code=303)
     response.delete_cookie(f"{STATE_COOKIE_PREFIX}{provider}")
     return response
 

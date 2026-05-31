@@ -522,6 +522,46 @@ html, body {
 }
 .legal a { color: inherit; }
 
+/* === Period selection (onboarding/period + settings/period) === */
+.period-display {
+  background: var(--color-brand-soft);
+  border: 1px solid var(--color-brand);
+  border-radius: var(--r-md);
+  padding: 20px 16px;
+  margin: 18px 0;
+  text-align: center;
+}
+.period-value {
+  font-size: 28px; font-weight: 500; color: var(--color-brand);
+  letter-spacing: -0.02em; line-height: 1.1;
+}
+.period-eta {
+  font-size: var(--fs-sm); color: var(--color-mute);
+  margin-top: 6px;
+}
+.period-radio {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px;
+  margin-top: 12px;
+}
+@media (max-width: 540px) {
+  .period-radio { grid-template-columns: repeat(2, 1fr); }
+}
+.period-radio-opt {
+  display: flex; align-items: center; justify-content: center;
+  padding: 10px 6px;
+  border: 1px solid var(--color-line); border-radius: var(--r-sm);
+  cursor: pointer; font-size: var(--fs-sm);
+  background: #fff;
+  transition: border-color .12s ease, background .12s ease;
+}
+.period-radio-opt:hover { background: #faf9f5; }
+.period-radio-opt input { display: none; }
+.period-radio-opt:has(input:checked) {
+  border-color: var(--color-brand);
+  background: var(--color-brand-soft);
+  color: var(--color-brand); font-weight: 500;
+}
+
 /* === Settings → Connections === */
 .crumb {
   font-size: var(--fs-sm); color: var(--color-mute);

@@ -33,8 +33,10 @@ log = logging.getLogger("sync_worker")
 
 STRAVA_API = "https://www.strava.com/api/v3"
 STRAVA_TOKEN_URL = "https://www.strava.com/oauth/token"
-ACTIVITIES_PER_PAGE = 50  # сколько последних брать за раз
+ACTIVITIES_PER_PAGE = 200  # Strava max — оптимально для редких запросов
 HTTP_TIMEOUT = 30.0
+MAX_PAGES = 50  # safety: 50 × 200 = 10000 активностей за раз
+RATE_LIMIT_SLEEP = 0.5  # вежливо к 200req/15min Strava limit
 
 
 def _now_iso() -> str:
@@ -103,22 +105,47 @@ def _ensure_valid_token(user_id: str, row) -> str | None:
     return new_tokens["access_token"]
 
 
-def _pull_strava_activities(access_token: str, per_page: int = ACTIVITIES_PER_PAGE) -> list[dict] | None:
-    """GET /athlete/activities. Возвращает list или None при ошибке."""
-    try:
-        r = httpx.get(
-            f"{STRAVA_API}/athlete/activities",
-            headers={"Authorization": f"Bearer {access_token}"},
-            params={"per_page": per_page, "page": 1},
-            timeout=HTTP_TIMEOUT,
-        )
-    except httpx.HTTPError as e:
-        log.error("Strava activities HTTP error: %s", e)
-        return None
-    if r.status_code >= 400:
-        log.error("Strava activities failed: %d %s", r.status_code, r.text[:200])
-        return None
-    return r.json()
+def _pull_strava_activities(access_token: str, period_days: int | None = None) -> list[dict] | None:
+    """GET /athlete/activities с пагинацией и after-фильтром.
+    period_days=None → вся история. Иначе — только activities младше N дней."""
+    after_ts = None
+    if period_days:
+        from datetime import datetime, timezone, timedelta
+        after_dt = datetime.now(timezone.utc) - timedelta(days=period_days)
+        after_ts = int(after_dt.timestamp())
+    all_activities: list[dict] = []
+    page = 1
+    while page <= MAX_PAGES:
+        params = {"per_page": ACTIVITIES_PER_PAGE, "page": page}
+        if after_ts:
+            params["after"] = after_ts
+        try:
+            r = httpx.get(
+                f"{STRAVA_API}/athlete/activities",
+                headers={"Authorization": f"Bearer {access_token}"},
+                params=params, timeout=HTTP_TIMEOUT,
+            )
+        except httpx.HTTPError as e:
+            log.error("Strava activities HTTP error on page %d: %s", page, e)
+            return all_activities or None
+        if r.status_code == 429:
+            log.warning("Strava rate-limited on page %d, stopping", page)
+            break
+        if r.status_code >= 400:
+            log.error("Strava activities failed page %d: %d %s",
+                      page, r.status_code, r.text[:200])
+            return all_activities or None
+        batch = r.json()
+        if not batch:
+            break
+        all_activities.extend(batch)
+        if len(batch) < ACTIVITIES_PER_PAGE:
+            break
+        page += 1
+        time.sleep(RATE_LIMIT_SLEEP)
+    if page > MAX_PAGES:
+        log.warning("hit MAX_PAGES=%d safety stop", MAX_PAGES)
+    return all_activities
 
 
 def _upsert_activity(user_id: str, provider: str, act: dict) -> bool:
@@ -199,7 +226,14 @@ def _sync_one_strava(user_id: str, conn_row) -> dict:
     if not access:
         return _finish("error", "token_refresh_failed")
 
-    activities = _pull_strava_activities(access)
+    # Глубина истории — из users.period_days; None = вся история
+    with users_db.get_conn() as c:
+        u = c.execute(
+            "SELECT period_days FROM users WHERE user_id = ?", (user_id,),
+        ).fetchone()
+    period_days = u["period_days"] if u and u["period_days"] else None
+
+    activities = _pull_strava_activities(access, period_days=period_days)
     if activities is None:
         return _finish("error", "activities_fetch_failed")
 

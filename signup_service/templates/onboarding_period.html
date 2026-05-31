@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}Глубина истории · BeatMetrics{% endblock %}
+{% block body %}
+{% include "_app_header.html" %}
+<main class="onb-shell">
+  <div class="onb-card">
+
+    {% if is_settings %}
+      <div class="crumb">Settings ▸ Глубина истории</div>
+    {% elif just_connected %}
+      <div class="alert-success" style="margin-bottom:14px">
+        ✓ <strong>{{ just_connected | upper }}</strong> подключён.
+        Выбери глубину истории для загрузки.
+      </div>
+    {% endif %}
+
+    <div class="section-title">За какой период загрузить тренировки?</div>
+    <div class="section-sub">Чем глубже история, тем точнее тренды формы — но дольше загружать.</div>
+
+    <form method="post" action="{{ '/settings/period' if is_settings else '/onboarding/period' }}"
+          class="period-form" autocomplete="off">
+
+      <div class="period-display" id="period-display">
+        <div class="period-value" id="period-value">90 дней</div>
+        <div class="period-eta" id="period-eta">~30 секунд загрузки</div>
+      </div>
+
+      {# Mobile: radio-buttons (precision). Desktop: range-slider скрыт CSS-ом на узких. #}
+      <div class="period-radio">
+        {% for days, label_ru, label_en, eta_ru, eta_en in options %}
+          <label class="period-radio-opt">
+            <input type="radio" name="period_days" value="{{ days }}"
+                   {% if days == current_period_days %}checked{% endif %}
+                   data-label-ru="{{ label_ru }}" data-label-en="{{ label_en }}"
+                   data-eta-ru="{{ eta_ru }}" data-eta-en="{{ eta_en }}">
+            <span>{{ label_ru }}</span>
+          </label>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="btn btn-primary" style="margin-top:18px">
+        {% if is_settings %}Сохранить →{% else %}Загрузить →{% endif %}
+      </button>
+
+      <div style="margin-top:10px;text-align:center;font-size:var(--fs-sm);color:var(--color-mute)">
+        Можно изменить в настройках позже
+      </div>
+    </form>
+  </div>
+</main>
+
+<script>
+// Sync period-display с выбранным radio
+(function () {
+  var radios = document.querySelectorAll('input[name="period_days"]');
+  var valEl = document.getElementById('period-value');
+  var etaEl = document.getElementById('period-eta');
+  function update() {
+    var sel = document.querySelector('input[name="period_days"]:checked');
+    if (!sel) return;
+    var lang = localStorage.getItem('beatmetrics_lang') === 'en' ? 'en' : 'ru';
+    valEl.textContent = sel.dataset['label' + (lang === 'en' ? 'En' : 'Ru')];
+    etaEl.textContent = sel.dataset['eta' + (lang === 'en' ? 'En' : 'Ru')]
+                        + (lang === 'en' ? ' to load' : ' загрузки');
+  }
+  radios.forEach(function (r) { r.addEventListener('change', update); });
+  update();
+})();
+</script>
+{% endblock %}
