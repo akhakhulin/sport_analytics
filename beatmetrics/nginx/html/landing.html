@@ -114,6 +114,32 @@ section.hero {
   box-shadow: 0 20px 50px rgba(60,52,137,0.16);
 }
 
+/* Dashboard preview — между hero и values */
+section.dashboard-preview {
+  padding: 40px 0 70px;
+  text-align: center;
+}
+.dashboard-preview h2 {
+  font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 6px;
+}
+.dashboard-preview p.sub {
+  color: var(--mute); font-size: 15px; margin-bottom: 28px;
+}
+.dashboard-frame {
+  display: inline-block;
+  max-width: 1100px; width: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow:
+    0 20px 50px rgba(60,52,137,0.18),
+    0 0 0 1px rgba(60,52,137,0.08);
+  background: #fff;
+}
+.dashboard-frame img {
+  display: block; width: 100%; height: auto;
+}
+
 /* Value props */
 section.values { padding: 60px 0; }
 .values h2 {
@@ -209,6 +235,16 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       <div class="hero-microcopy" data-i18n="hero_microcopy">бесплатно · без карты · 30 секунд</div>
     </div>
     <div class="hero-visual" aria-hidden="true"></div>
+  </section>
+
+  <section class="dashboard-preview">
+    <h2>Вот так выглядит ваш дашборд</h2>
+    <p class="sub">Реальные тренировки за год — объём, зоны, тренды формы</p>
+    <div class="dashboard-frame">
+      <img src="/landing-assets/dashboard/hero-main.png"
+           alt="BeatMetrics dashboard — годовая аналитика тренировок"
+           loading="lazy">
+    </div>
   </section>
 
   <section class="values">
