@@ -80,6 +80,67 @@ html, body {
   font-weight: 500;
 }
 
+/* === Legal pages (Terms / Privacy) — статичные long-read документы === */
+.legal-shell {
+  min-height: 100vh;
+  padding: 40px 24px 60px;
+  background: var(--color-paper);
+}
+.legal-doc {
+  max-width: 720px; margin: 0 auto;
+  font-size: 15px; line-height: 1.7; color: var(--color-ink);
+}
+.legal-doc h1 {
+  font-size: 32px; font-weight: 500; letter-spacing: -0.02em;
+  margin: 0 0 8px;
+}
+.legal-doc h2 {
+  font-size: 19px; font-weight: 500; color: var(--color-brand);
+  letter-spacing: -0.01em;
+  margin: 32px 0 12px;
+  padding-top: 16px;
+  border-top: 1px solid var(--color-line);
+}
+.legal-doc h2:first-of-type { border-top: 0; padding-top: 0; }
+.legal-doc p { margin: 0 0 12px; }
+.legal-doc ul, .legal-doc ol { padding-left: 22px; margin: 0 0 12px; }
+.legal-doc li { margin-bottom: 4px; }
+.legal-doc a {
+  color: var(--color-brand); text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.legal-doc strong { font-weight: 600; }
+.legal-doc table {
+  width: 100%; border-collapse: collapse;
+  margin: 16px 0; font-size: 14px;
+}
+.legal-doc th, .legal-doc td {
+  border: 1px solid var(--color-line);
+  padding: 8px 12px; text-align: left;
+}
+.legal-doc th { background: var(--color-paper); font-weight: 500; }
+.legal-doc hr {
+  border: none; border-top: 1px solid var(--color-line);
+  margin: 24px 0;
+}
+.legal-doc em {
+  display: block; font-style: normal;
+  color: var(--color-mute); font-size: 13px;
+  margin-bottom: 24px;
+}
+
+/* === App footer (Terms · Privacy · support) — на signup_service страницах === */
+.app-foot {
+  text-align: center;
+  padding: 20px 16px 24px;
+  font-size: 12px; color: var(--color-mute);
+}
+.app-foot a {
+  color: var(--color-mute); text-decoration: none;
+  margin: 0 6px;
+}
+.app-foot a:hover { color: var(--color-brand); text-decoration: underline; }
+
 /* === App header (logged-in pages: done / onboarding / settings) === */
 .app-header {
   position: sticky; top: 0; z-index: 10;

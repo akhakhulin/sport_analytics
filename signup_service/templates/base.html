@@ -9,6 +9,11 @@
 </head>
 <body>
 {% block body %}{% endblock %}
+<footer class="app-foot">
+  <a href="/terms" data-i18n="foot_terms">Условия</a> ·
+  <a href="/privacy" data-i18n="foot_privacy">Конфиденциальность</a> ·
+  <a href="mailto:support@beatmetrics.ru">support@beatmetrics.ru</a>
+</footer>
 {% include "_lang_toggle.html" %}
 {% include "_cookie_banner.html" %}
 <script>

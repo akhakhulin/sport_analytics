@@ -253,6 +253,78 @@ section.audience { padding: 30px 0 60px; }
 }
 .audience-card p { font-size: 14px; color: var(--mute); line-height: 1.6; }
 
+/* === Trust section (open-source / РФ-сервер / атлет-разработчик) === */
+section.trust { padding: 30px 0 50px; }
+.trust h2 {
+  font-size: 24px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 24px; text-align: center;
+}
+.trust-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+@media (max-width: 760px) { .trust-grid { grid-template-columns: 1fr; gap: 14px; } }
+.trust-item {
+  padding: 20px;
+  border: 1px solid var(--line); border-radius: 12px;
+  background: #fff;
+}
+.trust-item .icon { font-size: 28px; margin-bottom: 10px; }
+.trust-item h3 { font-size: 15px; font-weight: 500; margin-bottom: 4px; }
+.trust-item p { font-size: 13px; color: var(--mute); line-height: 1.55; }
+.trust-item a { color: var(--brand); font-weight: 500; }
+
+/* === FAQ accordion (нативный details/summary) === */
+section.faq { padding: 40px 0; }
+.faq h2 {
+  font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
+  margin-bottom: 28px; text-align: center;
+}
+.faq-list { max-width: 760px; margin: 0 auto; }
+.faq-list details {
+  border: 1px solid var(--line); border-radius: 10px;
+  margin-bottom: 10px; padding: 0;
+  background: #fff;
+  transition: border-color .12s ease;
+}
+.faq-list details[open] { border-color: var(--brand); }
+.faq-list summary {
+  list-style: none; cursor: pointer;
+  padding: 18px 22px;
+  font-size: 16px; font-weight: 500; color: var(--ink);
+  display: flex; align-items: center; gap: 12px;
+  position: relative;
+}
+.faq-list summary::-webkit-details-marker { display: none; }
+.faq-list summary::after {
+  content: '+'; margin-left: auto;
+  width: 24px; height: 24px; line-height: 24px;
+  text-align: center; font-size: 20px; font-weight: 400;
+  color: var(--brand);
+  transition: transform .15s ease;
+}
+.faq-list details[open] summary::after { content: '−'; }
+.faq-list .faq-body {
+  padding: 0 22px 18px;
+  font-size: 14px; color: var(--mute); line-height: 1.65;
+}
+.faq-list .faq-body a { color: var(--brand); }
+
+/* === Final CTA (после FAQ) === */
+section.cta-final {
+  padding: 60px 0;
+  text-align: center;
+  background: linear-gradient(180deg, transparent, var(--brand-soft));
+  margin: 0 -24px;
+  padding-left: 24px; padding-right: 24px;
+}
+.cta-final h2 {
+  font-size: 30px; font-weight: 500; letter-spacing: -0.02em;
+  margin-bottom: 6px;
+}
+.cta-final p {
+  font-size: 15px; color: var(--mute); margin-bottom: 22px;
+}
+
 /* Sources */
 section.sources {
   padding: 40px 0 60px;
@@ -421,6 +493,33 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
+  <section class="trust">
+    <div class="trust-inner">
+      <h2>Прозрачно, как и должно быть</h2>
+      <div class="trust-grid">
+        <div class="trust-item">
+          <div class="icon">🔓</div>
+          <h3>Открытая разработка</h3>
+          <p>Код продукта открыт на
+            <a href="https://github.com/akhakhulin/sport_analytics" target="_blank" rel="noopener">GitHub</a>.
+            Видно что и как мы делаем с вашими данными.</p>
+        </div>
+        <div class="trust-item">
+          <div class="icon">🇷🇺</div>
+          <h3>Серверы в России</h3>
+          <p>Москва, физический сервер. Данные не покидают РФ —
+             соответствие 152-ФЗ.</p>
+        </div>
+        <div class="trust-item">
+          <div class="icon">🧑‍🔬</div>
+          <h3>Сделано атлетом для атлетов</h3>
+          <p>Автор — лыжник КМС. Каждая фича вырастает из реальной
+             тренировочной задачи, а не из «давайте сделаем красиво».</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="sources">
     <div class="sources-inner">
       <h2 data-i18n="sources_h2">Подключи свой источник</h2>
@@ -441,10 +540,99 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       </div>
     </div>
   </section>
+
+  <section class="faq">
+    <h2>Частые вопросы</h2>
+    <div class="faq-list">
+      <details>
+        <summary>Какие часы и приложения поддерживаются?</summary>
+        <div class="faq-body">
+          Сейчас работают: <strong>Strava</strong> (включает Apple Watch,
+          большинство Garmin, Polar, Suunto, Wahoo, COROS, Zepp),
+          <strong>Polar Flow</strong> напрямую, <strong>Suunto</strong>
+          напрямую. Прямой Garmin Connect — в pending-статусе у партнёрской
+          программы Garmin (см. ниже). Если ваши часы синкаются в Strava —
+          они работают с BeatMetrics.
+        </div>
+      </details>
+
+      <details>
+        <summary>Когда будет прямая интеграция с Garmin Connect?</summary>
+        <div class="faq-body">
+          Заявка в Garmin Developer Program подана, ждём подтверждения —
+          обычно 4-12 недель. До этого Garmin-часы работают через
+          <strong>Strava-мост</strong>: ваши Garmin-активности автоматически
+          попадают в Strava, оттуда — в BeatMetrics. Recovery, Body Battery
+          и HRV-метрики Garmin будут доступны только после прямой
+          интеграции — Strava их не передаёт.
+        </div>
+      </details>
+
+      <details>
+        <summary>Чем это отличается от Strava, Garmin Connect и TrainingPeaks?</summary>
+        <div class="faq-body">
+          <strong>Strava</strong> — социальная сеть с базовой статистикой;
+          нет CTL/ATL/TSB, нет планов, нет совместной работы с тренером.
+          <strong>Garmin Connect</strong> — отличный для одного устройства,
+          но не агрегирует Polar/Suunto/Apple Watch, не показывает
+          план vs факт. <strong>TrainingPeaks</strong> — мощный, но
+          $20/мес и UX 2008 года. BeatMetrics — один экран с тем, что
+          важно: тренды формы, зоны, recovery, план vs факт.
+          Бесплатно во время беты.
+        </div>
+      </details>
+
+      <details>
+        <summary>Что с безопасностью данных и где они хранятся?</summary>
+        <div class="faq-body">
+          Серверы — в России (Москва, физический), соответствует требованию
+          локализации персональных данных 152-ФЗ. OAuth-токены хранятся
+          зашифрованными (Fernet), пароли — bcrypt-хэш. Рекламным сетям
+          и аналитике данные не передаются. Подробности —
+          в <a href="https://app.beatmetrics.ru/privacy">политике конфиденциальности</a>.
+          Удалить аккаунт можно в любой момент — все данные стираются
+          в течение 30 дней.
+        </div>
+      </details>
+
+      <details>
+        <summary>А если я тренируюсь без часов — силовые, ОФП, имитация?</summary>
+        <div class="faq-body">
+          Силовые и кросс-тренировки появятся в дневнике как «другая
+          активность» — без HR-аналитики, но с длительностью и заметками.
+          Так вы видите полную картину нагрузки, а не только то что
+          записали часы. Скоро добавим ручное логирование сессий без
+          устройства.
+        </div>
+      </details>
+
+      <details>
+        <summary>Сколько это будет стоить, когда бета закончится?</summary>
+        <div class="faq-body">
+          Цели: тариф для атлета — в пределах <strong>₽300-500/мес</strong>
+          (~$3-5), тариф для тренера — выше. Беспокоиться не надо: о введении
+          цен и условий перехода предупредим за 30 дней по email, аккаунт
+          автоматически в платный не переведём. Хотите зафиксировать
+          пожизненную скидку первого пользователя —
+          <a href="mailto:support@beatmetrics.ru">напишите</a>.
+        </div>
+      </details>
+    </div>
+  </section>
 </main>
+
+<section class="cta-final">
+  <h2>Готов попробовать?</h2>
+  <p>Бета бесплатна. Без карты. Подключение — 30 секунд.</p>
+  <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary btn-lg">
+    Подключить устройство →
+  </a>
+</section>
 
 <footer class="foot">
   &copy; 2026 BeatMetrics ·
+  <a href="https://app.beatmetrics.ru/terms">Условия</a> ·
+  <a href="https://app.beatmetrics.ru/privacy">Конфиденциальность</a> ·
   <a href="mailto:support@beatmetrics.ru">support@beatmetrics.ru</a>
 </footer>
 

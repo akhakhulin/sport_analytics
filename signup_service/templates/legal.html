@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · BeatMetrics{% endblock %}
+{% block body %}
+{% if user %}{% include "_app_header.html" %}{% endif %}
+<main class="legal-shell">
+  <article class="legal-doc">
+    {{ html_content | safe }}
+  </article>
+</main>
+{% endblock %}

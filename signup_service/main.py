@@ -650,6 +650,28 @@ async def coach_invite(
     return RedirectResponse("/done#invites", status_code=303)
 
 
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request):
+    return _render_legal(request, "terms.md", "Пользовательское соглашение")
+
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    return _render_legal(request, "privacy.md", "Политика конфиденциальности")
+
+
+def _render_legal(request: Request, filename: str, title: str) -> HTMLResponse:
+    """Markdown legal-документ → HTML через стандартную lib `markdown`."""
+    import markdown as md_lib
+    path = BASE / "content" / filename
+    raw = path.read_text(encoding="utf-8")
+    html = md_lib.markdown(raw, extensions=["tables", "fenced_code"])
+    return templates.TemplateResponse(
+        request, "legal.html",
+        _ctx(request, title=title, html_content=html),
+    )
+
+
 @app.get("/health")
 async def health():
     return {"ok": True, "service": "signup"}
