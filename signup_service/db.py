@@ -393,3 +393,38 @@ def delete_connected_account(user_id: str, provider: str) -> bool:
         )
         c.commit()
         return cur.rowcount > 0
+
+
+# === Hard-delete аккаунта (152-ФЗ ст.20 + GDPR Art.17) ===
+
+def delete_user(user_id: str) -> dict:
+    """Полностью удаляет пользователя и все связанные данные.
+    Возвращает dict со счётчиками удалённого — для email-уведомления."""
+    with get_conn() as c:
+        # Сначала собираем статистику для отчёта пользователю
+        stats = {
+            "cloud_activities": c.execute(
+                "SELECT COUNT(*) FROM cloud_activities WHERE user_id = ?",
+                (user_id,)).fetchone()[0],
+            "connected_accounts": c.execute(
+                "SELECT COUNT(*) FROM connected_accounts WHERE user_id = ?",
+                (user_id,)).fetchone()[0],
+            "auth_tokens": c.execute(
+                "SELECT COUNT(*) FROM auth_tokens WHERE user_id = ?",
+                (user_id,)).fetchone()[0],
+            "coach_for_athletes": c.execute(
+                "SELECT COUNT(*) FROM users WHERE coach_user_id = ?",
+                (user_id,)).fetchone()[0],
+        }
+        # Если этот user был coach — атлетам сбрасываем coach_user_id (они остаются)
+        c.execute("UPDATE users SET coach_user_id = NULL WHERE coach_user_id = ?",
+                  (user_id,))
+        # Удаляем все связанные записи
+        c.execute("DELETE FROM coach_invitations WHERE coach_user_id = ?", (user_id,))
+        c.execute("DELETE FROM cloud_sync_runs WHERE user_id = ?", (user_id,))
+        c.execute("DELETE FROM cloud_activities WHERE user_id = ?", (user_id,))
+        c.execute("DELETE FROM connected_accounts WHERE user_id = ?", (user_id,))
+        c.execute("DELETE FROM auth_tokens WHERE user_id = ?", (user_id,))
+        c.execute("DELETE FROM users WHERE user_id = ?", (user_id,))
+        c.commit()
+    return stats

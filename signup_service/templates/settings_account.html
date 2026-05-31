@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}Settings · Аккаунт · BeatMetrics{% endblock %}
+{% block body %}
+{% include "_app_header.html" %}
+<main class="onb-shell">
+  <div class="onb-card onb-card-wide">
+    <div class="crumb">Settings ▸ Аккаунт</div>
+    <div class="section-title" style="margin-bottom:24px">Настройки аккаунта</div>
+
+    {# Профиль (read-only пока) #}
+    <div class="conn-card">
+      <div class="top">
+        <div class="name">Профиль</div>
+      </div>
+      <div class="grid">
+        <div>Email</div><div><b>{{ user_row.email }}</b></div>
+        {% if user_row.name %}
+          <div>Имя</div><div><b>{{ user_row.name }}</b></div>
+        {% endif %}
+        <div>Способ входа</div><div><b>
+          {% if user_row.auth_method == 'google' %}через Google{% else %}email + пароль{% endif %}
+        </b></div>
+        <div>Роль</div><div><b>
+          {% if user_row.role == 'coach' %}🤝 Тренер{% else %}🏃 Атлет{% endif %}
+        </b></div>
+        <div>Зарегистрирован</div><div><b>{{ user_row.created_at[:10] }}</b></div>
+      </div>
+    </div>
+
+    {# Danger zone #}
+    <div style="margin-top:32px;padding:20px;border:1px solid var(--color-danger);
+                border-radius:var(--r-md);background:var(--color-danger-bg)">
+      <div style="font-size:var(--fs-lg);font-weight:500;color:var(--color-danger);
+                  margin-bottom:8px">⚠ Удалить аккаунт навсегда</div>
+      <div style="font-size:var(--fs-md);color:var(--color-ink);line-height:1.55;
+                  margin-bottom:12px">
+        Будут безвозвратно удалены:
+      </div>
+      <ul style="margin:0 0 16px 20px;font-size:var(--fs-sm);color:var(--color-ink);line-height:1.7">
+        <li><strong>{{ stats.cloud_activities }}</strong> тренировок из синков</li>
+        <li><strong>{{ stats.connected_accounts }}</strong> подключённых источников
+            (OAuth-токены будут стёрты)</li>
+        <li>Профиль, пароль, все сессии</li>
+        {% if stats.coach_for_athletes > 0 %}
+          <li><strong>{{ stats.coach_for_athletes }}</strong> атлетов
+              останутся, но потеряют связь с вами как с тренером</li>
+        {% endif %}
+      </ul>
+      <div style="font-size:var(--fs-sm);color:var(--color-mute);
+                  margin-bottom:14px;line-height:1.5">
+        Бэкапы зачистятся в течение 30 дней. До этого момента возможен возврат —
+        напишите на <a href="mailto:support@beatmetrics.ru"
+        style="color:var(--color-brand)">support@beatmetrics.ru</a> с того же email.
+      </div>
+
+      {% if delete_error %}
+        <div class="alert-error" style="margin-bottom:14px">{{ delete_error }}</div>
+      {% endif %}
+
+      <details class="delete-details">
+        <summary style="cursor:pointer;color:var(--color-danger);font-weight:500;
+                font-size:var(--fs-md);list-style:none">
+          Я понимаю — удалить аккаунт →
+        </summary>
+        <form method="post" action="/settings/account/delete"
+              style="margin-top:14px" autocomplete="off">
+          <div class="field">
+            <label for="confirm_email" style="font-size:var(--fs-sm);color:var(--color-ink)">
+              Для подтверждения введите ваш email — <strong>{{ user_row.email }}</strong>
+            </label>
+            <input id="confirm_email" name="confirm_email" type="email" required
+                   autocomplete="off"
+                   placeholder="ваш email"
+                   data-required-email="{{ user_row.email | lower }}">
+          </div>
+          <div style="display:flex;gap:8px">
+            <button type="submit" id="confirm-delete-btn" disabled
+                    style="flex:1;padding:10px 18px;background:var(--color-danger);
+                           color:#fff;border:1px solid var(--color-danger);
+                           border-radius:var(--r-md);font-weight:500;cursor:pointer;
+                           opacity:0.5;transition:opacity .12s ease">
+              Удалить навсегда
+            </button>
+          </div>
+        </form>
+      </details>
+    </div>
+
+    <div style="margin-top:20px;text-align:center">
+      <a href="/settings/connections" class="btn">← Settings ▸ Connections</a>
+    </div>
+  </div>
+</main>
+
+<script>
+// Live-validate confirm_email
+(function () {
+  var input = document.getElementById('confirm_email');
+  var btn = document.getElementById('confirm-delete-btn');
+  if (!input || !btn) return;
+  var requiredEmail = input.dataset.requiredEmail;
+  input.addEventListener('input', function () {
+    var ok = input.value.trim().toLowerCase() === requiredEmail;
+    btn.disabled = !ok;
+    btn.style.opacity = ok ? '1' : '0.5';
+  });
+})();
+</script>
+{% endblock %}

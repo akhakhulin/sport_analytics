@@ -88,6 +88,27 @@ def send_password_reset(email: str, name: str | None, reset_url: str) -> None:
     send_email(email, "BeatMetrics — сброс пароля", body)
 
 
+def send_account_deleted(email: str, name: str | None, stats: dict) -> None:
+    """Финальное письмо после удаления аккаунта — confirmation + restore-info."""
+    n_act = stats.get("cloud_activities", 0)
+    n_conn = stats.get("connected_accounts", 0)
+    body = (
+        f"Привет{f', {name}' if name else ''}!\n\n"
+        f"Ваш аккаунт BeatMetrics удалён по вашему запросу.\n\n"
+        f"Что удалено:\n"
+        f"  • Профиль (email, имя, пароль)\n"
+        f"  • {n_act} тренировок из синков\n"
+        f"  • {n_conn} подключённых источников (OAuth-токены стёрты)\n"
+        f"  • История синков, сессии, временные токены\n\n"
+        f"Бэкапы зачистятся в течение 30 дней.\n"
+        f"До этого момента возможен возврат — напишите на support@beatmetrics.ru\n"
+        f"с того же email-адреса.\n\n"
+        f"Спасибо, что попробовали BeatMetrics.\n"
+        f"— BeatMetrics"
+    )
+    send_email(email, "BeatMetrics — аккаунт удалён", body)
+
+
 def send_email_verification(email: str, name: str | None, verify_url: str) -> None:
     body = (
         f"Привет{f', {name}' if name else ''}!\n\n"

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}До свидания · BeatMetrics{% endblock %}
+{% block body %}
+<main class="auth-shell">
+  <div class="auth-card">
+    <div class="logo-wrap">{% include "_logo.html" %}</div>
+    <div class="tagline" data-i18n="tagline">тренируйся осознанно</div>
+
+    <div style="text-align:center;padding:20px 8px">
+      <div style="font-size:42px;margin-bottom:14px">👋</div>
+      <h1 style="font-size:24px;font-weight:500;margin-bottom:10px;letter-spacing:-0.01em">
+        Аккаунт удалён
+      </h1>
+      <p style="font-size:var(--fs-md);color:var(--color-mute);line-height:1.6;margin-bottom:18px">
+        Все данные стёрты. Бэкапы зачистятся в течение 30 дней —
+        возврат до этого момента возможен через <a href="mailto:support@beatmetrics.ru"
+        style="color:var(--color-brand)">support@beatmetrics.ru</a>.
+      </p>
+      <p style="font-size:var(--fs-sm);color:var(--color-mute);margin-bottom:20px">
+        Письмо с подтверждением — на ваш email.
+      </p>
+      <a href="https://beatmetrics.ru/" class="btn">На главную</a>
+    </div>
+  </div>
+</main>
+{% endblock %}

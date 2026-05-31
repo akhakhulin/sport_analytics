@@ -612,6 +612,78 @@ async def verify_email(request: Request, token: str | None = None):
     return RedirectResponse("/login?verified=1", status_code=303)
 
 
+@app.get("/settings/account", response_class=HTMLResponse)
+async def settings_account_get(request: Request):
+    user = _get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    user_row = users_db.find_user_by_id(user["user_id"])
+    if user_row is None:
+        return RedirectResponse("/login", status_code=303)
+
+    # Статистика для checklist «что будет удалено»
+    with users_db.get_conn() as c:
+        stats = {
+            "cloud_activities": c.execute(
+                "SELECT COUNT(*) FROM cloud_activities WHERE user_id=?",
+                (user["user_id"],)).fetchone()[0],
+            "connected_accounts": c.execute(
+                "SELECT COUNT(*) FROM connected_accounts WHERE user_id=?",
+                (user["user_id"],)).fetchone()[0],
+            "coach_for_athletes": c.execute(
+                "SELECT COUNT(*) FROM users WHERE coach_user_id=?",
+                (user["user_id"],)).fetchone()[0],
+        }
+    return templates.TemplateResponse(
+        request, "settings_account.html",
+        _ctx(request, user_row=user_row, stats=stats),
+    )
+
+
+@app.post("/settings/account/delete")
+async def settings_account_delete(
+    request: Request,
+    confirm_email: str = Form(...),
+):
+    user = _get_current_user(request)
+    if not user:
+        return RedirectResponse("/login", status_code=303)
+    user_row = users_db.find_user_by_id(user["user_id"])
+    if user_row is None:
+        return RedirectResponse("/login", status_code=303)
+
+    if (confirm_email or "").strip().lower() != user_row["email"].lower():
+        # Re-render с ошибкой
+        with users_db.get_conn() as c:
+            stats = {
+                "cloud_activities": c.execute("SELECT COUNT(*) FROM cloud_activities WHERE user_id=?", (user["user_id"],)).fetchone()[0],
+                "connected_accounts": c.execute("SELECT COUNT(*) FROM connected_accounts WHERE user_id=?", (user["user_id"],)).fetchone()[0],
+                "coach_for_athletes": c.execute("SELECT COUNT(*) FROM users WHERE coach_user_id=?", (user["user_id"],)).fetchone()[0],
+            }
+        return templates.TemplateResponse(
+            request, "settings_account.html",
+            _ctx(request, user_row=user_row, stats=stats,
+                 delete_error="Email не совпадает с вашим — попробуйте ещё раз"),
+            status_code=400,
+        )
+
+    # Подтверждение прошло — удаляем
+    email = user_row["email"]
+    name = user_row["name"]
+    stats = users_db.delete_user(user["user_id"])
+    # Финальное письмо (не блокируем на отправку — outbox-fallback в email_sender)
+    email_sender.send_account_deleted(email, name, stats)
+
+    response = RedirectResponse("/goodbye", status_code=303)
+    _clear_session(response)
+    return response
+
+
+@app.get("/goodbye", response_class=HTMLResponse)
+async def goodbye_page(request: Request):
+    return templates.TemplateResponse(request, "goodbye.html", _ctx(request))
+
+
 @app.post("/settings/role/{new_role}")
 async def settings_change_role(new_role: str, request: Request):
     """Переключение роли athlete↔coach. По умолчанию все signup-ы athlete;
