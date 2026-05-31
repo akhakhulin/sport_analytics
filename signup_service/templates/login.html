@@ -60,16 +60,21 @@
                autocomplete="current-password">
       </div>
 
-      <div style="display:flex;justify-content:flex-end;margin:-8px 0 8px">
-        <a href="/forgot-password" style="font-size:var(--fs-sm);color:var(--color-mute);text-decoration:none" data-i18n="login_forgot">
+      <button type="submit" class="btn btn-primary" style="margin-top:4px" data-i18n="login_submit">Войти</button>
+
+      <div style="text-align:center;margin-top:12px">
+        <a href="/forgot-password" style="font-size:var(--fs-sm);color:var(--color-mute);text-decoration:underline;text-underline-offset:3px" data-i18n="login_forgot">
           Забыл пароль?
         </a>
       </div>
 
-      <button type="submit" class="btn btn-primary" style="margin-top:4px" data-i18n="login_submit">Войти</button>
-
       <div class="form-bottom">
         <span data-i18n="login_no_account">Нет аккаунта?</span> <a href="/signup" data-i18n="login_signup_link">Зарегистрироваться</a>
+      </div>
+
+      <div class="form-support">
+        <span data-i18n="login_help_q">Нужна помощь?</span>
+        <a href="mailto:support@beatmetrics.ru">support@beatmetrics.ru</a>
       </div>
     </form>
   </div>

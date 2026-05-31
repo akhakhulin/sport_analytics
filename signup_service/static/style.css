@@ -196,6 +196,17 @@ html, body {
   text-align: center; margin-top: 16px;
   font-size: var(--fs-md); color: var(--color-mute);
 }
+.form-support {
+  text-align: center; margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-line);
+  font-size: var(--fs-sm); color: var(--color-mute);
+}
+.form-support a {
+  color: var(--color-brand); font-weight: 500;
+  text-decoration: none;
+}
+.form-support a:hover { text-decoration: underline; }
 .form-bottom a {
   color: var(--color-brand); text-decoration: none; font-weight: 500;
 }
