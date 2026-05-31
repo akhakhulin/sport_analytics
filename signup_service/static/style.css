@@ -38,7 +38,7 @@ html, body {
   background-color: var(--color-paper);
   background-image:
     linear-gradient(rgba(253,253,252,0.30), rgba(253,253,252,0.55)),
-    url('/static/auth-bg.jpg');
+    url('/static/auth-bg.jpg?v=20260531');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -53,7 +53,7 @@ html, body {
     background-attachment: scroll;
     background-image:
       linear-gradient(rgba(253,253,252,0.60), rgba(253,253,252,0.82)),
-      url('/static/auth-bg.jpg');
+      url('/static/auth-bg.jpg?v=20260531');
   }
 }
 .logo-wrap { display: flex; justify-content: center; margin: 16px 0 8px; }
@@ -203,7 +203,7 @@ html, body {
   background-color: var(--color-paper);
   background-image:
     linear-gradient(rgba(253,253,252,0.30), rgba(253,253,252,0.55)),
-    url('/static/auth-bg.jpg');
+    url('/static/auth-bg.jpg?v=20260531');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -215,7 +215,7 @@ html, body {
     background-attachment: scroll;
     background-image:
       linear-gradient(rgba(253,253,252,0.60), rgba(253,253,252,0.82)),
-      url('/static/auth-bg.jpg');
+      url('/static/auth-bg.jpg?v=20260531');
   }
 }
 .onb-card {
@@ -554,7 +554,7 @@ html, body {
   background-color: var(--color-paper);
   background-image:
     linear-gradient(rgba(253,253,252,0.30), rgba(253,253,252,0.55)),
-    url('/static/auth-bg.jpg');
+    url('/static/auth-bg.jpg?v=20260531');
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -565,7 +565,7 @@ html, body {
     background-attachment: scroll;
     background-image:
       linear-gradient(rgba(253,253,252,0.60), rgba(253,253,252,0.82)),
-      url('/static/auth-bg.jpg');
+      url('/static/auth-bg.jpg?v=20260531');
   }
 }
 .done-card {
