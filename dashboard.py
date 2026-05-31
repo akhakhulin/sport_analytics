@@ -1486,7 +1486,7 @@ with tab1:
                         return f"{hh} ч {mm:02d} мин" if mm else f"{hh} ч"
 
                     _total_label = _fmt_hm(_total_hours)
-                    pie_left, table_right = st.columns([1, 1.1])
+                    pie_left, table_right = st.columns([1, 1.2])
 
                     with pie_left:
                         fig = go.Figure(
@@ -1502,7 +1502,7 @@ with tab1:
                             )
                         )
                         fig.update_layout(
-                            height=220,
+                            height=320,
                             showlegend=False,
                             margin=dict(t=10, b=10, l=10, r=10),
                             paper_bgcolor="rgba(0,0,0,0)",
@@ -1510,9 +1510,9 @@ with tab1:
                             annotations=[
                                 dict(
                                     text=(
-                                        f"<b style='font-size:18px;color:#2C2C2A;'>{_total_label}</b>"
+                                        f"<b style='font-size:22px;color:#2C2C2A;'>{_total_label}</b>"
                                         f"<br>"
-                                        f"<span style='font-size:11px;color:#5F5E5A;'>Общее время</span>"
+                                        f"<span style='font-size:12px;color:#5F5E5A;'>Общее время</span>"
                                     ),
                                     x=0.5, y=0.5,
                                     showarrow=False,
@@ -1521,17 +1521,9 @@ with tab1:
                             ],
                         )
                         st.plotly_chart(fig, use_container_width=True, config=PLOTLY_CONFIG)
-                        st.markdown(
-                            f'<div style="margin-top:6px; text-align:center;">'
-                            f'  <span class="hrz-poly">✓ Поляризация {_poly_str}</span>'
-                            f'  <span class="hrz-poly-hint">≈ Seiler 80/20</span>'
-                            f'</div>',
-                            unsafe_allow_html=True,
-                        )
 
                     with table_right:
                         rows_html = ""
-                        # Z5 → Z1 (как в скриншоте-эталоне)
                         for _, _r in zone_total[::-1].iterrows():
                             _z = _r["zone"]
                             _color = _r["color"]
@@ -1547,6 +1539,15 @@ with tab1:
                                 f'<span style="min-width:50px; text-align:right; color:#5F5E5A;">{_r["pct"]:.1f}%</span>'
                                 f'</div>'
                             )
+                        # Поляризация-pill — переехала из левой колонки сюда, под Z1.
+                        # Балансирует visual weight: donut крупнее, pill компенсирует справа.
+                        rows_html += (
+                            f'<div style="margin-top:10px; padding-top:8px; '
+                            f'border-top:1px solid rgba(0,0,0,0.08); text-align:center;">'
+                            f'<span class="hrz-poly">✓ Поляризация {_poly_str}</span>'
+                            f'<span class="hrz-poly-hint">≈ Seiler 80/20</span>'
+                            f'</div>'
+                        )
                         st.markdown(
                             f'<div style="padding:6px 4px;">{rows_html}</div>',
                             unsafe_allow_html=True,

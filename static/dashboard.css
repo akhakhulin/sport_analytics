@@ -639,3 +639,92 @@ html, body, [data-testid="stApp"] {
   outline: 2px solid #185FA5 !important;
   outline-offset: -1px !important;
 }
+
+
+/* ============================================================
+   Mobile fit — viewport ≤ 768px (P0-3 от UX-агента)
+   Стакаем все st.columns в один столбец, KPI оставляем 2x3.
+   ============================================================ */
+@media (max-width: 768px) {
+  /* Контейнер: убираем боковые поля до минимума */
+  [data-testid="stMain"] .block-container {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+    padding-top: 0.5rem !important;
+  }
+
+  /* Стакаем все st.columns() в один столбец на мобайле */
+  [data-testid="stMain"] [data-testid="stHorizontalBlock"] {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  [data-testid="stMain"] [data-testid="stHorizontalBlock"] > [data-testid="stColumn"] {
+    width: 100% !important;
+    flex: 1 1 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Исключение: KPI-блок с stMetric → 2×3 grid, иначе 6 строк скролла */
+  [data-testid="stMain"] [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) {
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+  }
+  [data-testid="stMain"] [data-testid="stHorizontalBlock"]:has([data-testid="stMetric"]) > [data-testid="stColumn"] {
+    flex: 0 0 calc(50% - 4px) !important;
+    width: calc(50% - 4px) !important;
+  }
+
+  /* KPI: цифры/лейблы — уменьшаем, добавляем tabular-nums чтобы не дёргалось */
+  [data-testid="stMain"] [data-testid="stMetricValue"] {
+    font-size: 18px !important;
+    font-variant-numeric: tabular-nums !important;
+  }
+  [data-testid="stMain"] [data-testid="stMetricLabel"] {
+    font-size: 10px !important;
+  }
+  [data-testid="stMain"] [data-testid="stMetricDelta"] {
+    font-size: 10px !important;
+  }
+
+  /* Title h1 — снимаем no-wrap (был в строке 613), иначе обрежется по краю */
+  [data-testid="stMain"] [data-testid="stHeading"] h1,
+  [data-testid="stMain"] h1 {
+    white-space: normal !important;
+    font-size: 18px !important;
+    line-height: 1.35 !important;
+  }
+
+  /* Plotly-чарты: гарантировать минимальную высоту, иначе схлопнутся под flex */
+  [data-testid="stMain"] [data-testid="stPlotlyChart"] {
+    min-height: 220px !important;
+  }
+
+  /* Sidebar pills: увеличиваем touch-target (≥36px) */
+  [data-testid="stSidebar"] [data-baseweb="tag"],
+  [data-testid="stSidebar"] [data-testid="stPills"] button {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    min-height: 36px !important;
+  }
+
+  /* HR-зон таблица: inline-стиль grid 1fr 90px в detalization → ужать до 70px */
+  [data-testid="stMain"] div[style*="grid-template-columns:1fr 90px"],
+  [data-testid="stMain"] div[style*="grid-template-columns: 1fr 90px"] {
+    grid-template-columns: 1fr 70px !important;
+  }
+}
+
+/* Очень узкий viewport (≤ 400px — iPhone SE / mini) */
+@media (max-width: 400px) {
+  [data-testid="stMain"] [data-testid="stMetricValue"] {
+    font-size: 16px !important;
+  }
+}
+
+/* prefers-reduced-motion — респект к accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
