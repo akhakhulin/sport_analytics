@@ -88,8 +88,8 @@ def sport_group(t: str | None) -> str:
 def type_color(t: str | None) -> str:
     """Цвет конкретной активности.
 
-    Логика: явные цвета для лыж/лыжероллеров, SPORT_COLORS для главных
-    трёх групп, иначе стабильный из fallback-палитры по hash.
+    Логика: явные цвета для лыж/лыжероллеров и трейла, SPORT_COLORS для
+    главных трёх групп, иначе стабильный из fallback-палитры по hash.
     """
     if isinstance(t, str):
         if "конёк" in t.lower() or "конек" in t.lower():
@@ -104,6 +104,9 @@ def type_color(t: str | None) -> str:
             return "#4A6FA5"
         if t.startswith("Лыжероллеры"):
             return "#5F4FB0"
+        # Трейл — тёмно-зелёный (отличие от обычного бега lime #97C459)
+        if t == "Трейл":
+            return "#3D6B1F"
     grp = sport_group(t)
     if grp in SPORT_COLORS:
         return SPORT_COLORS[grp]

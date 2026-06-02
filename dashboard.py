@@ -1276,6 +1276,9 @@ with tab1:
                 return "#4A6FA5"  # дефолт для лыж — тёмно-синий
             if t.startswith("Лыжероллеры"):
                 return "#5F4FB0"  # дефолт для лыжероллеров — фиолетовый
+            # Трейл — тёмно-зелёный (отличие от lime #97C459 обычного бега)
+            if t == "Трейл":
+                return "#3D6B1F"
         grp = _sport_group(t)
         if grp in SPORT_COLORS:
             return SPORT_COLORS[grp]
