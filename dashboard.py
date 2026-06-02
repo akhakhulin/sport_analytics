@@ -1037,7 +1037,10 @@ if _pb_pills:
     )
 
 
-with st.expander("📋 Профиль и HR-зоны", expanded=False, key="sa_profile"):
+with st.expander(
+    "📋 Подробнее о профиле и зонах по видам спорта",
+    expanded=False, key="sa_profile",
+):
     profile = load_user_profile(selected_athlete)
     zones_df = load_hr_zones(selected_athlete)
 
@@ -1047,18 +1050,16 @@ with st.expander("📋 Профиль и HR-зоны", expanded=False, key="sa_p
             "локально или GitHub Actions для cloud-атлетов) данные появятся."
         )
     else:
+        # Без дублирования с pill-bar выше: возраст/вес/VO₂max бег/RHR/Z2/Z4
+        # уже видны там. Здесь только уникальные поля + полные Z1-Z5 +
+        # переключение зон по виду спорта.
         col_anthro, col_aerobic, col_zones = st.columns([1, 1, 1.4])
 
         with col_anthro:
             st.markdown("**Антропо**")
-            if profile:
-                age = _calc_age(profile.get("birth_date"))
-                if age is not None:
-                    st.write(f"🎂 **{age}** лет")
+            if profile and (profile.get("height_cm") or profile.get("gender")):
                 if profile.get("height_cm"):
                     st.write(f"📏 **{int(profile['height_cm'])}** см")
-                if profile.get("weight_kg"):
-                    st.write(f"⚖️ **{profile['weight_kg']:.1f}** кг")
                 if profile.get("gender"):
                     st.write(f"👤 {profile['gender']}")
             else:
@@ -1066,25 +1067,24 @@ with st.expander("📋 Профиль и HR-зоны", expanded=False, key="sa_p
 
         with col_aerobic:
             st.markdown("**Аэробное**")
+            _shown = False
             if profile:
-                vr = profile.get("vo2_max_running")
                 vc = profile.get("vo2_max_cycling")
-                if vr:
-                    st.write(f"🏃 VO₂max бег: **{vr:.0f}**")
                 if vc:
                     st.write(f"🚴 VO₂max вело: **{vc:.0f}**")
-                if not vr and not vc:
-                    st.caption("VO₂max не настроен")
+                    _shown = True
                 if profile.get("lactate_threshold_hr"):
-                    st.write(f"🩸 LTHR: **{profile['lactate_threshold_hr']}** уд/мин")
-            # Resting HR — берём из hr_zones (там точнее; в profile не приходит)
+                    st.write(
+                        f"🩸 LTHR: **{profile['lactate_threshold_hr']}** уд/мин"
+                    )
+                    _shown = True
             if not zones_df.empty:
-                rest = zones_df["resting_hr"].dropna()
-                if len(rest):
-                    st.write(f"🫀 Resting HR: **{int(rest.iloc[0])}** уд/мин")
                 mx = zones_df["max_hr"].dropna()
                 if len(mx):
                     st.write(f"❤️ Max HR: **{int(mx.iloc[0])}** уд/мин")
+                    _shown = True
+            if not _shown:
+                st.caption("—")
 
         with col_zones:
             if not zones_df.empty:
