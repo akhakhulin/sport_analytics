@@ -36,9 +36,10 @@
   --color-text-primary: #2C2C2A;
   --color-text-secondary: #5F5E5A;
   --color-text-tertiary: #888780;
-  --color-bg-app: #F5F4EF;
+  --color-bg-app: #F7F6F2;       /* v2 (от brand-визуала): сдвиг от тёплого #F5F4EF к нейтральному — снимает температурный диссонанс с brand-purple */
   --color-bg-block: #FFFFFF;
-  --color-bg-tile: #F5F4EF;
+  --color-bg-tile: #F7F6F2;      /* синхронно с bg-app */
+  --color-bg-hover: #FAFAF7;     /* hover-tint для metric/expander, чуть светлее bg */
   --color-border: rgba(0, 0, 0, 0.15);
   --color-border-soft: rgba(0, 0, 0, 0.10);
 
@@ -84,11 +85,16 @@ html, body, [data-testid="stApp"] {
 
 /* ---- 3. Сайдбар ---- */
 [data-testid="stSidebar"] {
+  /* v2: длинный fade до 480px (sidebar читается как brand-zone на всей высоте),
+     purple-tinted border-right вместо нейтрально-серого, ультра-тонкий inset
+     shadow для глубины — main воспринимается как «лежащий чуть глубже». */
   background: linear-gradient(180deg,
     var(--color-brand-soft) 0,
     var(--color-brand-soft) 64px,
-    var(--color-bg-app) 140px) !important;
-  border-right: 0.5px solid var(--color-border);
+    rgba(235, 233, 247, 0.55) 220px,
+    var(--color-bg-app) 480px) !important;
+  border-right: 0.5px solid rgba(60, 52, 137, 0.12) !important;
+  box-shadow: inset -1px 0 0 rgba(60, 52, 137, 0.04);
 }
 
 [data-testid="stSidebar"] [data-testid="stSidebarContent"] {
