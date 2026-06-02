@@ -36,6 +36,10 @@
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 72px;  /* высота sticky-nav, чтобы якоря не залезали под него */
+}
 html, body {
   background: var(--paper); color: var(--ink);
   font-family: var(--font); font-size: 16px; line-height: 1.5;
@@ -57,6 +61,67 @@ header.nav {
 }
 .nav-logo { display: flex; align-items: center; gap: 10px; font-weight: 500; font-size: 18px; }
 .nav-logo svg { width: 32px; height: 32px; }
+
+/* Top navigation links (desktop) */
+.nav-links {
+  display: flex; align-items: center; gap: 24px;
+  margin-left: auto; margin-right: 16px;
+}
+.nav-links a {
+  color: var(--ink); text-decoration: none;
+  font-size: 14px; font-weight: 500;
+  padding: 6px 2px; position: relative;
+  transition: color .15s ease;
+}
+.nav-links a:hover { color: var(--brand); text-decoration: none; }
+.nav-links a::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: -2px;
+  height: 2px; background: var(--brand);
+  transform: scaleX(0); transform-origin: center;
+  transition: transform .18s ease;
+}
+.nav-links a:hover::after { transform: scaleX(1); }
+
+.nav-cta { display: flex; align-items: center; gap: 10px; }
+
+/* Mobile burger (≤860px) */
+.nav-burger {
+  display: none; background: none; border: none;
+  cursor: pointer; padding: 8px;
+  width: 40px; height: 40px;
+}
+.nav-burger span {
+  display: block; width: 22px; height: 2px;
+  background: var(--ink); margin: 4px auto;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.nav-burger.open span:nth-child(1) { transform: translateY(6px) rotate(45deg); }
+.nav-burger.open span:nth-child(2) { opacity: 0; }
+.nav-burger.open span:nth-child(3) { transform: translateY(-6px) rotate(-45deg); }
+
+@media (max-width: 860px) {
+  .nav-links {
+    position: fixed; top: 64px; left: 0; right: 0;
+    flex-direction: column; gap: 0;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    padding: 8px 24px 16px;
+    margin: 0;
+    transform: translateY(-110%);
+    transition: transform .25s ease;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+  }
+  .nav-links.open { transform: translateY(0); }
+  .nav-links a {
+    width: 100%; padding: 14px 0;
+    border-bottom: 0.5px solid var(--line);
+    font-size: 15px;
+  }
+  .nav-links a::after { display: none; }
+  .nav-links a:last-child { border-bottom: none; }
+  .nav-burger { display: block; }
+  .nav-cta .btn:not(.btn-primary) { display: none; }
+}
 
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;
@@ -373,8 +438,45 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       </svg>
       BeatMetrics
     </a>
+    <nav class="nav-links" id="nav-links">
+      <a href="#vozmojnosti" data-i18n="nav_features">Возможности</a>
+      <a href="#kak-rabotaet" data-i18n="nav_howto">Как работает</a>
+      <a href="#dlya-kogo" data-i18n="nav_audience">Для кого</a>
+      <a href="/pricing" data-i18n="nav_pricing">Цены</a>
+      <a href="/blog" data-i18n="nav_blog">Блог</a>
+      <a href="#faq" data-i18n="nav_faq">FAQ</a>
+    </nav>
+    <div class="nav-cta">
+      <a href="https://app.beatmetrics.ru/login" class="btn" data-i18n="nav_login">Войти</a>
+      <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary" data-i18n="nav_signup">Подключить</a>
+    </div>
+    <button class="nav-burger" id="nav-burger" aria-label="Меню" aria-expanded="false">
+      <span></span><span></span><span></span>
+    </button>
   </div>
 </header>
+
+<script>
+  // Mobile burger toggle
+  (function() {
+    var burger = document.getElementById('nav-burger');
+    var links = document.getElementById('nav-links');
+    if (!burger || !links) return;
+    burger.addEventListener('click', function() {
+      var isOpen = links.classList.toggle('open');
+      burger.classList.toggle('open', isOpen);
+      burger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+    // Close on link-click (mobile)
+    links.querySelectorAll('a').forEach(function(a) {
+      a.addEventListener('click', function() {
+        links.classList.remove('open');
+        burger.classList.remove('open');
+        burger.setAttribute('aria-expanded', 'false');
+      });
+    });
+  })();
+</script>
 
 <!-- Hero — full-width, ВНЕ main (которому max-width 1100px) -->
 <section class="hero">
@@ -397,7 +499,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 
 <main>
 
-  <section class="dashboard-preview">
+  <section class="dashboard-preview" id="vozmojnosti">
     <h2>Вот так выглядит ваше приложение</h2>
     <p class="sub">Реальные тренировки за год — объём, зоны, тренды формы</p>
     <div class="dashboard-frame">
@@ -407,7 +509,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="howto">
+  <section class="howto" id="kak-rabotaet">
     <h2>Как это работает</h2>
     <div class="howto-grid">
       <div class="howto-step">
@@ -469,7 +571,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="audience">
+  <section class="audience" id="dlya-kogo">
     <h2>Для кого это</h2>
     <div class="audience-grid">
       <div class="audience-card">
@@ -541,7 +643,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="faq">
+  <section class="faq" id="faq">
     <h2>Частые вопросы</h2>
     <div class="faq-list">
       <details>
