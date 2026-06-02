@@ -662,6 +662,39 @@ html, body, [data-testid="stApp"] {
 
 
 /* ============================================================
+   HR-pill-bar (P1-6 от UX-агента) — главный физиологический
+   контекст под period-bar, graceful (только non-NULL поля)
+   ============================================================ */
+.sa-hr-pillbar {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 7px;
+  max-width: 720px;
+  margin: -6px auto 14px;
+}
+.sa-hr-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: 14px;
+  padding: 4px 12px;
+  font-size: var(--fs-sm);
+  color: var(--color-text-secondary);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+.sa-hr-pill[data-emphasis="brand"] {
+  background: var(--color-brand-soft);
+  border-color: rgba(60, 52, 137, 0.20);
+  color: var(--color-brand);
+}
+
+
+/* ============================================================
    Profile expander mini-cards (v2 P1 от UX-агента)
    3 столбца Антропо/Аэробное/Зоны → белые mini-карточки
    с brand-purple uppercase labels сверху каждой

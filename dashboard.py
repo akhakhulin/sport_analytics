@@ -995,6 +995,48 @@ def _calc_age(birth_date: str | None) -> int | None:
     return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
 
 
+# HR-pill-bar (P1-6 от UX-агента): главный физиологический контекст виден
+# сразу под period-bar — graceful, отсутствующие поля просто не появляются.
+# Раньше всё было спрятано в expander «📋 Профиль и HR-зоны» (expanded=False).
+_pb_profile = load_user_profile(selected_athlete)
+_pb_zones = load_hr_zones(selected_athlete)
+_pb_pills: list[tuple[str, str]] = []  # (text, emphasis: "" | "brand")
+if _pb_profile:
+    _age = _calc_age(_pb_profile.get("birth_date"))
+    if _age is not None:
+        _pb_pills.append((f"{_age} лет", ""))
+    if _pb_profile.get("weight_kg"):
+        _pb_pills.append((f"{_pb_profile['weight_kg']:.0f} кг", ""))
+    _vr = _pb_profile.get("vo2_max_running")
+    if _vr:
+        _pb_pills.append((f"VO₂max {_vr:.0f}", ""))
+if not _pb_zones.empty:
+    _rest = _pb_zones["resting_hr"].dropna()
+    if len(_rest):
+        _pb_pills.append((f"RHR {int(_rest.iloc[0])}", ""))
+    try:
+        _z_row = _pb_zones.iloc[0]
+        _pb_pills.append(
+            (f"Z2 {int(_z_row['zone2_floor'])}–{int(_z_row['zone3_floor']) - 1}", "brand")
+        )
+        _pb_pills.append(
+            (f"Z4 {int(_z_row['zone4_floor'])}–{int(_z_row['zone5_floor']) - 1}", "brand")
+        )
+    except Exception:
+        pass
+
+if _pb_pills:
+    _pb_html = " ".join(
+        f'<span class="sa-hr-pill"{(" data-emphasis=\"brand\"" if e == "brand" else "")}>'
+        f'{p}</span>'
+        for p, e in _pb_pills
+    )
+    st.markdown(
+        f'<div class="sa-hr-pillbar">{_pb_html}</div>',
+        unsafe_allow_html=True,
+    )
+
+
 with st.expander("📋 Профиль и HR-зоны", expanded=False, key="sa_profile"):
     profile = load_user_profile(selected_athlete)
     zones_df = load_hr_zones(selected_athlete)
