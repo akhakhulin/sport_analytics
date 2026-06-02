@@ -110,8 +110,39 @@ def type_color(t: str | None) -> str:
     return _TYPE_FALLBACK_PALETTE[abs(hash(t or "")) % len(_TYPE_FALLBACK_PALETTE)]
 
 
+_MATERIAL_ICON_BY_TYPE: dict[str, str] = {
+    "Бег": "directions_run", "Беговая дорожка": "directions_run",
+    "Трейл": "directions_run", "Стадион": "directions_run",
+    "Виртуальный бег": "directions_run",
+    "Велосипед": "directions_bike", "Велотренажёр": "directions_bike",
+    "Шоссейный велосипед": "directions_bike", "Маунтинбайк": "directions_bike",
+    "Гравел": "directions_bike", "Виртуальная вело": "directions_bike",
+    "Бассейн": "pool", "Открытая вода": "pool", "Плавание": "pool",
+    "Силовая": "fitness_center",
+    "Лыжи · конёк": "downhill_skiing", "Лыжи · классика": "downhill_skiing",
+    "Лыжероллеры · конёк": "downhill_skiing",
+    "Лыжероллеры · классика": "downhill_skiing",
+    "Йога": "self_improvement", "Пилатес": "self_improvement",
+    "Кардио": "favorite", "Хайкинг": "hiking", "Ходьба": "directions_walk",
+}
+
+
 def sport_icon_html(activity_type_ru: str | None, size: int = 18, color: str | None = None) -> str:
-    """Inline SVG-иконка вида спорта."""
+    """Material Symbols Rounded — единый стиль со sidebar pills и
+    Streamlit ':material/...:' плейсхолдерами."""
+    icon = _MATERIAL_ICON_BY_TYPE.get(activity_type_ru or "", "fitness_center")
+    c = color or type_color(activity_type_ru)
+    return (
+        f'<span class="material-symbols-rounded" '
+        f'style="font-size:{size}px; color:{c}; flex-shrink:0; '
+        f'vertical-align:middle; line-height:1; '
+        f'font-variation-settings:\'FILL\' 0,\'wght\' 400,\'GRAD\' 0,\'opsz\' 24;">'
+        f'{icon}</span>'
+    )
+
+
+def _sport_icon_html_legacy_svg(activity_type_ru: str | None, size: int = 18, color: str | None = None) -> str:
+    """Legacy inline SVG версия (на 1 коммит для rollback safety)."""
     name = _ACTIVITY_ICON_MAP.get(activity_type_ru or "", "other")
     body = _SPORT_ICONS_SVG.get(name, _SPORT_ICONS_SVG["other"])
     c = color or type_color(activity_type_ru)
