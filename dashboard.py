@@ -1005,6 +1005,8 @@ if _pb_profile:
     _age = _calc_age(_pb_profile.get("birth_date"))
     if _age is not None:
         _pb_pills.append((f"{_age} лет", ""))
+    if _pb_profile.get("height_cm"):
+        _pb_pills.append((f"{int(_pb_profile['height_cm'])} см", ""))
     if _pb_profile.get("weight_kg"):
         _pb_pills.append((f"{_pb_profile['weight_kg']:.0f} кг", ""))
     _vr = _pb_profile.get("vo2_max_running")
@@ -1050,20 +1052,12 @@ with st.expander(
             "локально или GitHub Actions для cloud-атлетов) данные появятся."
         )
     else:
-        # Без дублирования с pill-bar выше: возраст/вес/VO₂max бег/RHR/Z2/Z4
-        # уже видны там. Здесь только уникальные поля + полные Z1-Z5 +
-        # переключение зон по виду спорта.
-        col_anthro, col_aerobic, col_zones = st.columns([1, 1, 1.4])
-
-        with col_anthro:
-            st.markdown("**Антропо**")
-            if profile and (profile.get("height_cm") or profile.get("gender")):
-                if profile.get("height_cm"):
-                    st.write(f"📏 **{int(profile['height_cm'])}** см")
-                if profile.get("gender"):
-                    st.write(f"👤 {profile['gender']}")
-            else:
-                st.caption("—")
+        # Без дублирования с pill-bar выше: возраст/рост/вес/VO₂max бег/
+        # RHR/Z2/Z4 уже видны там. Здесь — только уникальные аэробные
+        # поля (LTHR/MaxHR/VO₂max вело) + полные Z1-Z5 + radio переключение
+        # зон по виду спорта. Колонку «Антропо» убрали целиком: gender
+        # не показываем (по запросу user'а), рост уехал в pill-bar.
+        col_aerobic, col_zones = st.columns([1, 1.4])
 
         with col_aerobic:
             st.markdown("**Аэробное**")
