@@ -662,6 +662,36 @@ html, body, [data-testid="stApp"] {
 
 
 /* ============================================================
+   v4 brand-surface accents (от UX-агента, раунд 4)
+   КОМПРОМИСС вместо full-flat purple фона (который бы сломал
+   WCAG для tertiary text + plotly прозрачных чартов + HR-donut)
+   — 3 точечных purple-акцента дают brand-feel без минусов:
+   ============================================================ */
+
+/* (1) Hero strip 6px сверху main — читается подсознательно как
+   «продолжение sidebar», создаёт unified-feel без покрытия всего */
+[data-testid="stMain"] > .block-container::before {
+  content: "";
+  display: block;
+  height: 6px;
+  margin: -0.75rem -1.25rem 14px -1.25rem;
+  background: linear-gradient(90deg,
+    var(--color-brand-soft) 0%,
+    rgba(235, 233, 247, 0.40) 60%,
+    transparent 100%);
+}
+
+/* (2) Expander headers с brand-soft tint — чётче отделяют заголовок
+   секции от содержимого + hue связывает с sidebar по цвету */
+[data-testid="stMain"] [data-testid="stExpander"] summary,
+[data-testid="stMain"] details > summary {
+  background: linear-gradient(180deg,
+    rgba(235, 233, 247, 0.45) 0%,
+    rgba(235, 233, 247, 0.15) 100%) !important;
+}
+
+
+/* ============================================================
    Period-bar (v2 P1 от UX-агента) — белая card центрированная,
    max-width 720px чтобы снять правую пустоту на 1440px viewport
    ============================================================ */
