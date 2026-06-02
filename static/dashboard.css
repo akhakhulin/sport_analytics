@@ -1,3 +1,7 @@
+/* Material Symbols Rounded — единый стиль иконок видов спорта
+   (sidebar pills + drilldown + Detalization Сумма за период) */
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200');
+
 /* =============================================================
    Sportsmen Analytics — глобальные стили (рестайл под прототип)
    docs/sportsmen_analytics_interactive.html
@@ -654,6 +658,41 @@ html, body, [data-testid="stApp"] {
 .st-key-sa_custom_end [data-baseweb="input"]:focus-within {
   outline: 2px solid var(--color-brand) !important;
   outline-offset: -1px !important;
+}
+
+
+/* ============================================================
+   Period-bar (v2 P1 от UX-агента) — белая card центрированная,
+   max-width 720px чтобы снять правую пустоту на 1440px viewport
+   ============================================================ */
+.sa-period-bar {
+  display: flex;
+  justify-content: center;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 14px;
+  max-width: 720px;
+  margin: 6px auto 14px;
+  padding: 10px 18px;
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-lg);
+  font-size: var(--fs-md);
+  color: var(--color-text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.sa-period-bar .sa-period-lead {
+  font-size: var(--fs-lg);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+.sa-period-bar b {
+  color: var(--color-text-primary);
+  font-weight: 500;
+}
+.sa-period-bar .sa-period-dot {
+  color: rgba(0,0,0,0.20);
 }
 
 
