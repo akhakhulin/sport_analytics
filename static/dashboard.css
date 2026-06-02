@@ -43,8 +43,8 @@
   --color-border: rgba(0, 0, 0, 0.15);
   --color-border-soft: rgba(0, 0, 0, 0.10);
 
-  /* Typography */
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  /* Typography (sync с signup_service/static/style.css: добавлены Inter + system-ui) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
   --fs-xs: 10px;
   --fs-sm: 11px;
   --fs-md: 13px;
@@ -71,6 +71,8 @@ html, body, [data-testid="stApp"] {
   font-family: var(--font-sans) !important;
   color: var(--color-text-primary);
   font-size: var(--fs-md);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 /* Главный контейнер — на всю доступную ширину справа от sidebar
@@ -652,6 +654,78 @@ html, body, [data-testid="stApp"] {
 .st-key-sa_custom_end [data-baseweb="input"]:focus-within {
   outline: 2px solid var(--color-brand) !important;
   outline-offset: -1px !important;
+}
+
+
+/* ============================================================
+   Typography round 3 — sync с signup, tabular-nums, letter-spacing
+   (P0+P1 от UX-агента: font-stack уже в :root выше, antialiased
+   в body, ниже — tabs, pills, headings, bold-tag, tabular-nums)
+   ============================================================ */
+
+/* Tabs (📊 Общая аналитика / 🔬 Сравнение данных) — native рендер выпадал
+   из бренда: 14px /700/normal letter. Стилизуем явно. */
+[data-testid="stMain"] [data-baseweb="tab-list"] {
+  border-bottom: 1px solid var(--color-border-soft);
+}
+[data-testid="stMain"] [data-baseweb="tab"] {
+  font-family: var(--font-sans) !important;
+  font-size: var(--fs-md) !important;
+  font-weight: 500 !important;
+  letter-spacing: -0.005em;
+  padding: 10px 14px !important;
+}
+
+/* Sidebar pills (Бег/Велик/Плав./Сила) — 11px+эмодзи давало ratio 1.45:1
+   с иконкой. Поднимаем text до 12px чтобы balance был 1.2:1 (Material/HIG). */
+[data-testid="stSidebar"] [data-testid="stPills"] button {
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 5px 12px !important;
+}
+[data-testid="stSidebar"] [data-testid="stPills"] button[aria-pressed="true"] {
+  font-weight: 500 !important;  /* native ставит 600 — выбиваем */
+}
+
+/* Letter-spacing на крупных headings — как в signup auth/done-title */
+[data-testid="stMain"] h1 { letter-spacing: -0.02em; }
+[data-testid="stMain"] h2 { letter-spacing: -0.01em; }
+[data-testid="stMain"] h3 { letter-spacing: -0.005em; }
+
+/* KPI value — 22px, tight как h1 + tabular-nums на desktop
+   (mobile уже покрыт @media-block ниже) */
+[data-testid="stMain"] [data-testid="stMetricValue"] {
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+[data-testid="stMain"] [data-testid="stMetricDelta"] {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Headings + caption + expander content — все цифры стабильной ширины */
+[data-testid="stMain"] h1,
+[data-testid="stMain"] h2,
+[data-testid="stMain"] h3,
+[data-testid="stMain"] [data-testid="stCaptionContainer"],
+[data-testid="stMain"] [data-testid="stExpander"] [data-testid="stExpanderDetails"],
+[data-testid="stMain"] .kpi-exp-value,
+[data-testid="stMain"] .st-key-kpi_dd_panel {
+  font-variant-numeric: tabular-nums;
+}
+
+/* <b> / <strong> в main — браузерный дефолт 700 пробивал дизайн (везде 500) */
+[data-testid="stMain"] b,
+[data-testid="stMain"] strong {
+  font-weight: 500;
+}
+
+/* Sidebar: logout 11px, selectbox/radio 13px (синхронизация с :root токенами) */
+[data-testid="stSidebar"] [data-testid="stButton"] > button {
+  font-size: var(--fs-sm);
+}
+[data-testid="stSidebar"] [data-testid="stSelectbox"] [data-baseweb="select"],
+[data-testid="stSidebar"] [data-testid="stRadio"] [role="radiogroup"] > label {
+  font-size: var(--fs-md) !important;
 }
 
 

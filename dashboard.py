@@ -1865,8 +1865,8 @@ with tab1:
                 '<div style="font-size:11px;">'
                 '<div style="display:grid; grid-template-columns:1fr 90px; padding:4px 6px;'
                 ' border-bottom:0.5px solid rgba(0,0,0,0.15); font-weight:500;'
-                ' color:#5F5E5A; font-size:9px; text-transform:uppercase;'
-                ' letter-spacing:0.4px;"><span>Тип</span>'
+                ' color:#5F5E5A; font-size:10px; text-transform:uppercase;'
+                ' letter-spacing:0.5px;"><span>Тип</span>'
                 f'<span style="text-align:right;">{col_table_h}</span></div>'
             )
             for _t, _h in _sum_by_type.items():
