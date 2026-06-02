@@ -179,27 +179,23 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 section.hero {
   position: relative;
   padding: 0;
-  aspect-ratio: 1574 / 656;       /* размеры картинки = ничего не обрезается */
-  min-height: 540px;              /* минимум на узких десктоп */
+  min-height: 520px;
   display: flex; align-items: center;
   background:
     linear-gradient(rgba(15,12,40,0.45), rgba(15,12,40,0.65)),
-    url('/landing-assets/hero-bg-v2.png');
+    url('/landing-assets/hero-bg-v3.png');
   background-size: cover;
   background-position: center;
-  background-color: #1a1730;      /* fallback под текстом */
+  background-color: #1a1730;
   color: #fff;
 }
-.hero-inner { padding: 48px 24px; }
 .hero-inner {
   max-width: 1100px; margin: 0 auto;
-  padding: 0 24px;
+  padding: 48px 24px;
 }
 @media (max-width: 860px) {
   section.hero {
-    aspect-ratio: auto;            /* на mobile панорама бесполезна — даём контенту дышать */
-    min-height: 520px;
-    padding: 0;
+    min-height: 460px;
     background-position: 60% center;
   }
   .hero-inner { padding: 36px 20px; }
@@ -550,10 +546,10 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 
   <section class="dashboard-preview" id="vozmojnosti" data-reveal>
     <h2>Вот так выглядит ваше приложение</h2>
-    <p class="sub">Реальные тренировки за год — объём, зоны, тренды формы</p>
+    <p class="sub">Любой период — объём, пульсовые зоны, тренды формы</p>
     <div class="dashboard-frame">
       <img src="/landing-assets/dashboard/hero-main.png"
-           alt="BeatMetrics dashboard — годовая аналитика тренировок"
+           alt="BeatMetrics dashboard — аналитика тренировок"
            loading="lazy">
     </div>
   </section>
