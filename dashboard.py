@@ -1012,7 +1012,7 @@ def _calc_age(birth_date: str | None) -> int | None:
     return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
 
 
-with st.expander("📋 Профиль и HR-зоны", expanded=False):
+with st.expander("📋 Профиль и HR-зоны", expanded=False, key="sa_profile"):
     profile = load_user_profile(selected_athlete)
     zones_df = load_hr_zones(selected_athlete)
 

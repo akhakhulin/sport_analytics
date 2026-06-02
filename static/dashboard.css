@@ -662,6 +662,53 @@ html, body, [data-testid="stApp"] {
 
 
 /* ============================================================
+   Profile expander mini-cards (v2 P1 от UX-агента)
+   3 столбца Антропо/Аэробное/Зоны → белые mini-карточки
+   с brand-purple uppercase labels сверху каждой
+   ============================================================ */
+.st-key-sa_profile > details > div > div > div > div > [data-testid="stColumn"],
+[data-testid="stExpander"].st-key-sa_profile [data-testid="stColumn"],
+.st-key-sa_profile [data-testid="stColumn"] {
+  background: var(--color-bg-block);
+  border: 0.5px solid var(--color-border-soft);
+  border-radius: var(--r-md);
+  padding: 12px 14px !important;
+  margin: 4px !important;
+}
+
+/* Заголовок каждой колонки (**Антропо** / **Аэробное** / radio "**Зоны для:**")
+   первый <p><strong>...</strong></p> → brand-purple uppercase label */
+.st-key-sa_profile [data-testid="stColumn"] [data-testid="stMarkdownContainer"]:first-child p strong:only-child,
+.st-key-sa_profile [data-testid="stColumn"] [data-testid="stMarkdownContainer"]:first-child > p:first-child > strong {
+  color: var(--color-brand);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+  font-weight: 600;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+/* Строки данных — мягкий spacing + tabular-nums (наследуется от typography
+   round 3 но дублируем для надёжности) */
+.st-key-sa_profile [data-testid="stColumn"] [data-testid="stMarkdownContainer"] p {
+  font-variant-numeric: tabular-nums;
+  line-height: 1.65;
+  margin-bottom: 2px;
+}
+
+/* Caption «метод: HR_MAX» в третьей колонке — приподнять контраст */
+.st-key-sa_profile [data-testid="stColumn"] [data-testid="stCaptionContainer"] {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 0.5px dashed var(--color-border-soft);
+  font-size: var(--fs-xs) !important;
+  color: var(--color-text-tertiary) !important;
+  font-style: italic;
+}
+
+
+/* ============================================================
    v4 brand-surface accents (от UX-агента, раунд 4)
    КОМПРОМИСС вместо full-flat purple фона (который бы сломал
    WCAG для tertiary text + plotly прозрачных чартов + HR-donut)
