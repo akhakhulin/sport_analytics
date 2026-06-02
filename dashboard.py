@@ -555,15 +555,9 @@ if IS_ADMIN and all_athletes:
         help="Выберите атлета",
     )
 else:
+    # Атлет видит только себя — селектор и label не нужны (его имя уже видно
+    # выше через «👋 {name}» welcome-блок sidebar'а)
     selected_athlete = MY_ATHLETE
-    # Атлет видит только себя — селекторы не показываем, но сам label оставляем
-    st.sidebar.markdown(
-        f'<div style="font-size:var(--fs-xs); text-transform:uppercase; '
-        f'letter-spacing:0.5px; color:var(--color-text-secondary); '
-        f'font-weight:500; margin:8px 0 4px 0;">👤 Атлет</div>'
-        f'<div style="font-size:12px; padding:4px 0;">{selected_athlete}</div>',
-        unsafe_allow_html=True,
-    )
 
 df = load_activities(selected_athlete)
 daily = load_daily(selected_athlete)
