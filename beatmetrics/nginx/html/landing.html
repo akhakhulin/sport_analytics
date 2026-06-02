@@ -178,20 +178,31 @@ main { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 /* Hero — full-width background with dark overlay + light text */
 section.hero {
   position: relative;
-  padding: 100px 24px 90px;
+  padding: 0;
+  aspect-ratio: 1574 / 656;       /* размеры картинки = ничего не обрезается */
+  min-height: 540px;              /* минимум на узких десктоп */
+  display: flex; align-items: center;
   background:
-    linear-gradient(rgba(15,12,40,0.55), rgba(15,12,40,0.72)),
+    linear-gradient(rgba(15,12,40,0.45), rgba(15,12,40,0.65)),
     url('/landing-assets/hero-bg-v2.png');
   background-size: cover;
   background-position: center;
+  background-color: #1a1730;      /* fallback под текстом */
   color: #fff;
 }
+.hero-inner { padding: 48px 24px; }
 .hero-inner {
   max-width: 1100px; margin: 0 auto;
   padding: 0 24px;
 }
 @media (max-width: 860px) {
-  section.hero { padding: 64px 0 56px; }
+  section.hero {
+    aspect-ratio: auto;            /* на mobile панорама бесполезна — даём контенту дышать */
+    min-height: 520px;
+    padding: 0;
+    background-position: 60% center;
+  }
+  .hero-inner { padding: 36px 20px; }
 }
 .hero h1 {
   font-size: 52px; line-height: 1.08; letter-spacing: -0.02em;
