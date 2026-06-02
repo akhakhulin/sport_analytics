@@ -995,43 +995,22 @@ def _calc_age(birth_date: str | None) -> int | None:
     return today.year - bd.year - ((today.month, today.day) < (bd.month, bd.day))
 
 
-# HR-pill-bar (P1-6 от UX-агента): главный физиологический контекст виден
-# сразу под period-bar — graceful, отсутствующие поля просто не появляются.
-# Раньше всё было спрятано в expander «📋 Профиль и HR-зоны» (expanded=False).
+# Antropo pill-bar — только возраст/рост/вес (без пола). Всё остальное
+# (VO₂max, RHR, LTHR, MaxHR, зоны) живёт в expander «Подробнее».
 _pb_profile = load_user_profile(selected_athlete)
-_pb_zones = load_hr_zones(selected_athlete)
-_pb_pills: list[tuple[str, str]] = []  # (text, emphasis: "" | "brand")
+_pb_pills: list[str] = []
 if _pb_profile:
     _age = _calc_age(_pb_profile.get("birth_date"))
     if _age is not None:
-        _pb_pills.append((f"{_age} лет", ""))
+        _pb_pills.append(f"{_age} лет")
     if _pb_profile.get("height_cm"):
-        _pb_pills.append((f"{int(_pb_profile['height_cm'])} см", ""))
+        _pb_pills.append(f"{int(_pb_profile['height_cm'])} см")
     if _pb_profile.get("weight_kg"):
-        _pb_pills.append((f"{_pb_profile['weight_kg']:.0f} кг", ""))
-    _vr = _pb_profile.get("vo2_max_running")
-    if _vr:
-        _pb_pills.append((f"VO₂max {_vr:.0f}", ""))
-if not _pb_zones.empty:
-    _rest = _pb_zones["resting_hr"].dropna()
-    if len(_rest):
-        _pb_pills.append((f"RHR {int(_rest.iloc[0])}", ""))
-    try:
-        _z_row = _pb_zones.iloc[0]
-        _pb_pills.append(
-            (f"Z2 {int(_z_row['zone2_floor'])}–{int(_z_row['zone3_floor']) - 1}", "brand")
-        )
-        _pb_pills.append(
-            (f"Z4 {int(_z_row['zone4_floor'])}–{int(_z_row['zone5_floor']) - 1}", "brand")
-        )
-    except Exception:
-        pass
+        _pb_pills.append(f"{_pb_profile['weight_kg']:.0f} кг")
 
 if _pb_pills:
     _pb_html = " ".join(
-        f'<span class="sa-hr-pill"{(" data-emphasis=\"brand\"" if e == "brand" else "")}>'
-        f'{p}</span>'
-        for p, e in _pb_pills
+        f'<span class="sa-hr-pill">{p}</span>' for p in _pb_pills
     )
     st.markdown(
         f'<div class="sa-hr-pillbar">{_pb_html}</div>',
@@ -1052,18 +1031,20 @@ with st.expander(
             "локально или GitHub Actions для cloud-атлетов) данные появятся."
         )
     else:
-        # Без дублирования с pill-bar выше: возраст/рост/вес/VO₂max бег/
-        # RHR/Z2/Z4 уже видны там. Здесь — только уникальные аэробные
-        # поля (LTHR/MaxHR/VO₂max вело) + полные Z1-Z5 + radio переключение
-        # зон по виду спорта. Колонку «Антропо» убрали целиком: gender
-        # не показываем (по запросу user'а), рост уехал в pill-bar.
+        # Pill-bar выше показывает только возраст/рост/вес (без пола).
+        # Здесь — всё аэробное (VO₂max бег + вело, RHR, LTHR, MaxHR) +
+        # полные Z1-Z5 + radio переключение зон по виду спорта.
         col_aerobic, col_zones = st.columns([1, 1.4])
 
         with col_aerobic:
             st.markdown("**Аэробное**")
             _shown = False
             if profile:
+                vr = profile.get("vo2_max_running")
                 vc = profile.get("vo2_max_cycling")
+                if vr:
+                    st.write(f"🏃 VO₂max бег: **{vr:.0f}**")
+                    _shown = True
                 if vc:
                     st.write(f"🚴 VO₂max вело: **{vc:.0f}**")
                     _shown = True
@@ -1073,6 +1054,10 @@ with st.expander(
                     )
                     _shown = True
             if not zones_df.empty:
+                rest = zones_df["resting_hr"].dropna()
+                if len(rest):
+                    st.write(f"🫀 Resting HR: **{int(rest.iloc[0])}** уд/мин")
+                    _shown = True
                 mx = zones_df["max_hr"].dropna()
                 if len(mx):
                     st.write(f"❤️ Max HR: **{int(mx.iloc[0])}** уд/мин")
