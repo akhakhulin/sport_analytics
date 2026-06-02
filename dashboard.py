@@ -907,23 +907,6 @@ if _msg:
 mask = (df["day"] >= start) & (df["day"] <= end) & (df["activity_type_ru"].isin(types_sel))
 view = df[mask].copy()
 
-# Реактивность: тост при смене фильтров + футер sidebar со статусом
-filter_sig = (selected_athlete, start, end, agg_label, tuple(sorted(types_sel)))
-prev_sig = st.session_state.get("_prev_filter_sig")
-if prev_sig is not None and prev_sig != filter_sig:
-    changed = []
-    if prev_sig[0] != selected_athlete:
-        changed.append(f"атлет → {selected_athlete}")
-    if (prev_sig[1], prev_sig[2]) != (start, end):
-        changed.append(f"период {start} → {end}")
-    if prev_sig[3] != agg_label:
-        changed.append(f"группировка → {agg_label}")
-    if prev_sig[4] != tuple(sorted(types_sel)):
-        changed.append("типы активностей")
-    if changed:
-        st.toast("Пересчитано: " + ", ".join(changed), icon="✅")
-st.session_state["_prev_filter_sig"] = filter_sig
-
 # 2e. Sidebar footer + модалка «О сессии»
 days_in_range = (end - start).days + 1
 last_in_db = df["day"].max() if not df.empty else None
@@ -963,8 +946,8 @@ st.sidebar.markdown(
 )
 if st.sidebar.button("ⓘ О сессии", key="sa_session_info"):
     _session_info_dialog()
-if st.sidebar.button("📄 PDF-экспорт", key="pdf_export", use_container_width=True):
-    st.toast("PDF-экспорт ещё в разработке", icon="📄")
+# PDF-экспорт удалён (P1-1 от UX-агента: «toast 'ещё в разработке' это
+# анти-паттерн». Вернём кнопку когда экспорт реально работает).
 
 # endregion
 
