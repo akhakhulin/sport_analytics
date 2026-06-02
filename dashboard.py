@@ -1156,9 +1156,6 @@ with tab1:
         return f"{d:+.0f}% vs пред."
 
 
-    # Состояние drilldown'а: None | "workouts" | "hours" | "km"
-    kpi_drilldown = st.session_state.get("_kpi_drilldown")
-
     SPORT_COLORS = {"Бег": "#97C459", "Велосипед": "#378ADD", "Плавание": "#1D9E75"}
 
     # Запасная палитра для типов вне трёх основных групп (лыжи, лыжероллеры, и т.п.)
@@ -1397,52 +1394,29 @@ with tab1:
             )
 
 
-    def _kpi_toggle(key: str) -> None:
-        cur = st.session_state.get("_kpi_drilldown")
-        st.session_state["_kpi_drilldown"] = None if cur == key else key
-
-
-    # Инжектим CSS активной карточки (синяя рамка + треугольник вниз)
-    if kpi_drilldown:
+    # Drilldown как модалка (P1-4 от UX-агента) — раньше inline-panel ~400px
+    # высоты толкал контент ниже, теряя место скролла при возврате.
+    # st.dialog поверх — после dismiss возвращаешься в то же место.
+    @st.dialog(" ", width="large")
+    def _kpi_drilldown_dialog(kind: str, view_df: pd.DataFrame) -> None:
+        _DD_TITLES = {
+            "workouts": "★ детализация · Тренировок",
+            "hours": "★ детализация · Часов",
+            "km": "★ детализация · Расстояние",
+        }
         st.markdown(
-            f"""
-    <style>
-    [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown} {{
-      position: relative !important;
-    }}
-    [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown} [data-testid="stMetric"] {{
-      border: 2px solid var(--color-brand) !important;
-      border-radius: var(--r-lg) !important;
-      background: var(--color-brand-soft) !important;
-    }}
-    [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown}::after {{
-      content: '';
-      position: absolute;
-      bottom: -14px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0; height: 0;
-      border-left: 12px solid transparent;
-      border-right: 12px solid transparent;
-      border-top: 14px solid var(--color-brand);
-      z-index: 11;
-    }}
-    [data-testid="stMain"] .st-key-kpi_card_{kpi_drilldown}::before {{
-      content: '';
-      position: absolute;
-      bottom: -10px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 0; height: 0;
-      border-left: 9px solid transparent;
-      border-right: 9px solid transparent;
-      border-top: 11px solid var(--color-bg-block);
-      z-index: 12;
-    }}
-    </style>
-    """,
+            f'<div style="font-size:13px; color:var(--color-brand);'
+            f' font-weight:600; text-transform:uppercase; letter-spacing:0.5px;'
+            f' margin-bottom:10px;">{_DD_TITLES[kind]}</div>',
             unsafe_allow_html=True,
         )
+        if kind == "workouts":
+            _render_activities_table(view_df)
+        elif kind == "hours":
+            _render_hours_drilldown(view_df)
+        elif kind == "km":
+            _render_km_drilldown(view_df)
+
 
     # Оборачиваем 6 KPI в expander «Всего»
     with st.expander("Всего", expanded=True):
@@ -1453,16 +1427,14 @@ with tab1:
             with st.container(key="kpi_card_workouts"):
                 st.metric("Тренировок", f"{kpi_w_now}", _delta_str(kpi_w_now, kpi_w_prev, "abs"))
                 if st.button(" ", key="kpi_workouts_btn", use_container_width=True):
-                    _kpi_toggle("workouts")
-                    st.rerun()
+                    _kpi_drilldown_dialog("workouts", view)
 
         # 2. Время (формат «N ч NN мин»)
         with cols[1]:
             with st.container(key="kpi_card_hours"):
                 st.metric("Время", fmt_hm(kpi_h_now), _delta_str(kpi_h_now, kpi_h_prev, "pct"))
                 if st.button(" ", key="kpi_hours_btn", use_container_width=True):
-                    _kpi_toggle("hours")
-                    st.rerun()
+                    _kpi_drilldown_dialog("hours", view)
 
         # 3. Средний пульс (взвешенный по duration) — без drilldown
         with cols[2]:
@@ -1479,8 +1451,7 @@ with tab1:
             with st.container(key="kpi_card_km"):
                 st.metric("Расстояние", f"{kpi_km_now:.1f} км", _delta_str(kpi_km_now, kpi_km_prev, "pct"))
                 if st.button(" ", key="kpi_km_btn", use_container_width=True):
-                    _kpi_toggle("km")
-                    st.rerun()
+                    _kpi_drilldown_dialog("km", view)
 
         # 5. Набор (elevation_gain) — без drilldown
         with cols[4]:
@@ -1499,25 +1470,6 @@ with tab1:
                     f"{int(kpi_c_now):,} ккал".replace(",", " "),
                     _delta_str(kpi_c_now, kpi_c_prev, "pct"),
                 )
-
-        # === Drilldown panel — внутри expander «Всего», на всю ширину ===
-        if kpi_drilldown:
-            _DD_TITLES = {
-                "workouts": "Тренировок",
-                "hours": "Часов",
-                "km": "Расстояние",
-            }
-            with st.container(key="kpi_dd_panel"):
-                st.markdown(
-                    f'<div class="kpi-dd-badge">★ детализация · {_DD_TITLES[kpi_drilldown]}</div>',
-                    unsafe_allow_html=True,
-                )
-                if kpi_drilldown == "workouts":
-                    _render_activities_table(view)
-                elif kpi_drilldown == "hours":
-                    _render_hours_drilldown(view)
-                elif kpi_drilldown == "km":
-                    _render_km_drilldown(view)
 
     # endregion
 
