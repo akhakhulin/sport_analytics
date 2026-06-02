@@ -45,6 +45,44 @@ html, body {
   font-family: var(--font); font-size: 16px; line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
+
+/* Animations: scroll-progress + scroll-reveal + hover-cards */
+.scroll-progress {
+  position: fixed; top: 0; left: 0;
+  height: 3px; width: 0;
+  background: linear-gradient(90deg, var(--brand) 0%, var(--brand-soft) 100%);
+  z-index: 200;
+  transition: width .05s linear;
+  box-shadow: 0 0 8px rgba(60, 52, 137, 0.3);
+}
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity .6s ease, transform .6s ease;
+  will-change: opacity, transform;
+}
+[data-reveal].visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-reveal] { opacity: 1; transform: none; transition: none; }
+  .scroll-progress { display: none; }
+}
+.howto-card, .value-card, .audience-card, .faq-item, .source-card {
+  transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
+}
+.howto-card:hover, .value-card:hover, .audience-card:hover, .source-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(60, 52, 137, 0.10),
+              0 4px 12px rgba(60, 52, 137, 0.06);
+  border-color: rgba(60, 52, 137, 0.20);
+}
+.faq-item:hover {
+  border-color: rgba(60, 52, 137, 0.18);
+  box-shadow: 0 4px 14px rgba(60, 52, 137, 0.06);
+}
+
 a { color: var(--brand); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
@@ -142,8 +180,8 @@ section.hero {
   position: relative;
   padding: 100px 24px 90px;
   background:
-    linear-gradient(rgba(15,12,40,0.62), rgba(15,12,40,0.78)),
-    url('/landing-assets/hero-triathlon.jpg');
+    linear-gradient(rgba(15,12,40,0.55), rgba(15,12,40,0.72)),
+    url('/landing-assets/hero-bg-v2.png');
   background-size: cover;
   background-position: center;
   color: #fff;
@@ -297,8 +335,13 @@ section.audience { padding: 30px 0 60px; }
 .audience-grid {
   display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
 }
+.audience-grid-2 {
+  grid-template-columns: repeat(2, 1fr); gap: 22px;
+  max-width: 900px; margin: 0 auto;
+}
 @media (max-width: 760px) {
-  .audience-grid { grid-template-columns: 1fr; gap: 14px; }
+  .audience-grid,
+  .audience-grid-2 { grid-template-columns: 1fr; gap: 14px; }
 }
 .audience-card {
   padding: 28px 24px;
@@ -427,6 +470,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 </head>
 <body>
 
+<div class="scroll-progress" id="scroll-progress"></div>
 <header class="nav">
   <div class="nav-inner">
     <a href="/" class="nav-logo" style="text-decoration:none;color:var(--ink)">
@@ -442,14 +486,9 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       <a href="#vozmojnosti" data-i18n="nav_features">Возможности</a>
       <a href="#kak-rabotaet" data-i18n="nav_howto">Как работает</a>
       <a href="#dlya-kogo" data-i18n="nav_audience">Для кого</a>
-      <a href="/pricing" data-i18n="nav_pricing">Цены</a>
       <a href="/blog" data-i18n="nav_blog">Блог</a>
       <a href="#faq" data-i18n="nav_faq">FAQ</a>
     </nav>
-    <div class="nav-cta">
-      <a href="https://app.beatmetrics.ru/login" class="btn" data-i18n="nav_login">Войти</a>
-      <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary" data-i18n="nav_signup">Подключить</a>
-    </div>
     <button class="nav-burger" id="nav-burger" aria-label="Меню" aria-expanded="false">
       <span></span><span></span><span></span>
     </button>
@@ -481,7 +520,6 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 <!-- Hero — full-width, ВНЕ main (которому max-width 1100px) -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-badge" data-i18n="hero_badge">Бета — бесплатно для первых пользователей</div>
     <h1 data-i18n="hero_title">
       Тренируйся <em>осознанно</em>,<br>а не на чутьё
     </h1>
@@ -499,7 +537,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
 
 <main>
 
-  <section class="dashboard-preview" id="vozmojnosti">
+  <section class="dashboard-preview" id="vozmojnosti" data-reveal>
     <h2>Вот так выглядит ваше приложение</h2>
     <p class="sub">Реальные тренировки за год — объём, зоны, тренды формы</p>
     <div class="dashboard-frame">
@@ -509,7 +547,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="howto" id="kak-rabotaet">
+  <section class="howto" id="kak-rabotaet" data-reveal>
     <h2>Как это работает</h2>
     <div class="howto-grid">
       <div class="howto-step">
@@ -535,7 +573,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="values">
+  <section class="values" data-reveal>
     <h2 data-i18n="values_h2">Что ты увидишь после подключения</h2>
     <div class="value-grid">
       <div class="value-card">
@@ -571,20 +609,16 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="audience" id="dlya-kogo">
+  <section class="audience" id="dlya-kogo" data-reveal>
     <h2>Для кого это</h2>
-    <div class="audience-grid">
+    <div class="audience-grid audience-grid-2">
       <div class="audience-card">
-        <div class="who">🏃 Любителю</div>
-        <h3>Тренируйся осмысленно, а не хаотично</h3>
+        <div class="who">🏃 Атлету</div>
+        <h3>Тренируйся осмысленно — и выходи в пик в день гонки</h3>
         <p>Видишь когда форма растёт, а когда нужен отдых. Перестаёшь тренироваться
-           «по самочувствию» и начинаешь по объективным метрикам — не сгораешь и не плато́́́́́сишь.</p>
-      </div>
-      <div class="audience-card">
-        <div class="who">🏆 Спортсмену</div>
-        <h3>Готовишься к старту — выходи в пик в день гонки</h3>
-        <p>CTL / ATL / TSB показывают где ты на кривой формы. Тейпер перед стартом,
-           распределение зон по неделям, сравнение с эталонами по дисциплине.</p>
+           «по самочувствию» — начинаешь по объективным метрикам. CTL / ATL / TSB
+           показывают где ты на кривой формы. Тейпер перед стартом, распределение
+           зон по неделям, сравнение с эталонами по дисциплине.</p>
       </div>
       <div class="audience-card">
         <div class="who">🤝 Тренеру</div>
@@ -595,34 +629,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="trust">
-    <div class="trust-inner">
-      <h2>Прозрачно, как и должно быть</h2>
-      <div class="trust-grid">
-        <div class="trust-item">
-          <div class="icon">🔓</div>
-          <h3>Открытая разработка</h3>
-          <p>Код продукта открыт на
-            <a href="https://github.com/akhakhulin/sport_analytics" target="_blank" rel="noopener">GitHub</a>.
-            Видно что и как мы делаем с вашими данными.</p>
-        </div>
-        <div class="trust-item">
-          <div class="icon">🇷🇺</div>
-          <h3>Серверы в России</h3>
-          <p>Москва, физический сервер. Данные не покидают РФ —
-             соответствие 152-ФЗ.</p>
-        </div>
-        <div class="trust-item">
-          <div class="icon">🧑‍🔬</div>
-          <h3>Сделано атлетом для атлетов</h3>
-          <p>Автор — лыжник КМС. Каждая фича вырастает из реальной
-             тренировочной задачи, а не из «давайте сделаем красиво».</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sources">
+  <section class="sources" data-reveal>
     <div class="sources-inner">
       <h2 data-i18n="sources_h2">Подключи свой источник</h2>
       <p class="sub" data-i18n="sources_sub">— и мы синхронизируем тренировки в течение нескольких минут</p>
@@ -643,7 +650,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="faq" id="faq">
+  <section class="faq" id="faq" data-reveal>
     <h2>Частые вопросы</h2>
     <div class="faq-list">
       <details>
@@ -737,6 +744,43 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
   <a href="https://app.beatmetrics.ru/privacy">Конфиденциальность</a> ·
   <a href="mailto:support@beatmetrics.ru">support@beatmetrics.ru</a>
 </footer>
+
+<script>
+  // Анимации (vanilla, без библиотек)
+  (function() {
+    // 1) Scroll-progress bar
+    var bar = document.getElementById('scroll-progress');
+    if (bar) {
+      var updateProgress = function() {
+        var h = document.documentElement;
+        var scrolled = h.scrollTop || document.body.scrollTop;
+        var height = h.scrollHeight - h.clientHeight;
+        var pct = height > 0 ? (scrolled / height) * 100 : 0;
+        bar.style.width = pct + '%';
+      };
+      window.addEventListener('scroll', updateProgress, { passive: true });
+      updateProgress();
+    }
+    // 2) Scroll-reveal через IntersectionObserver
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function(entries) {
+        entries.forEach(function(entry) {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('visible');
+            io.unobserve(entry.target);
+          }
+        });
+      }, { threshold: 0.12, rootMargin: '0px 0px -60px 0px' });
+      document.querySelectorAll('[data-reveal]').forEach(function(el) {
+        io.observe(el);
+      });
+    } else {
+      document.querySelectorAll('[data-reveal]').forEach(function(el) {
+        el.classList.add('visible');
+      });
+    }
+  })();
+</script>
 
 </body>
 </html>
