@@ -233,96 +233,263 @@ header.nav {
 
 main { max-width: 1100px; margin: 0 auto; padding: 0 24px; }
 
-/* Hero — full-width background with dark overlay + light text */
+/* === Hero — dark Vercel-style + триптих-фото + glass-метрики === */
+:root {
+  --brand-strong: #8472ff;
+  --brand-dim: rgba(111,95,216,0.55);
+  --ink-dark: #07060f;
+  --text-light: #f5f4ff;
+  --text-mute-dark: #a7a3c2;
+}
 section.hero {
   position: relative;
-  padding: 0;
-  aspect-ratio: 1574 / 656;
-  min-height: 480px;
-  display: flex; align-items: flex-start;
+  color: var(--text-light);
+  padding: 80px 32px 64px;
+  overflow: hidden;
+  isolation: isolate;
+  background: var(--ink-dark) url('/landing-assets/hero-bg-v2.png') center / cover no-repeat;
+}
+section.hero::before {
+  content: "";
+  position: absolute; inset: 0;
   background:
-    linear-gradient(rgba(15,12,40,0.55), rgba(15,12,40,0.35) 50%, rgba(15,12,40,0.65)),
-    url('/landing-assets/hero-bg-v2.png');
-  background-size: cover;
-  background-position: center;
-  background-color: #1a1730;
-  color: #fff;
+    linear-gradient(90deg,
+      rgba(7,6,15,0.82) 0%,
+      rgba(7,6,15,0.60) 38%,
+      rgba(7,6,15,0.15) 62%,
+      rgba(7,6,15,0.20) 100%),
+    radial-gradient(900px 600px at 18% 22%, var(--brand-dim) 0%, transparent 55%),
+    radial-gradient(900px 600px at 88% 88%, rgba(60,52,137,0.30) 0%, transparent 60%);
+  z-index: -1;
+  pointer-events: none;
 }
 .hero-inner {
-  max-width: 1100px; margin: 0 auto;
-  padding: 60px 24px 40px;
+  max-width: 1300px; margin: 0 auto;
+  display: grid; grid-template-columns: 1fr 1.1fr; gap: 56px;
+  align-items: center;
 }
-@media (max-width: 860px) {
-  section.hero {
-    aspect-ratio: auto;
-    min-height: 480px;
-    align-items: center;
-    background-position: 75% center;
-    background-image:
-      linear-gradient(rgba(15,12,40,0.45), rgba(15,12,40,0.55)),
-      url('/landing-assets/hero-bg-v2.png');
-  }
-  .hero-inner { padding: 36px 20px; }
-}
+.hero-text { animation: hero-fade-up 0.7s ease-out both; }
 .hero h1 {
-  font-size: 52px; line-height: 1.08; letter-spacing: -0.02em;
-  font-weight: 500; margin-bottom: 20px;
-  color: #fff;
-  max-width: 760px;
+  font-size: 56px; line-height: 1.04; font-weight: 700;
+  letter-spacing: -0.03em; margin-bottom: 18px;
+  background: linear-gradient(180deg, #fff 0%, #cfc8ff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
-@media (max-width: 860px) { .hero h1 { font-size: 34px; } }
 .hero h1 em {
-  color: #b7afff; font-style: normal;
+  font-style: normal;
+  background: linear-gradient(180deg, var(--brand-strong) 0%, #c8b9ff 100%);
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 .hero p.lead {
-  font-size: 18px; color: rgba(255,255,255,0.85); line-height: 1.55;
-  margin-bottom: 32px; max-width: 620px;
+  font-size: 17px; line-height: 1.55; color: var(--text-mute-dark);
+  margin-bottom: 24px; max-width: 480px;
 }
-.hero-badge {
-  display: inline-block;
-  padding: 6px 14px;
-  background: rgba(255,255,255,0.15);
-  color: #fff;
-  border-radius: 999px;
-  font-size: 12px; font-weight: 500;
-  letter-spacing: 0.3px;
-  margin-bottom: 18px;
-  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
-  border: 1px solid rgba(255,255,255,0.18);
+.hero ul.bullets { list-style: none; margin-bottom: 32px; max-width: 480px; }
+.hero ul.bullets li {
+  position: relative; padding: 7px 0 7px 30px;
+  font-size: 14.5px; color: #d8d3f0;
 }
-.hero-microcopy {
-  margin-top: 14px;
-  font-size: 13px; color: rgba(255,255,255,0.7);
+.hero ul.bullets li::before {
+  content: ""; position: absolute; left: 0; top: 12px;
+  width: 16px; height: 10px;
+  border-left: 2px solid var(--brand-strong); border-bottom: 2px solid var(--brand-strong);
+  transform: rotate(-45deg);
 }
-/* CTA-кнопка primary остаётся brand-фиолетовой, но добавим glow */
+.cta-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
 .hero .btn-primary {
-  box-shadow: 0 8px 24px rgba(60,52,137,0.45);
+  background: var(--brand-strong); color: #fff; border-color: var(--brand-strong);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08), 0 12px 36px rgba(132,114,255,0.45);
+}
+.hero .btn-primary:hover {
+  background: #6f5fd8; border-color: #6f5fd8;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.15), 0 14px 42px rgba(132,114,255,0.6);
+}
+.btn-ghost {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 22px; color: var(--text-light);
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px; text-decoration: none !important;
+  font-weight: 500; font-size: 15px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: background .15s, border-color .15s;
+}
+.btn-ghost:hover { background: rgba(255,255,255,0.10);
+  border-color: rgba(255,255,255,0.30); text-decoration: none !important; }
+.hero-microcopy {
+  display: block; margin-top: 16px;
+  font-size: 13px; color: var(--text-mute-dark);
 }
 
-/* Dashboard preview — между hero и values */
-section.dashboard-preview {
-  padding: 40px 0 70px;
-  text-align: center;
+/* Glass-метрики 2×3 + recommendation */
+.hero-metrics {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+  opacity: 0; transform: translateY(20px);
+  animation: hero-rise 0.9s 0.25s cubic-bezier(.16,.7,.2,1) forwards;
 }
-.dashboard-preview h2 {
-  font-size: 28px; font-weight: 500; letter-spacing: -0.01em;
-  margin-bottom: 6px;
-}
-.dashboard-preview p.sub {
-  color: var(--mute); font-size: 15px; margin-bottom: 28px;
-}
-.dashboard-frame {
-  display: inline-block;
-  max-width: 1100px; width: 100%;
-  border-radius: 14px;
+.metric {
+  position: relative;
+  background: rgba(20,16,40,0.38);
+  backdrop-filter: blur(2px) saturate(120%); -webkit-backdrop-filter: blur(2px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  padding: 18px 20px;
+  min-height: 138px;
   overflow: hidden;
   box-shadow:
-    0 20px 50px rgba(60,52,137,0.18),
-    0 0 0 1px rgba(60,52,137,0.08);
-  background: #fff;
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 8px 24px rgba(0,0,0,0.25);
 }
-.dashboard-frame img {
-  display: block; width: 100%; height: auto;
+.metric .label, .metric .value, .metric .status {
+  text-shadow: 0 1px 2px rgba(0,0,0,0.55);
+}
+.metric .label { font-size: 13px; color: var(--text-mute-dark); font-weight: 500; margin-bottom: 8px; }
+.metric .value {
+  font-size: 34px; font-weight: 700; line-height: 1; color: #fff;
+  font-feature-settings: "tnum";
+  margin-bottom: 6px;
+  display: flex; align-items: baseline; gap: 4px;
+}
+.metric .value .unit { font-size: 16px; color: var(--text-mute-dark); font-weight: 600; }
+.metric .status { font-size: 13px; font-weight: 500; }
+.metric .status.great { color: #4dd0b3; }
+.metric .status.purple { color: #b094ff; }
+.metric .status.ok { color: var(--brand-strong); }
+.metric .visual { position: absolute; right: 14px; top: 14px; }
+.metric .viz-bottom { position: absolute; left: 18px; right: 18px; bottom: 14px; }
+.metric svg { display: block; overflow: visible; }
+.metric .ring-bg { stroke: rgba(255,255,255,0.08); }
+.metric .progress-bg {
+  height: 4px; background: rgba(255,255,255,0.08);
+  border-radius: 2px; overflow: hidden;
+}
+.metric .progress-bar {
+  height: 100%; background: linear-gradient(90deg, var(--brand-strong), #4dd0b3);
+  border-radius: 2px;
+}
+.recommendation {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; gap: 14px;
+  background: rgba(20,16,40,0.30);
+  backdrop-filter: blur(2px) saturate(120%); -webkit-backdrop-filter: blur(2px) saturate(120%);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 16px;
+  padding: 16px 20px;
+  box-shadow:
+    inset 0 1px 0 rgba(255,255,255,0.06),
+    0 8px 24px rgba(0,0,0,0.25);
+  text-decoration: none !important;
+  color: var(--text-light);
+}
+.recommendation:hover { background: rgba(20,16,40,0.40); }
+.recommendation .reco-icon {
+  width: 44px; height: 44px; border-radius: 12px;
+  background: rgba(132,114,255,0.16);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--brand-strong); flex-shrink: 0;
+}
+.recommendation .reco-body { flex: 1; }
+.recommendation .reco-label { font-size: 12px; color: var(--text-mute-dark); font-weight: 500; margin-bottom: 2px; text-shadow: 0 1px 2px rgba(0,0,0,0.55); }
+.recommendation .reco-title { font-size: 15px; color: #fff; font-weight: 500; text-shadow: 0 1px 2px rgba(0,0,0,0.55); }
+.recommendation .reco-title .sub { color: var(--text-mute-dark); margin-left: 6px; font-weight: 400; font-size: 13px; }
+.recommendation .reco-arrow { color: var(--text-mute-dark); }
+
+@keyframes hero-fade-up { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+@keyframes hero-rise { 0% { opacity: 0; transform: translateY(20px); } 100% { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .hero-text, .hero-metrics { opacity: 1; transform: none; animation: none; }
+}
+
+/* Mobile hero — text+CTA сначала, метрики после (CTA viewable без скролла) */
+@media (max-width: 980px) {
+  section.hero { padding: 48px 20px 40px;
+    background: var(--ink-dark) url('/landing-assets/hero-bg-v2.png') 75% center / cover no-repeat;
+  }
+  .hero-inner { grid-template-columns: 1fr; gap: 32px; }
+  .hero-text { order: 1; }
+  .hero-metrics { order: 2; }
+  .hero h1 { font-size: 30px; }
+  .hero p.lead { font-size: 15px; }
+  .hero ul.bullets { margin-bottom: 24px; }
+}
+/* Совсем узкий — скрываем 2 метрики чтоб не съесть второй экран */
+@media (max-width: 560px) {
+  .hero ul.bullets li:nth-child(4) { display: none; }
+  .metric:nth-child(4),
+  .metric:nth-child(5) { display: none; }
+  .hero-metrics { grid-template-columns: 1fr 1fr; }
+}
+
+/* === Integrations bar — light, под hero === */
+section.integrations-bar {
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
+  padding: 22px 24px;
+}
+.integrations-inner {
+  max-width: 1300px; margin: 0 auto;
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+  justify-content: center;
+}
+.integrations-label {
+  font-size: 13px; color: var(--mute); font-weight: 500;
+}
+.integrations-logos {
+  display: flex; align-items: center; gap: 28px; flex-wrap: wrap;
+}
+.integrations-logos .logo-item {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 14px; color: #444; font-weight: 500;
+  opacity: 0.75; transition: opacity 0.2s;
+}
+.integrations-logos .logo-item:hover { opacity: 1; }
+.integrations-logos img { width: 24px; height: 24px; }
+.integrations-logos .more {
+  font-size: 13px; color: var(--mute); padding: 4px 10px;
+  border-radius: 999px; background: #f5f4fb;
+}
+
+/* === Features — 4 cards под integrations === */
+section.features-bar {
+  background: var(--paper);
+  padding: 56px 24px;
+}
+.features-inner {
+  max-width: 1300px; margin: 0 auto;
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+.feature-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.feature-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(60,52,137,0.10);
+}
+.feature-card .ico {
+  width: 44px; height: 44px; border-radius: 11px;
+  background: var(--brand-soft); color: var(--brand);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 14px;
+}
+.feature-card h3 {
+  font-size: 16px; font-weight: 600; margin-bottom: 6px;
+  letter-spacing: -0.01em; color: var(--ink);
+}
+.feature-card p { font-size: 13.5px; line-height: 1.5; color: var(--mute); }
+@media (max-width: 980px) {
+  .integrations-bar { padding: 18px 16px; }
+  .integrations-logos { gap: 18px; }
+  section.features-bar { padding: 36px 16px; }
+  .features-inner { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 560px) {
+  .features-inner { grid-template-columns: 1fr; }
 }
 
 /* Value props */
@@ -570,7 +737,6 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       <a href="#vozmojnosti" data-i18n="nav_features">Возможности</a>
       <a href="#kak-rabotaet" data-i18n="nav_howto">Как работает</a>
       <a href="#dlya-kogo" data-i18n="nav_audience">Для кого</a>
-      <a href="/blog" data-i18n="nav_blog">Блог</a>
       <a href="#faq" data-i18n="nav_faq">FAQ</a>
     </nav>
     <button class="nav-burger" id="nav-burger" aria-label="Меню" aria-expanded="false">
@@ -601,35 +767,138 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
   })();
 </script>
 
-<!-- Hero — full-width, ВНЕ main (которому max-width 1100px) -->
+<!-- Hero — dark, full-width, ВНЕ main -->
 <section class="hero">
   <div class="hero-inner">
-    <h1 data-i18n="hero_title">
-      Тренируйся <em>осознанно</em>,<br>а не на чутьё
-    </h1>
-    <p class="lead" data-i18n="hero_lead">
-      BeatMetrics собирает тренировки из Garmin, Strava, Polar и Suunto в одно
-      приложение. Тренды формы, распределение по зонам, recovery, сравнение плана
-      с фактом — для лыжников, бегунов и велосипедистов.
-    </p>
-    <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary btn-lg" data-i18n="cta_signup">
-      Подключить устройство →
-    </a>
-    <div class="hero-microcopy" data-i18n="hero_microcopy">бесплатно · без карты · 30 секунд</div>
+    <div class="hero-text">
+      <h1 data-i18n="hero_title">
+        Тренируйся <em>осознанно</em>,<br>а не на чутьё
+      </h1>
+      <p class="lead" data-i18n="hero_lead">
+        BeatMetrics собирает тренировки из Garmin, Strava, Polar и Suunto в одно приложение.
+      </p>
+      <ul class="bullets">
+        <li>Тренды формы CTL / ATL / TSB</li>
+        <li>Распределение по пульсовым зонам</li>
+        <li>Recovery и HRV (Garmin)</li>
+        <li>План vs факт — для атлета и тренера</li>
+      </ul>
+      <div class="cta-row">
+        <a href="https://app.beatmetrics.ru/signup" class="btn btn-primary btn-lg" data-i18n="cta_signup">Подключить устройство</a>
+        <a href="#kak-rabotaet" class="btn-ghost">Как это работает</a>
+      </div>
+      <span class="hero-microcopy" data-i18n="hero_microcopy">бесплатно · без карты · 30 секунд</span>
+    </div>
+
+    <div class="hero-metrics">
+      <div class="metric">
+        <div class="label">HRV</div>
+        <div class="value">73<span class="unit">ms</span></div>
+        <div class="status great">Хорошо</div>
+        <div class="viz-bottom">
+          <svg viewBox="0 0 180 36" width="100%" height="36" preserveAspectRatio="none">
+            <polyline points="0,28 22,24 44,26 66,18 88,22 110,16 132,14 154,10 180,6"
+                      fill="none" stroke="#4dd0b3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="180" cy="6" r="3.5" fill="#4dd0b3"/>
+          </svg>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">Recovery</div>
+        <div class="value">82<span class="unit">%</span></div>
+        <div class="status great">Отличная</div>
+        <div class="visual">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" class="ring-bg" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" fill="none" stroke="#4dd0b3" stroke-width="6"
+                    stroke-dasharray="134 163" stroke-linecap="round"
+                    transform="rotate(-90 32 32)"/>
+          </svg>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">Training Load</div>
+        <div class="value">642</div>
+        <div class="status purple">Оптимальная</div>
+        <div class="viz-bottom">
+          <svg viewBox="0 0 180 36" width="100%" height="36" preserveAspectRatio="none">
+            <polyline points="0,22 22,18 44,24 66,20 88,14 110,16 132,12 154,18 180,14"
+                      fill="none" stroke="#b094ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="180" cy="14" r="3.5" fill="#b094ff"/>
+          </svg>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">Sleep</div>
+        <div class="value">8<span class="unit">ч</span> 17<span class="unit">м</span></div>
+        <div class="status ok">Качество: 85%</div>
+        <div class="viz-bottom" style="display:flex; gap:6px; align-items:end; height: 28px;">
+          <span style="flex:1; height:50%;  background:#5a8fdd; border-radius:2px;"></span>
+          <span style="flex:1; height:36%;  background:#5a8fdd; border-radius:2px;"></span>
+          <span style="flex:1; height:80%;  background:#7ab0ff; border-radius:2px;"></span>
+          <span style="flex:1; height:100%; background:#7ab0ff; border-radius:2px;"></span>
+          <span style="flex:1; height:46%;  background:#5a8fdd; border-radius:2px;"></span>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">Readiness</div>
+        <div class="value">76<span class="unit">%</span></div>
+        <div class="status great">Готов к нагрузкам</div>
+        <div class="viz-bottom">
+          <div class="progress-bg"><div class="progress-bar" style="width: 76%;"></div></div>
+        </div>
+      </div>
+      <div class="metric">
+        <div class="label">VO<sub style="font-size:11px;">2</sub> Max</div>
+        <div class="value">62</div>
+        <div class="status great">Отлично</div>
+        <div class="viz-bottom">
+          <svg viewBox="0 0 180 36" width="100%" height="36" preserveAspectRatio="none">
+            <polyline points="0,28 30,22 60,24 90,16 120,12 150,8 180,6"
+                      fill="none" stroke="#4dd0b3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="90" cy="16" r="3" fill="#4dd0b3"/>
+            <circle cx="120" cy="12" r="3" fill="#4dd0b3"/>
+            <circle cx="150" cy="8" r="3" fill="#4dd0b3"/>
+            <circle cx="180" cy="6" r="3.5" fill="#4dd0b3"/>
+          </svg>
+        </div>
+      </div>
+      <a href="https://app.beatmetrics.ru/signup" class="recommendation">
+        <div class="reco-icon">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 17.5c1 1 2 1.5 4 1.5h12c1.5 0 3-.5 4-2l-4-3-3 1-4-3-3 2-2-1-4 1v2.5z"/>
+            <path d="M10 11l-3-2"/><path d="M14 9l-2-3"/>
+          </svg>
+        </div>
+        <div class="reco-body">
+          <div class="reco-label">Сегодняшняя рекомендация</div>
+          <div class="reco-title">Лёгкая тренировка <span class="sub">· зона 2 · 60 мин</span></div>
+        </div>
+        <div class="reco-arrow">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Integrations bar — light, под hero -->
+<section class="integrations-bar" data-reveal>
+  <div class="integrations-inner">
+    <span class="integrations-label">Подключайте любимые устройства</span>
+    <div class="integrations-logos">
+      <span class="logo-item"><img src="/landing-assets/icons/garmin.svg" alt="Garmin"> Garmin</span>
+      <span class="logo-item"><img src="/landing-assets/icons/polar.svg" alt="Polar"> Polar</span>
+      <span class="logo-item"><img src="/landing-assets/icons/suunto.svg" alt="Suunto"> Suunto</span>
+      <span class="logo-item"><img src="/landing-assets/icons/coros.svg" alt="COROS"> COROS</span>
+      <span class="logo-item"><img src="/landing-assets/icons/apple.svg" alt="Apple Health"> Apple Health</span>
+      <span class="logo-item"><img src="/landing-assets/icons/strava.svg" alt="Strava"> Strava</span>
+      <span class="more">& другие</span>
+    </div>
   </div>
 </section>
 
 <main>
-
-  <section class="dashboard-preview" id="vozmojnosti" data-reveal>
-    <h2>Вот так выглядит ваше приложение</h2>
-    <p class="sub">Любой период — объём, пульсовые зоны, тренды формы</p>
-    <div class="dashboard-frame">
-      <img src="/landing-assets/dashboard/hero-main.png"
-           alt="BeatMetrics dashboard — аналитика тренировок"
-           loading="lazy">
-    </div>
-  </section>
 
   <section class="howto" id="kak-rabotaet" data-reveal>
     <h2>Как это работает</h2>
@@ -657,7 +926,7 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
-  <section class="values" data-reveal>
+  <section class="values" id="vozmojnosti" data-reveal>
     <h2 data-i18n="values_h2">Что ты увидишь после подключения</h2>
     <div class="value-grid">
       <div class="value-card">
@@ -715,27 +984,6 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
           <li>План на цифрах, не на «как ты себя чувствуешь»</li>
           <li>Несколько атлетов — один экран обзора</li>
         </ul>
-      </div>
-    </div>
-  </section>
-
-  <section class="sources" data-reveal>
-    <div class="sources-inner">
-      <h2 data-i18n="sources_h2">Подключи свой источник</h2>
-      <p class="sub" data-i18n="sources_sub">— и мы синхронизируем тренировки в течение нескольких минут</p>
-      <div class="sources-row">
-        <div class="item"><img src="/landing-assets/icons/garmin.svg" alt="Garmin"> Garmin Connect</div>
-        <div class="item"><img src="/landing-assets/icons/strava.svg" alt="Strava"> Strava</div>
-        <div class="item"><img src="/landing-assets/icons/polar.svg" alt="Polar"> Polar</div>
-        <div class="item"><img src="/landing-assets/icons/suunto.svg" alt="Suunto"> Suunto</div>
-        <div class="item soon">
-          <img src="/landing-assets/icons/apple.svg" alt="Apple"> Apple Watch
-          <span style="font-size:12px" data-i18n="apple_note">(через Strava)</span>
-        </div>
-        <div class="item soon">
-          <img src="/landing-assets/icons/coros.svg" alt="COROS"> COROS
-          <span style="font-size:12px" data-i18n="coros_note">(скоро)</span>
-        </div>
       </div>
     </div>
   </section>
