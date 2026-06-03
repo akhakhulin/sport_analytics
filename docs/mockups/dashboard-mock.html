@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru"><head>
+<meta charset="utf-8">
+<title>Dashboard Mock</title>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --brand: #3c3489;
+  --brand-soft: #ebe9f7;
+  --brand-line: #d9d4ee;
+  --ink: #1a1a18;
+  --mute: #6b6a64;
+  --line: #e8e7e1;
+  --paper: #f7f6fc;
+  --card: #ffffff;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+  background: var(--paper); color: var(--ink); font-size: 14px; line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+.container { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
+
+/* Period bar */
+.period-bar {
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 12px 24px; text-align: center; margin-bottom: 20px;
+  display: flex; align-items: center; justify-content: center; gap: 14px; font-size: 13px; color: #555;
+}
+.period-bar .active { color: var(--brand); font-weight: 600; }
+.period-bar .dot { color: #ccc; }
+
+/* Profile section (collapsed) */
+.section {
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  margin-bottom: 14px;
+}
+.section-head {
+  padding: 14px 22px; display: flex; align-items: center; gap: 10px;
+  font-weight: 500; color: var(--ink);
+}
+.section-head .chev { color: var(--mute); font-size: 18px; }
+.section-head .icon { color: var(--brand); font-size: 18px; }
+.section-body { padding: 0 22px 18px; }
+
+/* Tabs */
+.tabs { display: flex; gap: 28px; border-bottom: 1px solid var(--line); margin-bottom: 16px; padding-left: 4px; }
+.tab { padding: 12px 4px; font-size: 14px; color: var(--mute); border-bottom: 2px solid transparent; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+.tab.active { color: var(--brand); border-bottom-color: var(--brand); }
+.tab .icon { font-size: 16px; }
+
+/* Stat cards */
+.stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; padding: 6px 22px 22px; }
+.stat-card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+  padding: 14px 18px;
+}
+.stat-card .label { font-size: 12px; color: var(--mute); margin-bottom: 6px; }
+.stat-card .value { font-size: 24px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.stat-card .delta { font-size: 12px; padding: 2px 8px; border-radius: 999px; display: inline-flex; align-items: center; gap: 2px; }
+.stat-card .delta.up { color: #1a7a3a; background: #e6f5ec; }
+.stat-card .delta.down { color: #b14242; background: #fbeded; }
+
+/* Donut chart section */
+.donut-block { padding: 24px; display: grid; grid-template-columns: 380px 1fr; gap: 32px; align-items: center; }
+.donut-wrap { position: relative; width: 320px; height: 320px; margin: 0 auto; }
+.donut-wrap .center {
+  position: absolute; left: 0; right: 0; top: 50%; transform: translateY(-50%);
+  text-align: center;
+}
+.donut-wrap .center .total { font-size: 26px; font-weight: 600; color: var(--ink); }
+.donut-wrap .center .sub { font-size: 13px; color: var(--mute); margin-top: 4px; }
+
+.legend { display: flex; flex-direction: column; gap: 12px; }
+.legend-row { display: flex; align-items: center; padding: 6px 0; border-bottom: 1px solid #f0eef8; }
+.legend-row .swatch { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; margin-right: 12px; }
+.legend-row .name { flex: 1; font-size: 14px; color: #444; }
+.legend-row .name .z { color: var(--brand); font-weight: 500; margin-right: 6px; }
+.legend-row .time { width: 100px; text-align: right; color: #555; font-size: 13px; }
+.legend-row .pct { width: 60px; text-align: right; color: var(--mute); font-size: 13px; }
+
+.polar-tag {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px;
+  background: #ebf5ec; color: #1a6b2e; border-radius: 6px; font-size: 13px; margin-top: 14px;
+}
+.polar-tag .check { font-size: 14px; }
+.polar-tag .ref { color: #888; margin-left: 8px; }
+
+/* Topbar branding */
+.topbar { background: var(--brand); height: 6px; }
+.brand-line { padding: 14px 28px; display: flex; align-items: center; gap: 10px; background: var(--card); border-bottom: 1px solid var(--line); }
+.brand-line .logo {
+  width: 30px; height: 30px; background: var(--brand); border-radius: 6px;
+  display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 16px;
+}
+.brand-line .title { font-weight: 600; color: var(--ink); font-size: 16px; }
+.brand-line .badge { background: var(--brand-soft); color: var(--brand); font-size: 12px; padding: 3px 10px; border-radius: 999px; margin-left: auto; }
+</style></head>
+<body>
+<div class="topbar"></div>
+<div class="brand-line">
+  <div class="logo">b+</div>
+  <div class="title">BeatMetrics</div>
+  <div class="badge">Аналитика тренировок</div>
+</div>
+
+<div class="container">
+  <div class="period-bar">
+    <span class="active">30 дней</span>
+    <span class="dot">·</span>
+    <span>64 активности</span>
+    <span class="dot">·</span>
+    <span>по неделям</span>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><span class="chev material-icons-round">chevron_right</span><span class="icon material-icons-round">tune</span>Профиль и HR-зоны</div>
+  </div>
+
+  <div class="section">
+    <div class="tabs" style="padding: 4px 22px 0;">
+      <div class="tab active"><span class="icon material-icons-round">bar_chart</span>Общая аналитика</div>
+      <div class="tab"><span class="icon material-icons-round">compare_arrows</span>Сравнение данных</div>
+    </div>
+    <div class="section-head" style="padding-top: 10px;"><span class="chev material-icons-round">expand_more</span>Всего</div>
+    <div class="stats-grid">
+      <div class="stat-card"><div class="label">Тренировок</div><div class="value">64</div><div class="delta up">↑ +8 vs пред.</div></div>
+      <div class="stat-card"><div class="label">Время</div><div class="value">52 ч 10 мин</div><div class="delta up">↑ +12% vs пред.</div></div>
+      <div class="stat-card"><div class="label">Средний пульс</div><div class="value">138 уд/мин</div><div class="delta up">↑ +3 уд vs пред.</div></div>
+      <div class="stat-card"><div class="label">Расстояние</div><div class="value">854 км</div><div class="delta up">↑ +18% vs пред.</div></div>
+      <div class="stat-card"><div class="label">Набор</div><div class="value">3 240 м</div><div class="delta up">↑ +22% vs пред.</div></div>
+      <div class="stat-card"><div class="label">Калорий</div><div class="value">28 470</div><div class="delta up">↑ +14% vs пред.</div></div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head"><span class="chev material-icons-round">expand_more</span><span class="icon material-icons-round">favorite</span>Пульс: время в зонах</div>
+    <div class="donut-block">
+      <div class="donut-wrap">
+        <svg viewBox="0 0 200 200" width="320" height="320">
+          <!-- 5 segments brand-purple shades. Z1=58 Z2=34 Z3=4 Z4=3 Z5=1 → LIT(Z1+Z2)=92 MIT=4 HIT=4 -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#ebe9f7" stroke-width="28"/>
+          <!-- C = 490 -->
+          <!-- Z1 0->58% = 284.2 -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#c9c2ec" stroke-width="28"
+                  stroke-dasharray="284.2 490" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+          <!-- Z2 58->92% = 166.6 starting at 284.2 -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#9389d4" stroke-width="28"
+                  stroke-dasharray="166.6 490" stroke-dashoffset="-284.2" transform="rotate(-90 100 100)"/>
+          <!-- Z3 92->96% = 19.6 starting at 450.8 -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#6c5dbc" stroke-width="28"
+                  stroke-dasharray="19.6 490" stroke-dashoffset="-450.8" transform="rotate(-90 100 100)"/>
+          <!-- Z4 96->99% = 14.7 starting at 470.4 -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#4a3da0" stroke-width="28"
+                  stroke-dasharray="14.7 490" stroke-dashoffset="-470.4" transform="rotate(-90 100 100)"/>
+          <!-- Z5 99->100% = 4.9 starting at 485.1 -->
+          <circle cx="100" cy="100" r="78" fill="none" stroke="#2b2270" stroke-width="28"
+                  stroke-dasharray="4.9 490" stroke-dashoffset="-485.1" transform="rotate(-90 100 100)"/>
+        </svg>
+        <div class="center">
+          <div class="total">52 ч 10 мин</div>
+          <div class="sub">Общее время</div>
+        </div>
+      </div>
+      <div class="legend">
+        <div class="legend-row"><div class="swatch" style="background:#2b2270"></div><div class="name"><span class="z">Z5</span>Максимум</div><div class="time">31 мин</div><div class="pct">1.0%</div></div>
+        <div class="legend-row"><div class="swatch" style="background:#4a3da0"></div><div class="name"><span class="z">Z4</span>Порог</div><div class="time">1 ч 34 мин</div><div class="pct">3.0%</div></div>
+        <div class="legend-row"><div class="swatch" style="background:#6c5dbc"></div><div class="name"><span class="z">Z3</span>Темповая</div><div class="time">2 ч 05 мин</div><div class="pct">4.0%</div></div>
+        <div class="legend-row"><div class="swatch" style="background:#9389d4"></div><div class="name"><span class="z">Z2</span>Аэробная</div><div class="time">17 ч 44 мин</div><div class="pct">34.0%</div></div>
+        <div class="legend-row"><div class="swatch" style="background:#c9c2ec"></div><div class="name"><span class="z">Z1</span>Разминка</div><div class="time">30 ч 16 мин</div><div class="pct">58.0%</div></div>
+        <div class="polar-tag"><span class="check material-icons-round" style="font-size:16px;">check_circle</span>Поляризация 92/4/4<span class="ref">= Seiler 80/20</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+</body></html>
