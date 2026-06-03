@@ -24,6 +24,64 @@
 <meta name="twitter:title"       content="BeatMetrics — тренируйся осознанно">
 <meta name="twitter:description" content="Аналитика тренировок для лыжников, бегунов и велосипедистов. Garmin, Polar, Suunto, Strava — в одном приложении.">
 <meta name="twitter:image"       content="https://beatmetrics.ru/landing-assets/og-image.png">
+
+<!-- FAQ schema.org JSON-LD — rich snippet в Яндекс/Google -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "Какие часы и приложения поддерживаются?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Сейчас работают: Strava (включает Apple Watch, большинство Garmin, Polar, Suunto, Wahoo, COROS, Zepp), Polar Flow напрямую, Suunto напрямую. Прямой Garmin Connect — в pending-статусе у партнёрской программы Garmin. Если ваши часы синкаются в Strava — они работают с BeatMetrics."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Когда будет прямая интеграция с Garmin Connect?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Заявка в Garmin Developer Program подана, ждём подтверждения — обычно 4-12 недель. До этого Garmin-часы работают через Strava-мост: ваши Garmin-активности автоматически попадают в Strava, оттуда — в BeatMetrics. Recovery, Body Battery и HRV-метрики Garmin будут доступны только после прямой интеграции — Strava их не передаёт."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Чем это отличается от Strava, Garmin Connect и TrainingPeaks?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Strava — социальная сеть с базовой статистикой; нет CTL/ATL/TSB, нет планов, нет совместной работы с тренером. Garmin Connect — отличный для одного устройства, но не агрегирует Polar/Suunto/Apple Watch, не показывает план vs факт. TrainingPeaks — мощный, но $20/мес и UX 2008 года. BeatMetrics — один экран с тем, что важно: тренды формы, зоны, recovery, план vs факт. Бесплатно во время беты."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Что с безопасностью данных и где они хранятся?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Серверы — в России (Москва, физический), соответствует требованию локализации персональных данных 152-ФЗ. OAuth-токены хранятся зашифрованными (Fernet), пароли — bcrypt-хэш. Рекламным сетям и аналитике данные не передаются. Удалить аккаунт можно в любой момент — все данные стираются в течение 30 дней."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "А если я тренируюсь без часов — силовые, ОФП, имитация?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Силовые и кросс-тренировки появятся в дневнике как «другая активность» — без HR-аналитики, но с длительностью и заметками. Так вы видите полную картину нагрузки, а не только то что записали часы. Скоро добавим ручное логирование сессий без устройства."
+      }
+    },
+    {
+      "@type": "Question",
+      "name": "Сколько это будет стоить, когда бета закончится?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "Цели: тариф для атлета — в пределах ₽300-500/мес (~$3-5), тариф для тренера — выше. О введении цен и условий перехода предупредим за 30 дней по email, аккаунт автоматически в платный не переведём."
+      }
+    }
+  ]
+}
+</script>
 <style>
 :root {
   --brand: #3c3489;
@@ -267,6 +325,27 @@ section.dashboard-preview {
   display: block; width: 100%; height: auto;
 }
 
+/* Author quote */
+section.author-note { padding: 30px 0 50px; }
+.author-quote {
+  max-width: 760px; margin: 0 auto;
+  padding: 28px 32px;
+  background: linear-gradient(180deg, var(--brand-soft), #fff);
+  border-left: 3px solid var(--brand);
+  border-radius: 10px;
+}
+.author-quote p {
+  font-size: 17px; line-height: 1.55; color: var(--ink);
+  margin: 0 0 14px; font-style: normal;
+}
+.author-quote p em {
+  color: var(--brand); font-style: normal; font-weight: 500;
+}
+.author-cite {
+  font-size: 13px; color: var(--mute);
+}
+.author-cite strong { color: var(--ink); font-weight: 500; }
+
 /* Value props */
 section.values { padding: 60px 0; }
 .values h2 {
@@ -373,6 +452,19 @@ section.audience { padding: 30px 0 60px; }
   letter-spacing: -0.01em; margin-bottom: 8px;
 }
 .audience-card p { font-size: 14px; color: var(--mute); line-height: 1.6; }
+.audience-list {
+  list-style: none; padding: 0; margin: 0;
+  font-size: 14px; color: var(--ink); line-height: 1.5;
+}
+.audience-list li {
+  position: relative; padding: 6px 0 6px 26px;
+}
+.audience-list li::before {
+  content: ""; position: absolute; left: 0; top: 11px;
+  width: 14px; height: 8px;
+  border-left: 2px solid var(--brand); border-bottom: 2px solid var(--brand);
+  transform: rotate(-45deg);
+}
 
 /* === Trust section (open-source / РФ-сервер / атлет-разработчик) === */
 section.trust { padding: 30px 0 50px; }
@@ -560,6 +652,18 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     </div>
   </section>
 
+  <section class="author-note" data-reveal>
+    <blockquote class="author-quote">
+      <p>«Начал делать BeatMetrics для себя — мне не хватало <em>одного</em>
+        экрана где CTL/recovery/план vs факт. Strava — соцсеть, Garmin Connect
+        отлично для одного устройства, TrainingPeaks мощный но $20 и UX 2008-го.
+        Если у тебя похожая боль — попробуй.»</p>
+      <footer class="author-cite">
+        <strong>Артём Хахулин</strong> · лыжные гонки, КМС · автор BeatMetrics
+      </footer>
+    </blockquote>
+  </section>
+
   <section class="howto" id="kak-rabotaet" data-reveal>
     <h2>Как это работает</h2>
     <div class="howto-grid">
@@ -590,32 +694,32 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
     <h2 data-i18n="values_h2">Что ты увидишь после подключения</h2>
     <div class="value-grid">
       <div class="value-card">
-        <div class="icon">📊</div>
+        <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 9 11 13 15 21 7"/><polyline points="14 7 21 7 21 14"/></svg></div>
         <h3 data-i18n="v1_t">Тренды формы</h3>
         <p data-i18n="v1_p"><abbr title="Chronic Training Load — фитнес, экспоненциальное среднее нагрузки за 42 дня">CTL</abbr> / <abbr title="Acute Training Load — усталость, среднее за 7 дней">ATL</abbr> / <abbr title="Training Stress Balance — форма, разница CTL минус ATL">TSB</abbr> по <abbr title="heart-rate Training Stress Score — нагрузка тренировки по пульсу относительно LTHR">hrTSS</abbr>. Видишь когда ты в форме, а когда перегружен.</p>
       </div>
       <div class="value-card">
-        <div class="icon">🎯</div>
+        <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/></svg></div>
         <h3 data-i18n="v2_t">Зоны и интенсивность</h3>
         <p data-i18n="v2_p">Распределение времени по HR и мощностным зонам. Сравниваешь неделю с эталонами по твоей дисциплине.</p>
       </div>
       <div class="value-card">
-        <div class="icon">📊</div>
+        <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="16" y1="2" x2="16" y2="6"/><polyline points="8.5 14 11 16.5 15.5 12"/></svg></div>
         <h3 data-i18n="v3_t">План vs факт</h3>
         <p data-i18n="v3_p">Тренировочный план рядом с фактическими активностями. Видно где недобрал, где переборщил.</p>
       </div>
       <div class="value-card">
-        <div class="icon">🛌</div>
+        <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z"/></svg></div>
         <h3 data-i18n="v4_t">Recovery и HRV</h3>
         <p data-i18n="v4_p">Сон, Body Battery, HRV-тренд (для Garmin). Понимаешь когда можно грузиться, а когда отдохнуть.</p>
       </div>
       <div class="value-card">
-        <div class="icon">🤝</div>
+        <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
         <h3 data-i18n="v5_t">Совместная работа с тренером</h3>
         <p data-i18n="v5_p">Пригласи тренера по ссылке — он видит твои данные и может строить план опираясь на цифры, не на «как себя чувствуешь».</p>
       </div>
       <div class="value-card">
-        <div class="icon">🔒</div>
+        <div class="icon"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
         <h3 data-i18n="v6_t">Твои данные — твои</h3>
         <p data-i18n="v6_p">Тренировки хранятся у нас, ничего не продаём третьим сторонам. Можно отозвать доступ и удалить аккаунт в любой момент.</p>
       </div>
@@ -628,16 +732,22 @@ footer.foot a { color: var(--mute); margin: 0 10px; }
       <div class="audience-card">
         <div class="who">🏃 Атлету</div>
         <h3>Тренируйся осмысленно — и выходи в пик в день гонки</h3>
-        <p>Видишь когда форма растёт, а когда нужен отдых. Перестаёшь тренироваться
-           «по самочувствию» — начинаешь по объективным метрикам. CTL / ATL / TSB
-           показывают где ты на кривой формы. Тейпер перед стартом, распределение
-           зон по неделям, сравнение с эталонами по дисциплине.</p>
+        <ul class="audience-list">
+          <li>Видишь когда форма растёт, а когда нужен отдых</li>
+          <li>CTL / ATL / TSB показывают где ты на кривой формы</li>
+          <li>Тейпер перед стартом — на цифрах, не «по самочувствию»</li>
+          <li>Сравнение зон по неделям с эталонами по дисциплине</li>
+        </ul>
       </div>
       <div class="audience-card">
         <div class="who">🤝 Тренеру</div>
         <h3>Видишь данные всех атлетов в одном месте</h3>
-        <p>Приглашаешь атлета по ссылке — получаешь его тренировки. Строишь план
-           на цифрах: HR-зоны, hrTSS, recovery — не на «как ты себя чувствуешь».</p>
+        <ul class="audience-list">
+          <li>Приглашаешь атлета по ссылке — получаешь его тренировки</li>
+          <li>HR-зоны, hrTSS, recovery в одном дашборде</li>
+          <li>План на цифрах, не на «как ты себя чувствуешь»</li>
+          <li>Несколько атлетов — один экран обзора</li>
+        </ul>
       </div>
     </div>
   </section>
