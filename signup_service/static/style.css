@@ -256,6 +256,9 @@ html, body {
   color: var(--color-mute); margin-bottom: 4px;
   text-transform: uppercase; letter-spacing: 0.5px; font-weight: 500;
 }
+.field label .req {
+  color: #d04545; margin-left: 3px; font-weight: 700;
+}
 .field input {
   width: 100%; padding: 10px 12px;
   border: 1px solid #d8d6cd; border-radius: var(--r-md);
