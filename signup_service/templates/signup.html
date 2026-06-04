@@ -33,7 +33,7 @@
           <strong>{{ current_user.email }}</strong>{% if current_user.name %} ({{ current_user.name }}){% endif %}.
         </div>
 
-        <a href="/done" class="btn btn-primary" data-i18n="signup_go_dashboard"
+        <a href="{{ next_url or '/done' }}" class="btn btn-primary" data-i18n="signup_go_dashboard"
            style="margin-bottom:8px">Запустить приложение →</a>
         <form method="post" action="/logout" style="margin:0">
           <button type="submit" class="btn" style="width:100%" data-i18n="logout">Выйти</button>
