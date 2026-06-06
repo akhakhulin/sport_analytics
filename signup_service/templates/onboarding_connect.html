@@ -65,23 +65,15 @@
         {% set p = providers.get(key) %}
         {% set is_connected = key in connected_providers %}
         {% if p and not p.get('_hidden') %}
-          <div class="device-card{% if not p.configured %} device-card-disabled{% endif %}">
-            <div class="top">
-              <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="{{ p.label }}">
-              <div class="name">{{ p.label }}</div>
-              {% if is_connected %}
-                <span class="platform-meta" style="color:var(--color-success);font-weight:500" data-i18n="conn_connected">Подключён ✓</span>
-              {% elif p.get('via_strava') %}
-                <a href="/oauth/strava/preview?from=apple" class="platform-meta"
-                   style="color:var(--color-brand);font-weight:500;text-decoration:none" data-i18n="conn_connect">
-                  Подключить →
-                </a>
-              {% elif p.get('notify_form') %}
+
+          {# Garmin notify-form — БЕЗ <a>-обёртки, иначе interactive-в-interactive #}
+          {% if p.get('notify_form') and not is_connected %}
+            <div class="device-card device-card-notify">
+              <div class="top">
+                <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="">
+                <div class="name">{{ p.label }}</div>
                 <details class="notify-details">
-                  <summary class="platform-meta" data-i18n="conn_notify_cta"
-                           style="color:var(--color-brand);font-weight:500;cursor:pointer;list-style:none">
-                    Уведомить →
-                  </summary>
+                  <summary class="action-hint" data-i18n="conn_notify_cta">Уведомить →</summary>
                   <form method="post" action="/notify/{{ key }}"
                         style="margin-top:8px;display:flex;flex-direction:column;gap:6px">
                     <input type="email" name="email"
@@ -97,16 +89,53 @@
                     </button>
                   </form>
                 </details>
-              {% elif p.configured %}
-                <a href="/oauth/{{ key }}/preview" class="platform-meta"
-                   style="color:var(--color-brand);font-weight:500;text-decoration:none" data-i18n="conn_connect">
-                  Подключить →
-                </a>
-              {% else %}
-                <span class="platform-meta" data-i18n="conn_soon">Скоро</span>
-              {% endif %}
+              </div>
             </div>
-          </div>
+
+          {# Подключён → ссылка на settings/connections (manage / disconnect) #}
+          {% elif is_connected %}
+            <a href="/settings/connections#{{ key }}" class="device-card device-card-connected"
+               aria-label="Управление подключением {{ p.label }}">
+              <div class="top">
+                <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="">
+                <div class="name">{{ p.label }}</div>
+                <span class="action-hint action-hint-success" data-i18n="conn_connected">Подключён ✓</span>
+              </div>
+            </a>
+
+          {# Apple Watch через Strava-мост #}
+          {% elif p.get('via_strava') %}
+            <a href="/oauth/strava/preview?from=apple" class="device-card"
+               aria-label="Подключить {{ p.label }} через Strava">
+              <div class="top">
+                <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="">
+                <div class="name">{{ p.label }}</div>
+                <span class="action-hint" data-i18n="conn_connect">Подключить →</span>
+              </div>
+            </a>
+
+          {# Стандартный OAuth provider #}
+          {% elif p.configured %}
+            <a href="/oauth/{{ key }}/preview" class="device-card"
+               aria-label="Подключить {{ p.label }}">
+              <div class="top">
+                <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="">
+                <div class="name">{{ p.label }}</div>
+                <span class="action-hint" data-i18n="conn_connect">Подключить →</span>
+              </div>
+            </a>
+
+          {# «Скоро» — без интерактивности #}
+          {% else %}
+            <div class="device-card device-card-disabled" aria-disabled="true">
+              <div class="top">
+                <img src="/static/icons/{{ key }}.svg" width="22" height="22" alt="">
+                <div class="name">{{ p.label }}</div>
+                <span class="action-hint action-hint-mute" data-i18n="conn_soon">Скоро</span>
+              </div>
+            </div>
+          {% endif %}
+
         {% endif %}
       {% endfor %}
     </div>
