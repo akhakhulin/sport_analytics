@@ -38,6 +38,20 @@ HTTP_TIMEOUT = 30.0
 MAX_PAGES = 50  # safety: 50 × 200 = 10000 активностей за раз
 RATE_LIMIT_SLEEP = 0.5  # вежливо к 200req/15min Strava limit
 
+SUUNTO_API = "https://cloudapi.suunto.com/v2"
+SUUNTO_TOKEN_URL = "https://cloudapi-oauth.suunto.com/oauth/token"
+
+# Suunto activityId → human label (минимальный mapping; raw_json сохраняет всё)
+# Source: Suunto Watches- SuuntoApp -Movescount-FIT-Activities.pdf
+SUUNTO_SPORT_MAP = {
+    1: "running", 2: "biking", 3: "mountain_biking", 4: "cross_country_skiing",
+    5: "downhill_skiing", 6: "alpine_skiing", 7: "snowboarding", 8: "hiking",
+    9: "walking", 10: "kayaking", 11: "rowing", 12: "windsurfing",
+    13: "fitness", 14: "indoor", 15: "swimming", 16: "trail_running",
+    17: "open_water_swimming", 18: "weight_training", 19: "yoga",
+    24: "treadmill", 25: "indoor_cycling", 26: "circuit_training",
+}
+
 
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
@@ -246,40 +260,290 @@ def _sync_one_strava(user_id: str, conn_row) -> dict:
     return _finish("ok", pulled=pulled, new=new_count)
 
 
-def run() -> int:
-    """Главный entrypoint. Возвращает exit-code."""
-    users_db.init_schema()
+# =========================================================================
+# ===                          SUUNTO                                  ====
+# =========================================================================
+
+
+def _refresh_suunto_token(refresh_token: str) -> dict | None:
+    """Обмен refresh_token на новую пару через HTTP Basic auth (как exchange-code)."""
+    cid = os.getenv("SUUNTO_CLIENT_ID", "").strip()
+    secret = os.getenv("SUUNTO_CLIENT_SECRET", "").strip()
+    if not cid or not secret:
+        log.error("SUUNTO_CLIENT_ID/SECRET not set in env")
+        return None
+    payload = {
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    }
+    try:
+        r = httpx.post(
+            SUUNTO_TOKEN_URL, data=payload, auth=(cid, secret),
+            timeout=HTTP_TIMEOUT,
+        )
+    except httpx.HTTPError as e:
+        log.error("Suunto token refresh HTTP error: %s", e)
+        return None
+    if r.status_code >= 400:
+        log.error("Suunto token refresh failed: %d %s", r.status_code, r.text[:200])
+        return None
+    return r.json()
+
+
+def _ensure_valid_suunto_token(user_id: str, row) -> str | None:
+    """access_token живой или рефрешит. None при провале."""
+    now = int(time.time())
+    expires_at = int(row["expires_at"] or 0)
+    access = decrypt_token(row["access_token_enc"])
+    if expires_at - now > 60:
+        return access
+    refresh = decrypt_token(row["refresh_token_enc"] or "")
+    if not refresh:
+        log.warning("user=%s suunto: no refresh_token saved", user_id)
+        return None
+    new_tokens = _refresh_suunto_token(refresh)
+    if not new_tokens:
+        return None
+    with users_db.get_conn() as c:
+        c.execute(
+            """
+            UPDATE connected_accounts SET
+                access_token_enc = ?,
+                refresh_token_enc = ?,
+                expires_at = ?,
+                last_refresh_at = ?
+            WHERE user_id = ? AND provider = 'suunto'
+            """,
+            (
+                encrypt_token(new_tokens["access_token"]),
+                encrypt_token(new_tokens.get("refresh_token", refresh)),
+                int(new_tokens.get("expires_at",
+                    now + int(new_tokens.get("expires_in", 21600)))),
+                _now_iso(),
+                user_id,
+            ),
+        )
+        c.commit()
+    log.info("user=%s suunto: token refreshed", user_id)
+    return new_tokens["access_token"]
+
+
+def _pull_suunto_workouts(access_token: str,
+                          period_days: int | None = None) -> list[dict] | None:
+    """GET /v2/workouts. Suunto возвращает {error, payload[], metadata}.
+    period_days=None → вся история; иначе since=now-period_days."""
+    sub_key = (os.getenv("SUUNTO_SUBSCRIPTION_KEY") or "").strip()
+    if not sub_key:
+        log.error("SUUNTO_SUBSCRIPTION_KEY not set in env")
+        return None
+
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Ocp-Apim-Subscription-Key": sub_key,
+    }
+    params = {}
+    if period_days:
+        from datetime import datetime, timezone, timedelta
+        since_dt = datetime.now(timezone.utc) - timedelta(days=period_days)
+        # Suunto since в ms unix
+        params["since"] = int(since_dt.timestamp() * 1000)
+
+    try:
+        r = httpx.get(f"{SUUNTO_API}/workouts", headers=headers,
+                      params=params, timeout=HTTP_TIMEOUT)
+    except httpx.HTTPError as e:
+        log.error("Suunto workouts HTTP error: %s", e)
+        return None
+    if r.status_code >= 400:
+        log.error("Suunto workouts failed: %d %s", r.status_code, r.text[:200])
+        return None
+    try:
+        body = r.json()
+    except Exception:
+        log.error("Suunto workouts non-JSON: %s", r.text[:200])
+        return None
+    if body.get("error"):
+        log.error("Suunto workouts error field: %s", body["error"])
+        return None
+    return body.get("payload") or []
+
+
+def _upsert_suunto_activity(user_id: str, w: dict) -> bool:
+    """Mapping Suunto workout JSON → cloud_activities. True если новая."""
+    external_id = str(w.get("workoutKey") or w.get("workoutId") or "")
+    if not external_id:
+        return False
+
+    # Suunto timestamps в ms unix → ISO UTC
+    start_ms = w.get("startTime")
+    start_iso = None
+    if start_ms:
+        start_iso = datetime.fromtimestamp(
+            int(start_ms) / 1000, tz=timezone.utc
+        ).isoformat()
+
+    total_ms = w.get("totalTime")
+    total_s = int(total_ms) // 1000 if total_ms else None
+
+    sport_label = SUUNTO_SPORT_MAP.get(
+        w.get("activityId"), f"suunto_{w.get('activityId')}"
+    )
+
+    with users_db.get_conn() as c:
+        existing = c.execute(
+            "SELECT id FROM cloud_activities WHERE provider=? AND external_id=?",
+            ("suunto", external_id),
+        ).fetchone()
+
+        c.execute(
+            """
+            INSERT INTO cloud_activities
+                (user_id, provider, external_id, name, sport_type, start_date,
+                 distance_m, moving_time_s, elapsed_time_s, total_elevation_m,
+                 average_hr, max_hr, average_watts, max_watts, kilojoules,
+                 raw_json, synced_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(provider, external_id) DO UPDATE SET
+                name = excluded.name,
+                sport_type = excluded.sport_type,
+                start_date = excluded.start_date,
+                distance_m = excluded.distance_m,
+                moving_time_s = excluded.moving_time_s,
+                elapsed_time_s = excluded.elapsed_time_s,
+                total_elevation_m = excluded.total_elevation_m,
+                average_hr = excluded.average_hr,
+                max_hr = excluded.max_hr,
+                average_watts = excluded.average_watts,
+                max_watts = excluded.max_watts,
+                kilojoules = excluded.kilojoules,
+                raw_json = excluded.raw_json,
+                synced_at = excluded.synced_at
+            """,
+            (
+                user_id, "suunto", external_id,
+                w.get("description") or w.get("activityName"),
+                sport_label,
+                start_iso,
+                w.get("totalDistance"),
+                total_s, total_s,
+                w.get("totalAscent"),
+                w.get("avgHR"), w.get("maxHR"),
+                w.get("avgPower"), w.get("maxPower"),
+                # kilojoules ≈ kcal × 4.184 если есть energyConsumption
+                (int(w["energyConsumption"]) * 4.184
+                 if w.get("energyConsumption") else None),
+                json.dumps(w, ensure_ascii=False),
+                _now_iso(),
+            ),
+        )
+        c.commit()
+    return existing is None
+
+
+def _sync_one_suunto(user_id: str, conn_row) -> dict:
+    """Один user, Suunto."""
+    started = _now_iso()
+    with users_db.get_conn() as c:
+        cur = c.execute(
+            "INSERT INTO cloud_sync_runs (user_id, provider, started_at, status) "
+            "VALUES (?, 'suunto', ?, 'running')",
+            (user_id, started),
+        )
+        sync_id = cur.lastrowid
+        c.commit()
+
+    def _finish(status: str, error: str | None = None,
+                pulled: int = 0, new: int = 0):
+        with users_db.get_conn() as c:
+            c.execute(
+                "UPDATE cloud_sync_runs SET finished_at=?, status=?, error=?, "
+                "pulled_count=?, new_count=? WHERE id=?",
+                (_now_iso(), status, error, pulled, new, sync_id),
+            )
+            c.commit()
+        return {"status": status, "error": error, "pulled": pulled, "new": new}
+
+    access = _ensure_valid_suunto_token(user_id, conn_row)
+    if not access:
+        return _finish("error", "token_refresh_failed")
+
+    with users_db.get_conn() as c:
+        u = c.execute(
+            "SELECT period_days FROM users WHERE user_id = ?", (user_id,),
+        ).fetchone()
+    period_days = u["period_days"] if u and u["period_days"] else None
+
+    workouts = _pull_suunto_workouts(access, period_days=period_days)
+    if workouts is None:
+        return _finish("error", "workouts_fetch_failed")
+
+    pulled = len(workouts)
+    new_count = 0
+    for w in workouts:
+        try:
+            if _upsert_suunto_activity(user_id, w):
+                new_count += 1
+        except Exception:  # noqa: BLE001
+            log.exception("user=%s suunto upsert failed for %s",
+                          user_id, w.get("workoutKey"))
+
+    return _finish("ok", pulled=pulled, new=new_count)
+
+
+def _sync_provider(provider: str) -> tuple[int, int]:
+    """Generic loop по всем user'ам провайдера. Возвращает (ok, err)."""
+    sync_fn = {
+        "strava": _sync_one_strava,
+        "suunto": _sync_one_suunto,
+    }.get(provider)
+    if not sync_fn:
+        log.warning("sync для provider=%s не реализован", provider)
+        return 0, 0
+
     with users_db.get_conn() as c:
         rows = list(c.execute(
             "SELECT user_id, access_token_enc, refresh_token_enc, expires_at "
-            "FROM connected_accounts WHERE provider='strava'"
+            "FROM connected_accounts WHERE provider = ?",
+            (provider,),
         ).fetchall())
 
     if not rows:
-        log.info("no strava connected_accounts — nothing to sync")
-        return 0
+        log.info("%s: нет connected_accounts — пропускаю", provider)
+        return 0, 0
 
-    log.info("syncing strava for %d users", len(rows))
+    log.info("%s: syncing %d users", provider, len(rows))
     ok = err = 0
     for r in rows:
         user_id = r["user_id"]
         try:
-            result = _sync_one_strava(user_id, r)
+            result = sync_fn(user_id, r)
             if result["status"] == "ok":
                 ok += 1
-                log.info(
-                    "user=%s strava: pulled=%d new=%d",
-                    user_id, result["pulled"], result["new"],
-                )
+                log.info("user=%s %s: pulled=%d new=%d",
+                         user_id, provider, result["pulled"], result["new"])
             else:
                 err += 1
-                log.warning("user=%s strava: %s — %s", user_id, result["status"], result["error"])
-        except Exception as e:  # noqa: BLE001
+                log.warning("user=%s %s: %s — %s",
+                            user_id, provider, result["status"], result["error"])
+        except Exception:  # noqa: BLE001
             err += 1
-            log.exception("user=%s strava: unexpected error", user_id)
+            log.exception("user=%s %s: unexpected error", user_id, provider)
+    return ok, err
 
-    log.info("sync done: ok=%d err=%d", ok, err)
-    return 0 if err == 0 else 1
+
+def run() -> int:
+    """Главный entrypoint. Возвращает exit-code.
+
+    Синкает Strava и Suunto. На каждого user'а по провайдеру отдельный run.
+    Один error в одном user'е не валит весь sync."""
+    users_db.init_schema()
+    total_ok = total_err = 0
+    for provider in ("strava", "suunto"):
+        ok, err = _sync_provider(provider)
+        total_ok += ok
+        total_err += err
+    log.info("sync done: ok=%d err=%d", total_ok, total_err)
+    return 0 if total_err == 0 else 1
 
 
 def main():

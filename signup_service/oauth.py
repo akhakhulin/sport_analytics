@@ -63,7 +63,7 @@ PROVIDERS: dict[str, dict] = {
         "scope": "workout",
         "client_id_env": "SUUNTO_CLIENT_ID",
         "client_secret_env": "SUUNTO_CLIENT_SECRET",
-        "token_auth": "form",
+        "token_auth": "basic",  # Azure APIM требует HTTP Basic, не form-data
         "extra_authorize": {},
     },
 }
@@ -262,6 +262,8 @@ async def callback(
 
 
 async def _exchange_code(provider: str, code: str, request: Request) -> dict:
+    import logging
+    log = logging.getLogger("oauth")
     cfg = _provider_or_404(provider)
     cid, secret = _creds(provider)
     payload = {
@@ -278,8 +280,18 @@ async def _exchange_code(provider: str, code: str, request: Request) -> dict:
     elif cfg["token_auth"] == "basic":
         auth = (cid, secret)
 
+    # Subscription Key нужен для API-endpoints (cloudapi.suunto.com),
+    # но НЕ для OAuth-endpoint (cloudapi-oauth.suunto.com) — там обычный OAuth basic.
+
+    log.error(f"[{provider}] exchange POST {cfg['token_url']} payload-keys={list(payload.keys())} "
+              f"auth={'basic' if auth else 'form'} "
+              f"redirect={_callback_url(request, provider)}")
+
     async with httpx.AsyncClient(timeout=20.0) as client:
         r = await client.post(cfg["token_url"], data=payload, headers=headers, auth=auth)
+
+    log.error(f"[{provider}] exchange response: HTTP {r.status_code} body={r.text[:500]!r}")
+
     if r.status_code >= 400:
         raise HTTPException(
             502, f"{cfg['label']} token exchange failed: HTTP {r.status_code} — {r.text[:200]}"
