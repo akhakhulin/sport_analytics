@@ -479,6 +479,15 @@ a.device-card {
   cursor: pointer;
   transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease;
 }
+/* Сбрасываем browser-default underline + color у всех вложенных элементов */
+a.device-card,
+a.device-card *,
+a.device-card:hover *,
+a.device-card:visited * {
+  text-decoration: none !important;
+}
+a.device-card .name { color: var(--color-ink); }
+
 a.device-card:hover {
   border-color: var(--color-brand);
   transform: translateY(-1px);
@@ -497,15 +506,16 @@ a.device-card:active { transform: translateY(0); }
 }
 .device-card-connected { border-color: rgba(60, 168, 60, 0.35); }
 
-/* action-hint = visual label «Подключить →» / «Подключён ✓» / «Скоро» —
-   НЕ кликабельный sam по себе, кликабельна вся карточка */
+/* action-hint = тихая мета-метка «Подключить →» / «Подключён ✓» / «Скоро»
+   мелкая, mute-серая — как раньше .platform-meta */
 .action-hint {
   font-size: var(--fs-xs);
-  color: var(--color-brand);
-  font-weight: 500;
+  color: var(--color-mute);
+  font-weight: 400;
+  margin-top: 2px;
 }
-.action-hint-success { color: var(--color-success, #2e8b2e); }
-.action-hint-mute    { color: var(--color-mute); font-weight: 400; }
+.action-hint-success { color: var(--color-success, #2e8b2e); font-weight: 500; }
+.action-hint-mute    { color: var(--color-mute); }
 
 /* Garmin notify-карточка — сохраняет inline-форму, не оборачивается в <a> */
 .device-card-notify { background: #fff; }
