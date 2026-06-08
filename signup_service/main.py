@@ -771,6 +771,130 @@ async def settings_period_get(request: Request):
     return _render_period_page(request, is_settings=True)
 
 
+# =========================================================================
+# === Suunto Webhook receiver (workouts + 24/7 push notifications)     ====
+# =========================================================================
+# Suunto Profile должен указать URL-ы на эти 4 endpoint и заполнить
+# Notification access token/secret (env: SUUNTO_WEBHOOK_TOKEN).
+# Signature verification: header X-Suunto-Token либо Authorization
+# должен совпадать с SUUNTO_WEBHOOK_TOKEN. Если token не задан в env —
+# валидация отключается (для dev). Production — обязательно задать.
+
+import hmac as _hmac
+import hashlib as _hashlib
+import json as _json
+from fastapi import HTTPException as _HTTPException
+
+
+def _suunto_webhook_verify(request: Request, body: bytes) -> bool:
+    """Проверка подлинности webhook от Suunto. Возвращает True если ок.
+    Если SUUNTO_WEBHOOK_TOKEN не задан — пропускаем (dev mode).
+    Suunto может слать сигнатуру в одном из двух форматов:
+    1) header 'X-Suunto-Token' = shared secret string (простая)
+    2) header 'Authorization' = HMAC-SHA256 body (если используют JWT/HMAC)
+    """
+    expected = (os.getenv("SUUNTO_WEBHOOK_TOKEN") or "").strip()
+    if not expected:
+        return True  # dev-mode без verification
+    # Способ 1 — простой shared secret
+    got = (request.headers.get("X-Suunto-Token") or "").strip()
+    if got and _hmac.compare_digest(got, expected):
+        return True
+    # Способ 2 — HMAC-SHA256 от body
+    auth = (request.headers.get("Authorization") or "").strip()
+    if auth.startswith("HMAC-SHA256 "):
+        sig = auth.removeprefix("HMAC-SHA256 ").strip()
+        digest = _hmac.new(expected.encode(), body, _hashlib.sha256).hexdigest()
+        if _hmac.compare_digest(sig, digest):
+            return True
+    return False
+
+
+def _suunto_resolve_user(payload: dict) -> str | None:
+    """Resolve Suunto username → наш user_id через connected_accounts.
+    Suunto обычно шлёт `username` или `userKey` в webhook payload."""
+    suunto_user = (
+        payload.get("username") or payload.get("userKey")
+        or payload.get("user") or payload.get("userId")
+    )
+    if not suunto_user:
+        return None
+    with users_db.get_conn() as c:
+        row = c.execute(
+            "SELECT user_id FROM connected_accounts "
+            "WHERE provider = 'suunto' AND external_user_id = ?",
+            (str(suunto_user),),
+        ).fetchone()
+    return row["user_id"] if row else None
+
+
+@app.post("/webhooks/suunto/{kind}")
+async def suunto_webhook(kind: str, request: Request):
+    """Принимает push-уведомления от Suunto.
+    kind ∈ {workout, 247-activity, 247-sleep, 247-recovery}.
+
+    Suunto обычно шлёт только уведомление о событии (без полного payload).
+    Мы триггерим targeted re-sync для конкретного user'а через sync_worker.
+    """
+    body = await request.body()
+
+    # Логируем все incoming events (для debugging пока структура не подтверждена)
+    import logging
+    wlog = logging.getLogger("suunto_webhook")
+    wlog.warning(
+        "[suunto-webhook] kind=%s headers=%s body=%s",
+        kind,
+        {k: v for k, v in request.headers.items()
+         if k.lower() in ("content-type", "x-suunto-token",
+                          "authorization", "x-event-type")},
+        body[:500].decode("utf-8", errors="replace"),
+    )
+
+    if not _suunto_webhook_verify(request, body):
+        raise _HTTPException(401, "Invalid Suunto webhook signature")
+
+    allowed_kinds = {"workout", "247-activity", "247-sleep", "247-recovery"}
+    if kind not in allowed_kinds:
+        raise _HTTPException(404, f"Unknown webhook kind: {kind}")
+
+    try:
+        payload = _json.loads(body or b"{}")
+    except _json.JSONDecodeError:
+        # Suunto может слать form-encoded или plain text — не падаем
+        payload = {}
+
+    user_id = _suunto_resolve_user(payload)
+    if not user_id:
+        wlog.warning("[suunto-webhook] cannot resolve user from payload: %s",
+                     payload)
+        # Возвращаем 200 — Suunto не должен retry'ить если мы не знаем user'а
+        return {"ok": True, "skipped": "unknown user"}
+
+    # Триггер sync для конкретного user'а через sync_worker.
+    # Запускаем background-task, чтобы webhook ответил быстро (Suunto обычно
+    # требует ответ <3s, иначе считает delivery failed).
+    import asyncio
+    from . import sync_worker
+
+    def _trigger_sync():
+        try:
+            with users_db.get_conn() as c:
+                c.row_factory = users_db.sqlite3.Row
+                row = c.execute(
+                    "SELECT user_id, access_token_enc, refresh_token_enc, "
+                    "expires_at FROM connected_accounts "
+                    "WHERE user_id = ? AND provider = 'suunto'",
+                    (user_id,),
+                ).fetchone()
+            if row:
+                sync_worker._sync_one_suunto(user_id, row)
+        except Exception:  # noqa: BLE001
+            wlog.exception("[suunto-webhook] sync failed for user=%s", user_id)
+
+    asyncio.get_event_loop().run_in_executor(None, _trigger_sync)
+    return {"ok": True, "user": user_id, "kind": kind}
+
+
 @app.post("/notify/{provider}")
 async def notify_provider(provider: str, request: Request,
                            email: str = Form("")):
